@@ -58,17 +58,17 @@ function DomiciliarioView() {
   return (
     <div className="min-h-screen bg-ink text-cream">
       <TopBar title="Ruta activa" subtitle="Buscar y entregar" />
-      <main className="mx-auto grid max-w-screen-lg gap-6 px-4 py-8 lg:grid-cols-[1fr_380px]">
+      <main className="page-container grid gap-6 lg:grid-cols-[1fr_380px] lg:gap-8">
         {/* Mobile phone frame */}
-        <section className="mx-auto w-full max-w-[420px]">
-          <div className="overflow-hidden rounded-[36px] border-[6px] border-white/10 bg-cream text-foreground shadow-2xl">
-            <div className="bg-ink px-6 py-4 text-cream">
+        <section className="mx-auto w-full max-w-[420px] lg:max-w-none">
+          <div className="overflow-hidden rounded-2xl border border-border bg-cream text-foreground shadow-xl sm:rounded-[36px] sm:border-[6px] sm:border-white/10 sm:shadow-2xl">
+            <div className="bg-ink px-4 py-4 text-cream sm:px-6">
               <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-cream/50">
                 <span>9:41</span>
                 <span>Domicilio · 4G</span>
               </div>
               <div className="mt-3 flex items-center justify-between">
-                <h2 className="font-display text-2xl font-semibold">Nueva entrega</h2>
+                <h2 className="font-display text-xl font-semibold sm:text-2xl">Nueva entrega</h2>
                 {order && (
                   <span className="rounded-full bg-primary px-2.5 py-1 text-[10px] font-semibold text-cream">
                     {order.id}
@@ -77,18 +77,18 @@ function DomiciliarioView() {
               </div>
             </div>
 
-            <form onSubmit={search} className="space-y-2 bg-cream px-6 py-5">
+            <form onSubmit={search} className="space-y-2 bg-cream px-4 py-4 sm:px-6 sm:py-5">
               <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
                 Buscar pedido por código
               </label>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 min-[400px]:flex-row">
                 <input
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
                   placeholder="PED-104"
-                  className="flex-1 rounded-xl border border-border bg-card px-4 py-3 text-base font-mono focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  className="flex-1 rounded-xl border border-border bg-card px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30 sm:text-base"
                 />
-                <button className="rounded-xl bg-ink px-4 text-sm font-semibold text-cream">
+                <button className="rounded-xl bg-ink px-4 py-3 text-sm font-semibold text-cream min-[400px]:py-0">
                   Buscar
                 </button>
               </div>
@@ -96,7 +96,7 @@ function DomiciliarioView() {
             </form>
 
             {order ? (
-              <div className="space-y-5 bg-cream px-6 pb-6">
+              <div className="space-y-5 bg-cream px-4 pb-6 sm:px-6">
                 {/* Map */}
                 <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-amber-brand/30 via-cream to-primary/15">
                   <svg className="absolute inset-0 size-full" viewBox="0 0 400 300" preserveAspectRatio="none" aria-hidden>
@@ -181,7 +181,7 @@ function DomiciliarioView() {
         </section>
 
         {/* Side queue */}
-        <aside className="rounded-2xl border border-white/10 bg-white/5 p-5">
+        <aside className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-amber-brand">
             Tu cola de hoy
           </p>

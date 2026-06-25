@@ -59,18 +59,18 @@ function SuperadminView() {
     <div className="min-h-screen bg-cream">
       <TopBar title="Consola global" subtitle="Gobernanza del ecosistema BurgerCore" />
 
-      <main className="mx-auto max-w-screen-2xl space-y-8 px-6 py-10">
+      <main className="page-container space-y-6 sm:space-y-8">
         <header>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-primary">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary sm:text-[11px] sm:tracking-[0.25em]">
             Gobernanza
           </p>
-          <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight">
+          <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight sm:text-3xl">
             Métricas y gestión de personal
           </h1>
         </header>
 
         {/* Metrics */}
-        <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <section className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 md:grid-cols-4 md:gap-4">
           <MetricCard label="Ventas hoy" value={formatCOP(sales)} delta="+12% vs ayer" tone="primary" />
           <MetricCard label="Clientes registrados" value={String(counts.cliente)} delta="Activos en plataforma" />
           <MetricCard label="Admins activos" value={String(counts.admin)} delta={`${counts.admin} sedes operando`} />
@@ -79,24 +79,24 @@ function SuperadminView() {
 
         {/* Users table */}
         <section className="overflow-hidden rounded-2xl border border-border bg-card">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+          <div className="flex flex-col gap-3 border-b border-border px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-5">
             <div>
-              <h2 className="font-display text-lg font-semibold">Gestión de usuarios</h2>
+              <h2 className="font-display text-base font-semibold sm:text-lg">Gestión de usuarios</h2>
               <p className="text-xs text-muted-foreground">
                 Da de alta, suspende o edita roles del ecosistema.
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Buscar por nombre o email…"
-                className="w-56 rounded-lg border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 sm:w-56"
               />
               <select
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value as Role | "todos")}
-                className="rounded-lg border border-border bg-background px-3 py-2 text-xs"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs sm:w-auto"
               >
                 <option value="todos">Todos los roles</option>
                 <option value="cliente">Clientes</option>
@@ -214,9 +214,9 @@ function MetricCard({ label, value, delta, tone = "default" }: { label: string; 
         ? "border-amber-brand/30 bg-amber-brand/10"
         : "border-border bg-card";
   return (
-    <div className={`rounded-2xl border ${accent} p-5`}>
-      <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">{label}</p>
-      <p className="mt-2 font-display text-2xl font-semibold tabular-nums">{value}</p>
+    <div className={`rounded-2xl border ${accent} p-4 sm:p-5`}>
+      <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground sm:text-[11px]">{label}</p>
+      <p className="mt-2 font-display text-xl font-semibold tabular-nums sm:text-2xl">{value}</p>
       {delta && <p className="mt-1 text-[11px] text-muted-foreground">{delta}</p>}
     </div>
   );

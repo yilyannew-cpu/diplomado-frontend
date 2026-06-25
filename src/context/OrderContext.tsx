@@ -7,10 +7,22 @@ export interface CartItem {
   quantity: number;
 }
 
+export type ClientTab = "menu" | "tracking";
+
+export type ClientModule = "inicio" | "promociones" | "rankin";
+
 interface OrderState {
   menu: MenuItem[];
   orders: Order[];
   cart: CartItem[];
+  cartItemCount: number;
+  cartOpen: boolean;
+  setCartOpen: (open: boolean) => void;
+  activeClientOrderId: string | null;
+  clientTab: ClientTab;
+  setClientTab: (tab: ClientTab) => void;
+  clientModule: ClientModule;
+  setClientModule: (module: ClientModule) => void;
   addToCart: (product: MenuItem) => void;
   removeFromCart: (productId: string) => void;
   clearCart: () => void;
@@ -27,10 +39,16 @@ const OrderContext = createContext<OrderState | null>(null);
 export function OrderProvider({ children }: { children: ReactNode }) {
   const [menu, setMenu] = useState<MenuItem[]>(menuMock);
   const [orders, setOrders] = useState<Order[]>(ordersMock);
-  const [cart, setCart] = useState<CartItem[]>([
-    { product: menuMock[0], quantity: 1 },
-    { product: menuMock[4], quantity: 1 },
-  ]);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [activeClientOrderId, setActiveClientOrderId] = useState<string | null>(null);
+  const [clientTab, setClientTab] = useState<ClientTab>("menu");
+  const [clientModule, setClientModule] = useState<ClientModule>("inicio");
+
+  const cartItemCount = useMemo(
+    () => cart.reduce((acc, i) => acc + i.quantity, 0),
+    [cart],
+  );
 
   const addToCart = (product: MenuItem) => {
     setCart((c) => {
@@ -73,6 +91,8 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     };
     setOrders((o) => [order, ...o]);
     setCart([]);
+    setActiveClientOrderId(order.id);
+    setClientTab("tracking");
     return order;
   };
 
@@ -97,6 +117,14 @@ export function OrderProvider({ children }: { children: ReactNode }) {
         menu,
         orders,
         cart,
+        cartItemCount,
+        cartOpen,
+        setCartOpen,
+        activeClientOrderId,
+        clientTab,
+        setClientTab,
+        clientModule,
+        setClientModule,
         addToCart,
         removeFromCart,
         clearCart,

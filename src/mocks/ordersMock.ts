@@ -6,6 +6,14 @@ export type OrderStatus =
   | "En Camino"
   | "Entregado";
 
+export const CLIENT_STATUS_FLOW: OrderStatus[] = [
+  "Recibido",
+  "En Cocina",
+  "Listo",
+  "En Camino",
+  "Entregado",
+];
+
 export interface OrderItem {
   productId: string;
   quantity: number;

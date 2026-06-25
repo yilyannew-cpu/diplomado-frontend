@@ -41,7 +41,7 @@ function AdminView() {
     <div className="min-h-screen bg-cream">
       <TopBar title="Centro de cocina" subtitle="Monitor de comandas en tiempo real" />
 
-      <div className="mx-auto flex max-w-screen-2xl gap-8 px-6 py-8">
+      <div className="page-container flex flex-col gap-6 lg:flex-row lg:gap-8">
         <nav className="hidden w-56 shrink-0 lg:block">
           <div className="sticky top-24 space-y-1">
             <SidebarItem active={tab === "comandas"} onClick={() => setTab("comandas")} label="Monitor de comandas" hint={`${orders.length} activas`} />
@@ -57,7 +57,7 @@ function AdminView() {
               <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-primary">
                 Sede El Poblado
               </p>
-              <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight">
+              <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight sm:text-3xl">
                 {tab === "comandas" ? "Monitor de comandas" : "Gestor de menú"}
               </h1>
             </div>
@@ -100,7 +100,7 @@ function AdminView() {
             </div>
           ) : (
             <div className="overflow-hidden rounded-2xl border border-border bg-card">
-              <div className="grid grid-cols-12 border-b border-border bg-secondary/40 px-5 py-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              <div className="hidden border-b border-border bg-secondary/40 px-5 py-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground md:grid md:grid-cols-12">
                 <span className="col-span-5">Producto</span>
                 <span className="col-span-2">Categoría</span>
                 <span className="col-span-2 text-right">Precio</span>
@@ -108,7 +108,38 @@ function AdminView() {
                 <span className="col-span-1 text-right">Editar</span>
               </div>
               {menu.map((p) => (
-                <div key={p.id} className="grid grid-cols-12 items-center border-b border-border px-5 py-3 text-sm last:border-b-0">
+                <div key={p.id}>
+                  {/* Mobile card */}
+                  <div className="space-y-3 border-b border-border p-4 last:border-b-0 md:hidden">
+                    <div className="flex items-center gap-3">
+                      <img src={p.image} alt="" className="size-14 rounded-xl object-cover" />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium leading-snug">{p.name}</p>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">{p.category}</p>
+                        <p className="mt-1 font-mono text-sm font-semibold text-primary tabular-nums">
+                          {formatCOP(p.price)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Disponible</span>
+                        <button
+                          onClick={() => toggleAvailability(p.id)}
+                          className={`flex h-6 w-11 items-center rounded-full p-0.5 transition-colors ${
+                            p.available ? "bg-primary" : "bg-secondary"
+                          }`}
+                        >
+                          <span className={`size-5 rounded-full bg-white shadow transition-transform ${p.available ? "translate-x-5" : ""}`} />
+                        </button>
+                      </div>
+                      <button onClick={() => setEditing(p)} className="text-xs font-medium text-primary hover:underline">
+                        Editar
+                      </button>
+                    </div>
+                  </div>
+                  {/* Desktop row */}
+                  <div className="hidden grid-cols-12 items-center border-b border-border px-5 py-3 text-sm last:border-b-0 md:grid">
                   <div className="col-span-5 flex items-center gap-3">
                     <img src={p.image} alt="" className="size-10 rounded-lg object-cover" />
                     <div>
@@ -132,6 +163,7 @@ function AdminView() {
                     <button onClick={() => setEditing(p)} className="text-xs font-medium text-primary hover:underline">
                       Editar
                     </button>
+                  </div>
                   </div>
                 </div>
               ))}
@@ -224,12 +256,12 @@ function OrderCard({
         })}
       </ul>
       <p className="mb-3 truncate text-[11px] text-muted-foreground">{order.address}</p>
-      <div className="flex items-center justify-between">
-        <span className="font-mono text-sm font-semibold text-primary tabular-nums">{formatCOP(order.total)}</span>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <span className="font-mono text-sm font-semibold text-primary tabular-nums sm:text-base">{formatCOP(order.total)}</span>
         {onAdvance && actionLabel && (
           <button
             onClick={onAdvance}
-            className="rounded-lg bg-ink px-3 py-1.5 text-[11px] font-semibold text-cream transition-colors hover:bg-primary"
+            className="w-full rounded-lg bg-ink px-3 py-2 text-[11px] font-semibold text-cream transition-colors hover:bg-primary sm:w-auto sm:py-1.5"
           >
             {actionLabel} →
           </button>
