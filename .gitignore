@@ -16,6 +16,9 @@ dist-ssr
 .nitro
 *.local
 
+# TanStack Router — generado localmente (ver bun run routes:gen)
+src/routeTree.gen.ts
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
