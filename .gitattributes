@@ -1,0 +1,14 @@
+# Normalizar finales de línea a LF en todo el repo (evita falsos cambios en Windows).
+* text=auto eol=lf
+
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+
+# Generado por TanStack Router — nunca editar a mano.
+src/routeTree.gen.ts linguist-generated=true
