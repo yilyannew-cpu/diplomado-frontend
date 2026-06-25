@@ -10,5 +10,4 @@
 *.css text eol=lf
 *.html text eol=lf
 
-# Generado por TanStack Router — nunca editar a mano.
-src/routeTree.gen.ts linguist-generated=true
+# Generado por TanStack Router — no versionar (ver .gitignore).
