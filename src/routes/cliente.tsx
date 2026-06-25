@@ -1,9 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { ClientTabNav } from "@/components/cliente/ClientTabNav";
+import { PromocionesPanel } from "@/components/cliente/PromocionesPanel";
+import { RankinPanel } from "@/components/cliente/RankinPanel";
+import { OrderTrackingPanel } from "@/components/cliente/OrderTrackingPanel";
+import { BRAND_SLOGAN } from "@/components/shared/BrandLogo";
 import { RoleGuard, TopBar } from "@/components/shared/RoleShell";
 import { formatCOP, useOrders } from "@/context/OrderContext";
 import type { Category } from "@/mocks/menuMock";
-import type { OrderStatus } from "@/mocks/ordersMock";
 import { restaurantsMock } from "@/mocks/restaurantsMock";
 
 export const Route = createFileRoute("/cliente")({
@@ -22,10 +26,8 @@ export const Route = createFileRoute("/cliente")({
 
 const categories: Array<Category | "Todo"> = ["Todo", "Hamburguesas", "Acompañamientos", "Bebidas", "Postres"];
 
-const STATUS_FLOW: OrderStatus[] = ["Recibido", "En Cocina", "Listo", "En Camino", "Entregado"];
-
 function ClienteView() {
-  const { menu, cart, addToCart, removeFromCart, cartTotal, orders } = useOrders();
+  const { menu, addToCart, clientTab, clientModule } = useOrders();
   const [activeCat, setActiveCat] = useState<(typeof categories)[number]>("Todo");
   const [activeRest, setActiveRest] = useState<string | "Todos">("Todos");
 
@@ -44,47 +46,55 @@ function ClienteView() {
     [],
   );
 
-  // Track the customer's most recent order (mock: PED-101 belongs to Laura)
-  const currentOrder = orders.find((o) => o.id === "PED-101") ?? orders[0];
-  const currentIdx = STATUS_FLOW.indexOf(currentOrder.status);
-  const deliveryFee = cart.length > 0 ? 5000 : 0;
-
   return (
     <div className="min-h-screen bg-cream">
-      <TopBar title="Tu menú" subtitle="Pide, paga y haz tracking en tiempo real" />
+      <TopBar
+        title={BRAND_SLOGAN.headline}
+        subtitle={BRAND_SLOGAN.tagline}
+        slogan
+      />
 
-      <main className="mx-auto grid max-w-screen-2xl grid-cols-1 gap-10 px-6 py-10 lg:grid-cols-12">
-        <section className="lg:col-span-8">
-          <div className="mb-8 flex items-end justify-between">
+      <main className="page-container">
+        <ClientTabNav />
+
+        {clientTab === "tracking" ? (
+          <OrderTrackingPanel />
+        ) : clientModule === "promociones" ? (
+          <PromocionesPanel menu={menu} onAdd={addToCart} />
+        ) : clientModule === "rankin" ? (
+          <RankinPanel />
+        ) : (
+        <section>
+          <div className="mb-6 flex flex-col gap-2 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-primary">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary sm:text-[11px] sm:tracking-[0.25em]">
                 Menú de temporada
               </p>
-              <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight">
+              <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl">
                 ¿Qué se te antoja hoy?
               </h1>
             </div>
-            <span className="hidden text-xs text-muted-foreground md:block">
+            <span className="text-xs text-muted-foreground sm:text-right">
               {filtered.length} productos
             </span>
           </div>
 
           {/* Restaurants quick access */}
           <div className="mb-6">
-            <div className="mb-3 flex items-end justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground sm:text-[11px] sm:tracking-[0.2em]">
                 Restaurantes en tu zona
               </p>
               <button
                 onClick={() => setActiveRest("Todos")}
-                className={`text-[11px] font-medium uppercase tracking-wider transition-colors ${
+                className={`shrink-0 text-[10px] font-medium uppercase tracking-wider transition-colors sm:text-[11px] ${
                   activeRest === "Todos" ? "text-primary" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 Ver todos
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 md:grid-cols-4">
               {restaurantsMock.map((r) => {
                 const isActive = activeRest === r.id;
                 const count = menu.filter((m) => m.restaurantId === r.id).length;
@@ -92,21 +102,21 @@ function ClienteView() {
                   <button
                     key={r.id}
                     onClick={() => setActiveRest(isActive ? "Todos" : r.id)}
-                    className={`group flex items-center gap-3 rounded-2xl border bg-card p-3 text-left transition-all hover:-translate-y-0.5 hover:shadow-md ${
+                    className={`group flex w-full items-center gap-3 rounded-2xl border bg-card p-3 text-left transition-all hover:-translate-y-0.5 hover:shadow-md sm:p-3.5 ${
                       isActive ? "border-primary/60 ring-2 ring-primary/20" : "border-border"
                     }`}
                   >
                     <span
-                      className="grid size-11 shrink-0 place-items-center rounded-xl font-display text-sm font-semibold text-white"
+                      className="grid size-10 shrink-0 place-items-center rounded-xl font-display text-sm font-semibold text-white sm:size-11"
                       style={{ backgroundColor: r.accent }}
                     >
                       {r.initials}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-display text-sm font-semibold leading-tight">
+                      <span className="block font-display text-sm font-semibold leading-snug">
                         {r.name}
                       </span>
-                      <span className="mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                      <span className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-muted-foreground">
                         <span className="inline-flex items-center gap-0.5 font-medium text-amber-brand">
                           ★ {r.rating.toFixed(1)}
                         </span>
@@ -122,12 +132,12 @@ function ClienteView() {
             </div>
           </div>
 
-          <div className="mb-8 flex flex-wrap gap-2">
+          <div className="-mx-4 mb-6 flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-none sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
             {categories.map((c) => (
               <button
                 key={c}
                 onClick={() => setActiveCat(c)}
-                className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
                   activeCat === c
                     ? "bg-ink text-cream"
                     : "border border-border bg-card text-foreground hover:bg-secondary"
@@ -165,7 +175,7 @@ function ClienteView() {
                     {p.category}
                   </span>
                 </div>
-                <div className="flex flex-1 flex-col p-5">
+                <div className="flex flex-1 flex-col p-4 sm:p-5">
                   {brand && (
                     <button
                       type="button"
@@ -215,119 +225,7 @@ function ClienteView() {
             )}
           </div>
         </section>
-
-        <aside className="lg:col-span-4">
-          <div className="sticky top-24 space-y-5">
-            {/* Cart */}
-            <div className="rounded-2xl border border-border bg-card p-6">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="font-display text-lg font-semibold">Tu pedido</h3>
-                <span className="rounded-full bg-secondary px-2.5 py-0.5 text-[11px] font-medium">
-                  {cart.reduce((a, i) => a + i.quantity, 0)} items
-                </span>
-              </div>
-
-              {cart.length === 0 ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">
-                  Tu carrito está vacío.
-                </p>
-              ) : (
-                <ul className="mb-4 space-y-3 border-b border-border pb-4">
-                  {cart.map((c) => (
-                    <li
-                      key={c.product.id}
-                      className="flex items-center justify-between gap-3 text-sm"
-                    >
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => removeFromCart(c.product.id)}
-                          className="grid size-6 place-items-center rounded-md border border-border text-xs hover:bg-secondary"
-                          aria-label="Quitar uno"
-                        >
-                          −
-                        </button>
-                        <span className="font-mono text-xs tabular-nums">{c.quantity}×</span>
-                        <span>{c.product.name}</span>
-                      </div>
-                      <span className="font-mono text-xs tabular-nums">
-                        {formatCOP(c.product.price * c.quantity)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              <dl className="space-y-1.5 text-sm">
-                <div className="flex justify-between text-muted-foreground">
-                  <dt>Subtotal</dt>
-                  <dd className="font-mono tabular-nums">{formatCOP(cartTotal)}</dd>
-                </div>
-                <div className="flex justify-between text-muted-foreground">
-                  <dt>Domicilio</dt>
-                  <dd className="font-mono tabular-nums">{formatCOP(deliveryFee)}</dd>
-                </div>
-                <div className="mt-2 flex justify-between border-t border-dashed border-border pt-2 text-base font-semibold">
-                  <dt>Total</dt>
-                  <dd className="font-mono text-primary tabular-nums">
-                    {formatCOP(cartTotal + deliveryFee)}
-                  </dd>
-                </div>
-              </dl>
-
-              <button
-                disabled={cart.length === 0}
-                className="mt-5 w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-secondary disabled:text-muted-foreground disabled:shadow-none"
-              >
-                Confirmar pedido
-              </button>
-            </div>
-
-            {/* Tracking */}
-            <div className="rounded-2xl bg-ink p-6 text-cream">
-              <div className="mb-1 flex items-center justify-between">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-amber-brand">
-                  Pedido en curso
-                </p>
-                <span className="font-mono text-xs">{currentOrder.id}</span>
-              </div>
-              <p className="font-display text-xl font-semibold">{currentOrder.status}</p>
-              <p className="text-xs text-cream/60">
-                {currentOrder.address.split(",")[0]}
-              </p>
-
-              <ol className="mt-6 space-y-5">
-                {STATUS_FLOW.map((s, idx) => {
-                  const reached = idx <= currentIdx;
-                  const active = idx === currentIdx;
-                  return (
-                    <li key={s} className="relative flex gap-4">
-                      <div className="flex flex-col items-center">
-                        <span
-                          className={`size-3 rounded-full ${
-                            active
-                              ? "bg-amber-brand ring-4 ring-amber-brand/25"
-                              : reached
-                                ? "bg-primary"
-                                : "bg-white/15"
-                          }`}
-                        />
-                        {idx < STATUS_FLOW.length - 1 && (
-                          <span className={`mt-1 h-8 w-px ${reached ? "bg-primary/40" : "bg-white/10"}`} />
-                        )}
-                      </div>
-                      <div className={`-mt-1 ${reached ? "text-cream" : "text-cream/40"}`}>
-                        <p className="text-sm font-medium">{s}</p>
-                        <p className="text-[11px] text-cream/40">
-                          {active ? "En curso" : reached ? "Completado" : "Pendiente"}
-                        </p>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ol>
-            </div>
-          </div>
-        </aside>
+        )}
       </main>
     </div>
   );

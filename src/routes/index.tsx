@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { BrandLogo } from "@/components/shared/BrandLogo";
 import { useAuth } from "@/context/AuthContext";
 import type { Role } from "@/mocks/usersMock";
 
@@ -60,12 +61,7 @@ function LoginPage() {
       <div className="mx-auto grid min-h-screen max-w-screen-2xl grid-cols-1 lg:grid-cols-12">
         {/* Brand panel */}
         <aside className="relative hidden flex-col justify-between overflow-hidden bg-ink p-12 text-cream lg:col-span-6 lg:flex">
-          <div className="flex items-center gap-3">
-            <span className="grid size-11 place-items-center rounded-2xl bg-primary text-primary-foreground font-display text-xl font-semibold">
-              B
-            </span>
-            <span className="font-display text-2xl font-semibold tracking-tight">BurgerCore</span>
-          </div>
+          <BrandLogo size="lg" variant="light" linkTo="/" />
 
           <div className="relative z-10 max-w-lg">
             <p className="mb-4 text-[11px] font-medium uppercase tracking-[0.25em] text-amber-brand">
@@ -114,13 +110,16 @@ function LoginPage() {
         </aside>
 
         {/* Form panel */}
-        <section className="flex items-center justify-center p-6 sm:p-12 lg:col-span-6">
+        <section className="flex items-center justify-center p-4 sm:p-8 lg:col-span-6 lg:p-12">
           <div className="w-full max-w-md">
-            <header className="mb-8">
+            <header className="mb-6 sm:mb-8">
+              <div className="mb-6 lg:hidden">
+                <BrandLogo size="md" linkTo="/" />
+              </div>
               <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-primary">
                 Acceso al Sistema
               </p>
-              <h2 className="font-display text-3xl font-semibold tracking-tight">
+              <h2 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">
                 Bienvenido de vuelta
               </h2>
               <p className="mt-2 text-sm text-muted-foreground">
@@ -128,7 +127,7 @@ function LoginPage() {
               </p>
             </header>
 
-            <div className="mb-8 grid grid-cols-2 gap-3">
+            <div className="mb-6 grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 sm:mb-8">
               {quickRoles.map((q) => (
                 <button
                   key={q.role}
