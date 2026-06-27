@@ -56,7 +56,7 @@ function DomiciliarioView() {
   const myQueue = orders.filter((o) => ["Recibido", "Listo", "Recogido", "En Camino"].includes(o.status)).slice(0, 4);
 
   return (
-    <div className="min-h-screen bg-ink text-cream">
+    <div className="min-h-screen bg-lime-500 text-ink">
       <TopBar title="Ruta activa" subtitle="Buscar y entregar" />
       <main className="page-container grid gap-6 lg:grid-cols-[1fr_380px] lg:gap-8">
         {/* Mobile phone frame */}
