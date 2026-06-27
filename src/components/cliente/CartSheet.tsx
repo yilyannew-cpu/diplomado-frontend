@@ -2,6 +2,8 @@ import { useState } from "react";
 import { CreditCard, ShoppingBag } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { formatCOP, useOrders } from "@/context/OrderContext";
+import { DEFAULT_DELIVERY_FEE_COP } from "@/lib/deliveryFees";
+import { getProductPricing } from "@/lib/promotions";
 import {
   Sheet,
   SheetContent,
@@ -22,13 +24,14 @@ export function CartSheet() {
     setCartOpen,
     removeFromCart,
     confirmCart,
+    promotions,
   } = useOrders();
 
   const [step, setStep] = useState<CheckoutStep>("cart");
   const [address, setAddress] = useState("Calle 10 #43-28, El Poblado, Medellín");
   const [isPaying, setIsPaying] = useState(false);
 
-  const deliveryFee = cart.length > 0 ? 5000 : 0;
+  const deliveryFee = cart.length > 0 ? DEFAULT_DELIVERY_FEE_COP : 0;
   const total = cartTotal + deliveryFee;
 
   const handleOpenChange = (open: boolean) => {
@@ -80,7 +83,9 @@ export function CartSheet() {
             ) : (
               <>
                 <ul className="flex-1 space-y-3 overflow-y-auto pr-1">
-                  {cart.map((c) => (
+                  {cart.map((c) => {
+                    const pricing = getProductPricing(c.product, promotions);
+                    return (
                     <li
                       key={c.product.id}
                       className="flex items-center justify-between gap-3 rounded-xl border border-border bg-secondary/30 p-3 text-sm"
@@ -98,10 +103,11 @@ export function CartSheet() {
                         <span className="font-medium">{c.product.name}</span>
                       </div>
                       <span className="shrink-0 font-mono text-xs tabular-nums">
-                        {formatCOP(c.product.price * c.quantity)}
+                        {formatCOP(pricing.salePrice * c.quantity)}
                       </span>
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
 
                 <dl className="mt-4 space-y-1.5 border-t border-border pt-4 text-sm">

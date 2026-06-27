@@ -1,6 +1,10 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { menuMock, type MenuItem } from "@/mocks/menuMock";
 import { ordersMock, type Order, type OrderStatus } from "@/mocks/ordersMock";
+import { promotionsMock, type Promotion } from "@/mocks/promotionsMock";
+import { canAssignBatchToCourier } from "@/lib/deliveryLimits";
+import { DEFAULT_DELIVERY_FEE_COP } from "@/lib/deliveryFees";
+import { getProductPricing } from "@/lib/promotions";
 
 export interface CartItem {
   product: MenuItem;
@@ -14,6 +18,7 @@ export type ClientModule = "inicio" | "promociones" | "rankin";
 interface OrderState {
   menu: MenuItem[];
   orders: Order[];
+  promotions: Promotion[];
   cart: CartItem[];
   cartItemCount: number;
   cartOpen: boolean;
@@ -29,8 +34,21 @@ interface OrderState {
   cartTotal: number;
   confirmCart: (customer: { name: string; address: string; phone: string }) => Order;
   updateOrderStatus: (id: string, status: OrderStatus) => void;
+  assignDeliveryPerson: (orderId: string, deliveryPersonId: string) => void;
+  assignDeliveryPersonBatch: (orderIds: string[], deliveryPersonId: string) => void;
+  assignCourierOnlyBatch: (orderIds: string[], deliveryPersonId: string) => void;
+  dispatchOrderBatch: (orderIds: string[]) => void;
   toggleAvailability: (id: string) => void;
-  updatePrice: (id: string, price: number) => void;
+  updateMenuItem: (
+    id: string,
+    updates: Pick<MenuItem, "price" | "description" | "image" | "available">,
+  ) => void;
+  addMenuItem: (item: Omit<MenuItem, "id" | "restaurantId">) => void;
+  addPromotion: (promotion: Omit<Promotion, "id" | "createdAt">) => void;
+  updatePromotion: (
+    id: string,
+    updates: Omit<Promotion, "id" | "createdAt">,
+  ) => void;
   findOrder: (code: string) => Order | undefined;
 }
 
@@ -39,6 +57,7 @@ const OrderContext = createContext<OrderState | null>(null);
 export function OrderProvider({ children }: { children: ReactNode }) {
   const [menu, setMenu] = useState<MenuItem[]>(menuMock);
   const [orders, setOrders] = useState<Order[]>(ordersMock);
+  const [promotions, setPromotions] = useState<Promotion[]>(promotionsMock);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [activeClientOrderId, setActiveClientOrderId] = useState<string | null>(null);
@@ -73,21 +92,28 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const clearCart = () => setCart([]);
 
   const cartTotal = useMemo(
-    () => cart.reduce((acc, i) => acc + i.product.price * i.quantity, 0),
-    [cart],
+    () =>
+      cart.reduce((acc, item) => {
+        const pricing = getProductPricing(item.product, promotions);
+        return acc + pricing.salePrice * item.quantity;
+      }, 0),
+    [cart, promotions],
   );
 
   const confirmCart: OrderState["confirmCart"] = (customer) => {
     const id = `PED-${(orders.length + 101).toString()}`;
+    const deliveryFee = DEFAULT_DELIVERY_FEE_COP;
     const order: Order = {
       id,
       customerName: customer.name,
       address: customer.address,
       phone: customer.phone,
       items: cart.map((c) => ({ productId: c.product.id, quantity: c.quantity })),
-      total: cartTotal + 5000,
+      total: cartTotal + deliveryFee,
+      deliveryFee,
       status: "Recibido",
       createdAt: new Date().toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" }),
+      receivedAt: Date.now(),
     };
     setOrders((o) => [order, ...o]);
     setCart([]);
@@ -100,12 +126,78 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     setOrders((o) => o.map((or) => (or.id === id ? { ...or, status } : or)));
   };
 
+  const assignDeliveryPerson = (orderId: string, deliveryPersonId: string) => {
+    assignDeliveryPersonBatch([orderId], deliveryPersonId);
+  };
+
+  const assignDeliveryPersonBatch = (orderIds: string[], deliveryPersonId: string) => {
+    assignCourierOnlyBatch(orderIds, deliveryPersonId);
+    dispatchOrderBatch(orderIds);
+  };
+
+  const assignCourierOnlyBatch = (orderIds: string[], deliveryPersonId: string) => {
+    if (!canAssignBatchToCourier(orders, deliveryPersonId, orderIds)) {
+      return;
+    }
+    const idSet = new Set(orderIds);
+    setOrders((o) =>
+      o.map((or) => (idSet.has(or.id) ? { ...or, deliveryPersonId } : or)),
+    );
+  };
+
+  const dispatchOrderBatch = (orderIds: string[]) => {
+    const idSet = new Set(orderIds);
+    setOrders((o) =>
+      o.map((or) =>
+        idSet.has(or.id) && or.status === "Listo"
+          ? { ...or, status: "En Camino" as OrderStatus }
+          : or,
+      ),
+    );
+  };
+
   const toggleAvailability = (id: string) => {
     setMenu((m) => m.map((p) => (p.id === id ? { ...p, available: !p.available } : p)));
   };
 
-  const updatePrice = (id: string, price: number) => {
-    setMenu((m) => m.map((p) => (p.id === id ? { ...p, price } : p)));
+  const updateMenuItem = (
+    id: string,
+    updates: Pick<MenuItem, "price" | "description" | "image" | "available">,
+  ) => {
+    setMenu((m) => m.map((p) => (p.id === id ? { ...p, ...updates } : p)));
+  };
+
+  const addMenuItem = (item: Omit<MenuItem, "id" | "restaurantId">) => {
+    setMenu((m) => {
+      const maxNum = m.reduce((max, p) => {
+        const n = Number.parseInt(p.id.replace("prod-", ""), 10);
+        return Number.isNaN(n) ? max : Math.max(max, n);
+      }, 0);
+      const newItem: MenuItem = {
+        ...item,
+        id: `prod-${String(maxNum + 1).padStart(2, "0")}`,
+        restaurantId: "rest-burgercore",
+      };
+      return [...m, newItem];
+    });
+  };
+
+  const addPromotion = (promotion: Omit<Promotion, "id" | "createdAt">) => {
+    const newPromotion: Promotion = {
+      ...promotion,
+      id: `PROM-${Date.now()}`,
+      createdAt: Date.now(),
+    };
+    setPromotions((current) => [newPromotion, ...current]);
+  };
+
+  const updatePromotion = (
+    id: string,
+    updates: Omit<Promotion, "id" | "createdAt">,
+  ) => {
+    setPromotions((current) =>
+      current.map((promo) => (promo.id === id ? { ...promo, ...updates } : promo)),
+    );
   };
 
   const findOrder = (code: string) =>
@@ -116,6 +208,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       value={{
         menu,
         orders,
+        promotions,
         cart,
         cartItemCount,
         cartOpen,
@@ -131,8 +224,15 @@ export function OrderProvider({ children }: { children: ReactNode }) {
         cartTotal,
         confirmCart,
         updateOrderStatus,
+        assignDeliveryPerson,
+        assignDeliveryPersonBatch,
+        assignCourierOnlyBatch,
+        dispatchOrderBatch,
         toggleAvailability,
-        updatePrice,
+        updateMenuItem,
+        addMenuItem,
+        addPromotion,
+        updatePromotion,
         findOrder,
       }}
     >

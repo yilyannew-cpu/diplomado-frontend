@@ -2,6 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { LogOut, Settings, ShoppingCart, User } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 import { BrandLogo } from "@/components/shared/BrandLogo";
+import { UserAvatar } from "@/components/shared/UserAvatar";
 import {
   ClientModuleNavDesktop,
   ClientModuleNavMobile,
@@ -209,13 +210,7 @@ export function TopBar({
                       {roleLabels[user.role]}
                     </p>
                   </div>
-                  <div className="grid size-9 place-items-center rounded-full bg-ink text-sm font-semibold text-cream sm:size-10">
-                    {user.name
-                      .split(" ")
-                      .map((p) => p[0])
-                      .slice(0, 2)
-                      .join("")}
-                  </div>
+                  <UserAvatar name={user.name} src={user.avatar} className="size-9 sm:size-10" />
                 </button>
               </DropdownMenuTrigger>
 
