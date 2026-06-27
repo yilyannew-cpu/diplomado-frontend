@@ -33,3 +33,6 @@ src/routeTree.gen.ts
 *.njsproj
 *.sln
 *.sw?
+
+# Archivos de contexto para IA
+.instrucciones_ai.md

@@ -1,9 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { SalesReportsPanel } from "@/components/admin/SalesReportsPanel";
+import { ReportDateRangeSelector } from "@/components/admin/reports/ReportDateRangeSelector";
+import type { ReportDateRange } from "@/lib/salesReports";
+import { RestaurantDashboard } from "@/components/admin/RestaurantDashboard";
+import { ActiveDeliveriesPanel } from "@/components/admin/ActiveDeliveriesPanel";
+import { AddAdditionModal } from "@/components/admin/AddAdditionModal";
+import { AddProductModal } from "@/components/admin/AddProductModal";
+import { EditProductModal } from "@/components/admin/EditProductModal";
+import { AssignCourierModal } from "@/components/admin/AssignCourierModal";
+import { OrderCommandMonitor } from "@/components/admin/kitchen/OrderCommandMonitor";
+import { PromotionsPanel } from "@/components/admin/promotions/PromotionsPanel";
 import { RoleGuard, TopBar } from "@/components/shared/RoleShell";
 import { formatCOP, useOrders } from "@/context/OrderContext";
 import type { MenuItem } from "@/mocks/menuMock";
-import type { Order, OrderStatus } from "@/mocks/ordersMock";
+import { ADDITION_CATEGORY } from "@/mocks/menuMock";
+import type { Order } from "@/mocks/ordersMock";
+import { buildActiveDeliveryRows } from "@/lib/activeDeliveries";
+import { isPromotionActive } from "@/lib/promotions";
+
+type AdminTab = "dashboard" | "reportes" | "comandas" | "menu" | "promociones" | "domicilios";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -19,23 +35,42 @@ export const Route = createFileRoute("/admin")({
   ),
 });
 
-const COLUMNS: { key: OrderStatus; label: string; next?: OrderStatus; nextLabel?: string; accent: string }[] = [
-  { key: "Recibido", label: "Recibidos", next: "En Cocina", nextLabel: "Pasar a cocina", accent: "bg-amber-brand" },
-  { key: "En Cocina", label: "En cocina", next: "Listo", nextLabel: "Marcar listo", accent: "bg-primary" },
-  { key: "Listo", label: "Listos para despacho", next: "En Camino", nextLabel: "Asignar domiciliario", accent: "bg-emerald-500" },
-];
-
 function AdminView() {
-  const { orders, menu, updateOrderStatus, toggleAvailability, updatePrice } = useOrders();
-  const [tab, setTab] = useState<"comandas" | "menu">("comandas");
+  const {
+    orders,
+    menu,
+    assignCourierOnlyBatch,
+    dispatchOrderBatch,
+    toggleAvailability,
+    updateMenuItem,
+    addMenuItem,
+    promotions,
+  } = useOrders();
+  const [tab, setTab] = useState<AdminTab>("dashboard");
   const [editing, setEditing] = useState<MenuItem | null>(null);
+  const [assigningOrders, setAssigningOrders] = useState<Order[] | null>(null);
+  const [addingProduct, setAddingProduct] = useState(false);
+  const [addingAddition, setAddingAddition] = useState(false);
+  const [reportDateRange, setReportDateRange] = useState<ReportDateRange>({ preset: "month" });
 
-  const grouped = useMemo(() => {
-    return COLUMNS.map((c) => ({
-      ...c,
-      orders: orders.filter((o) => o.status === c.key),
-    }));
-  }, [orders]);
+  const activeDeliveryCount = useMemo(() => buildActiveDeliveryRows(orders).length, [orders]);
+  const activePromotionsCount = useMemo(
+    () => promotions.filter((promo) => isPromotionActive(promo)).length,
+    [promotions],
+  );
+
+  const pageTitle =
+    tab === "dashboard"
+      ? "Dashboard"
+      : tab === "reportes"
+        ? "Reportes de ventas"
+        : tab === "comandas"
+          ? "Monitor de comandas"
+          : tab === "menu"
+            ? "Gestor de menú"
+            : tab === "promociones"
+              ? "Promociones"
+              : "Domicilios activos";
 
   return (
     <div className="min-h-screen bg-cream">
@@ -44,10 +79,13 @@ function AdminView() {
       <div className="page-container flex flex-col gap-6 lg:flex-row lg:gap-8">
         <nav className="hidden w-56 shrink-0 lg:block">
           <div className="sticky top-24 space-y-1">
+            <SidebarItem active={tab === "dashboard"} onClick={() => setTab("dashboard")} label="Dashboard" hint="Ventas y reseñas" />
+            <SidebarItem active={tab === "reportes"} onClick={() => setTab("reportes")} label="Reportes de ventas" hint="Ganancias y domicilios" />
             <SidebarItem active={tab === "comandas"} onClick={() => setTab("comandas")} label="Monitor de comandas" hint={`${orders.length} activas`} />
             <SidebarItem active={tab === "menu"} onClick={() => setTab("menu")} label="Gestor de menú" hint={`${menu.length} productos`} />
+            <SidebarItem active={tab === "promociones"} onClick={() => setTab("promociones")} label="Promociones" hint={`${activePromotionsCount} activas`} />
+            <SidebarItem active={tab === "domicilios"} onClick={() => setTab("domicilios")} label="Domicilios activos" hint={`${activeDeliveryCount} en ruta`} />
             <SidebarItem label="Historial" hint="Próximamente" disabled />
-            <SidebarItem label="Reportes" hint="Próximamente" disabled />
           </div>
         </nav>
 
@@ -58,47 +96,56 @@ function AdminView() {
                 Sede El Poblado
               </p>
               <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight sm:text-3xl">
-                {tab === "comandas" ? "Monitor de comandas" : "Gestor de menú"}
+                {pageTitle}
               </h1>
             </div>
-            <div className="flex gap-2 lg:hidden">
-              <button onClick={() => setTab("comandas")} className={tabBtn(tab === "comandas")}>Comandas</button>
-              <button onClick={() => setTab("menu")} className={tabBtn(tab === "menu")}>Menú</button>
+            <div className="flex flex-wrap items-center gap-2">
+              {tab === "reportes" && (
+                <ReportDateRangeSelector
+                  value={reportDateRange}
+                  onChange={setReportDateRange}
+                />
+              )}
+              {tab === "menu" && (
+                <>
+                  <button
+                    onClick={() => setAddingProduct(true)}
+                    className="rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                  >
+                    + Nuevo producto
+                  </button>
+                  <button
+                    onClick={() => setAddingAddition(true)}
+                    className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
+                  >
+                    + Nueva adición
+                  </button>
+                </>
+              )}
+              <div className="flex flex-wrap gap-2 lg:hidden">
+                <button onClick={() => setTab("dashboard")} className={tabBtn(tab === "dashboard")}>Dashboard</button>
+                <button onClick={() => setTab("reportes")} className={tabBtn(tab === "reportes")}>Reportes</button>
+                <button onClick={() => setTab("comandas")} className={tabBtn(tab === "comandas")}>Comandas</button>
+                <button onClick={() => setTab("menu")} className={tabBtn(tab === "menu")}>Menú</button>
+                <button onClick={() => setTab("promociones")} className={tabBtn(tab === "promociones")}>Promos</button>
+                <button onClick={() => setTab("domicilios")} className={tabBtn(tab === "domicilios")}>Domicilios</button>
+              </div>
             </div>
           </div>
 
-          {tab === "comandas" ? (
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-              {grouped.map((col) => (
-                <section key={col.key}>
-                  <div className="mb-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className={`size-2 rounded-full ${col.accent}`} />
-                      <h2 className="text-sm font-semibold">{col.label}</h2>
-                    </div>
-                    <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium tabular-nums">
-                      {col.orders.length}
-                    </span>
-                  </div>
-                  <div className="space-y-3">
-                    {col.orders.length === 0 && (
-                      <div className="rounded-2xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
-                        Sin pedidos
-                      </div>
-                    )}
-                    {col.orders.map((o) => (
-                      <OrderCard
-                        key={o.id}
-                        order={o}
-                        actionLabel={col.nextLabel}
-                        onAdvance={col.next ? () => updateOrderStatus(o.id, col.next!) : undefined}
-                      />
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </div>
-          ) : (
+          {tab === "dashboard" ? (
+            <RestaurantDashboard />
+          ) : tab === "reportes" ? (
+            <SalesReportsPanel
+              dateRange={reportDateRange}
+              onDateRangeChange={setReportDateRange}
+            />
+          ) : tab === "comandas" ? (
+            <OrderCommandMonitor
+              onAssignZone={setAssigningOrders}
+              onDispatchBatch={dispatchOrderBatch}
+            />
+          ) : tab === "menu" ? (
             <div className="overflow-hidden rounded-2xl border border-border bg-card">
               <div className="hidden border-b border-border bg-secondary/40 px-5 py-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground md:grid md:grid-cols-12">
                 <span className="col-span-5">Producto</span>
@@ -117,7 +164,7 @@ function AdminView() {
                         <p className="font-medium leading-snug">{p.name}</p>
                         <p className="mt-0.5 text-[11px] text-muted-foreground">{p.category}</p>
                         <p className="mt-1 font-mono text-sm font-semibold text-primary tabular-nums">
-                          {formatCOP(p.price)}
+                          {p.category === ADDITION_CATEGORY ? `+ ${formatCOP(p.price)}` : formatCOP(p.price)}
                         </p>
                       </div>
                     </div>
@@ -148,7 +195,9 @@ function AdminView() {
                     </div>
                   </div>
                   <span className="col-span-2 text-xs text-muted-foreground">{p.category}</span>
-                  <span className="col-span-2 text-right font-mono text-xs tabular-nums">{formatCOP(p.price)}</span>
+                  <span className="col-span-2 text-right font-mono text-xs tabular-nums">
+                    {p.category === ADDITION_CATEGORY ? `+ ${formatCOP(p.price)}` : formatCOP(p.price)}
+                  </span>
                   <div className="col-span-2 flex justify-center">
                     <button
                       onClick={() => toggleAvailability(p.id)}
@@ -168,21 +217,59 @@ function AdminView() {
                 </div>
               ))}
             </div>
-          )}
+          ) : tab === "promociones" ? (
+            <PromotionsPanel />
+          ) : tab === "domicilios" ? (
+            <ActiveDeliveriesPanel orders={orders} />
+          ) : null}
         </main>
       </div>
 
       {editing && (
-        <EditModal
+        <EditProductModal
           item={editing}
+          open
           onClose={() => setEditing(null)}
-          onSave={(price) => {
-            updatePrice(editing.id, price);
+          onSave={(data) => {
+            updateMenuItem(editing.id, data);
             setEditing(null);
           }}
-          onToggle={() => toggleAvailability(editing.id)}
         />
       )}
+
+      {assigningOrders && assigningOrders.length > 0 && (
+        <AssignCourierModal
+          orders={assigningOrders}
+          allOrders={orders}
+          open
+          onClose={() => setAssigningOrders(null)}
+          onAssign={(courierId) => {
+            assignCourierOnlyBatch(
+              assigningOrders.map((o) => o.id),
+              courierId,
+            );
+            setAssigningOrders(null);
+          }}
+        />
+      )}
+
+      <AddProductModal
+        open={addingProduct}
+        onClose={() => setAddingProduct(false)}
+        onSave={(data) => {
+          addMenuItem(data);
+          setAddingProduct(false);
+        }}
+      />
+
+      <AddAdditionModal
+        open={addingAddition}
+        onClose={() => setAddingAddition(false)}
+        onSave={(data) => {
+          addMenuItem({ ...data, category: ADDITION_CATEGORY });
+          setAddingAddition(false);
+        }}
+      />
     </div>
   );
 }
@@ -219,116 +306,6 @@ function SidebarItem({
         </p>
       )}
     </button>
-  );
-}
-
-function OrderCard({
-  order,
-  actionLabel,
-  onAdvance,
-}: {
-  order: Order;
-  actionLabel?: string;
-  onAdvance?: () => void;
-}) {
-  const { menu } = useOrders();
-  return (
-    <article className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-      <header className="mb-3 flex items-start justify-between">
-        <div>
-          <p className="font-mono text-xs font-semibold">{order.id}</p>
-          <p className="text-[11px] text-muted-foreground">{order.createdAt} · {order.customerName}</p>
-        </div>
-        <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider">
-          {order.status}
-        </span>
-      </header>
-      <ul className="mb-3 space-y-1 text-xs">
-        {order.items.map((i) => {
-          const p = menu.find((m) => m.id === i.productId);
-          return (
-            <li key={i.productId} className="flex justify-between">
-              <span>
-                <span className="font-mono">{i.quantity}×</span> {p?.name ?? i.productId}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-      <p className="mb-3 truncate text-[11px] text-muted-foreground">{order.address}</p>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <span className="font-mono text-sm font-semibold text-primary tabular-nums sm:text-base">{formatCOP(order.total)}</span>
-        {onAdvance && actionLabel && (
-          <button
-            onClick={onAdvance}
-            className="w-full rounded-lg bg-ink px-3 py-2 text-[11px] font-semibold text-cream transition-colors hover:bg-primary sm:w-auto sm:py-1.5"
-          >
-            {actionLabel} →
-          </button>
-        )}
-      </div>
-    </article>
-  );
-}
-
-function EditModal({
-  item,
-  onClose,
-  onSave,
-  onToggle,
-}: {
-  item: MenuItem;
-  onClose: () => void;
-  onSave: (price: number) => void;
-  onToggle: () => void;
-}) {
-  const [price, setPrice] = useState(item.price);
-  return (
-    <div className="fixed inset-0 z-40 grid place-items-center bg-ink/40 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div
-        className="w-full max-w-md rounded-3xl border border-border bg-card p-6 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-5 flex items-center gap-4">
-          <img src={item.image} alt="" className="size-16 rounded-2xl object-cover" />
-          <div>
-            <p className="text-[11px] uppercase tracking-widest text-muted-foreground">{item.category}</p>
-            <h3 className="font-display text-xl font-semibold">{item.name}</h3>
-          </div>
-        </div>
-        <label className="block">
-          <span className="text-xs font-medium">Precio (COP)</span>
-          <input
-            type="number"
-            value={price}
-            onChange={(e) => setPrice(Number(e.target.value))}
-            className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-        </label>
-        <div className="mt-4 flex items-center justify-between rounded-xl border border-border p-3">
-          <div>
-            <p className="text-sm font-medium">Disponibilidad</p>
-            <p className="text-[11px] text-muted-foreground">
-              {item.available ? "Visible para clientes" : "Marcado como agotado"}
-            </p>
-          </div>
-          <button
-            onClick={onToggle}
-            className={`flex h-6 w-11 items-center rounded-full p-0.5 ${item.available ? "bg-primary" : "bg-secondary"}`}
-          >
-            <span className={`size-5 rounded-full bg-white shadow transition-transform ${item.available ? "translate-x-5" : ""}`} />
-          </button>
-        </div>
-        <div className="mt-6 flex gap-2">
-          <button onClick={onClose} className="flex-1 rounded-xl border border-border py-2.5 text-sm font-medium hover:bg-secondary">
-            Cancelar
-          </button>
-          <button onClick={() => onSave(price)} className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
-            Guardar cambios
-          </button>
-        </div>
-      </div>
-    </div>
   );
 }
 

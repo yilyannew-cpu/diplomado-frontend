@@ -6,9 +6,11 @@ import { RankinPanel } from "@/components/cliente/RankinPanel";
 import { OrderTrackingPanel } from "@/components/cliente/OrderTrackingPanel";
 import { BRAND_SLOGAN } from "@/components/shared/BrandLogo";
 import { RoleGuard, TopBar } from "@/components/shared/RoleShell";
-import { formatCOP, useOrders } from "@/context/OrderContext";
-import type { Category } from "@/mocks/menuMock";
+import { useOrders } from "@/context/OrderContext";
+import { CATEGORIES, type Category } from "@/mocks/menuMock";
 import { restaurantsMock } from "@/mocks/restaurantsMock";
+import { getProductPricing } from "@/lib/promotions";
+import { DiscountBadge, ProductPriceDisplay } from "@/components/shared/ProductPriceDisplay";
 
 export const Route = createFileRoute("/cliente")({
   head: () => ({
@@ -24,10 +26,10 @@ export const Route = createFileRoute("/cliente")({
   ),
 });
 
-const categories: Array<Category | "Todo"> = ["Todo", "Hamburguesas", "Acompañamientos", "Bebidas", "Postres"];
+const categories: Array<Category | "Todo"> = ["Todo", ...CATEGORIES];
 
 function ClienteView() {
-  const { menu, addToCart, clientTab, clientModule } = useOrders();
+  const { menu, addToCart, clientTab, clientModule, promotions } = useOrders();
   const [activeCat, setActiveCat] = useState<(typeof categories)[number]>("Todo");
   const [activeRest, setActiveRest] = useState<string | "Todos">("Todos");
 
@@ -152,6 +154,7 @@ function ClienteView() {
             {filtered.map((p) => (
               (() => {
                 const brand = restaurantById[p.restaurantId];
+                const pricing = getProductPricing(p, promotions);
                 return (
               <article
                 key={p.id}
@@ -166,6 +169,11 @@ function ClienteView() {
                     className="size-full object-cover transition-transform duration-700 group-hover:scale-105"
                     loading="lazy"
                   />
+                  {pricing.hasPromotion ? (
+                    <span className="absolute right-3 top-3">
+                      <DiscountBadge percent={pricing.discountPercent} />
+                    </span>
+                  ) : null}
                   {!p.available && (
                     <span className="absolute right-3 top-3 rounded-full bg-ink/85 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-cream">
                       Agotado
@@ -198,9 +206,7 @@ function ClienteView() {
                     <h3 className="font-display text-lg font-semibold leading-tight">
                       {p.name}
                     </h3>
-                    <span className="shrink-0 font-mono text-sm font-semibold text-primary">
-                      {formatCOP(p.price)}
-                    </span>
+                    <ProductPriceDisplay pricing={pricing} />
                   </div>
                   <p className="mt-2 flex-1 text-sm text-muted-foreground text-pretty">
                     {p.description}

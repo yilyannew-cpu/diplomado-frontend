@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RoleGuard, TopBar } from "@/components/shared/RoleShell";
+import { OrderSpecialInstructions } from "@/components/shared/OrderSpecialInstructions";
+import { useAuth } from "@/context/AuthContext";
 import { useOrders, formatCOP } from "@/context/OrderContext";
 import type { Order, OrderStatus } from "@/mocks/ordersMock";
 
@@ -28,10 +30,44 @@ const NEXT: Record<OrderStatus, { next?: OrderStatus; label: string }> = {
 };
 
 function DomiciliarioView() {
+  const { user } = useAuth();
   const { findOrder, menu, updateOrderStatus, orders } = useOrders();
-  const [code, setCode] = useState("PED-104");
-  const [order, setOrder] = useState<Order | null>(() => findOrder("PED-104") ?? null);
+  const [code, setCode] = useState("");
+  const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const myActiveOrders = useMemo(
+    () =>
+      orders.filter(
+        (o) =>
+          o.deliveryPersonId === user?.id &&
+          (o.status === "En Camino" || o.status === "Recogido"),
+      ),
+    [orders, user?.id],
+  );
+
+  useEffect(() => {
+    if (order) return;
+    const first = myActiveOrders[0];
+    if (first) {
+      setOrder(first);
+      setCode(first.id);
+    }
+  }, [myActiveOrders, order]);
+
+  useEffect(() => {
+    if (!order) return;
+    const fresh = orders.find((o) => o.id === order.id);
+    if (!fresh || fresh.status === "Entregado") {
+      const next = myActiveOrders[0] ?? null;
+      setOrder(next);
+      setCode(next?.id ?? "");
+      return;
+    }
+    if (fresh.status !== order.status) {
+      setOrder(fresh);
+    }
+  }, [orders, order, myActiveOrders]);
 
   const search = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,13 +86,10 @@ function DomiciliarioView() {
     const next = NEXT[order.status].next;
     if (!next) return;
     updateOrderStatus(order.id, next);
-    setOrder({ ...order, status: next });
   };
 
-  const myQueue = orders.filter((o) => ["Recibido", "Listo", "Recogido", "En Camino"].includes(o.status)).slice(0, 4);
-
   return (
-    <div className="min-h-screen bg-ink text-cream">
+    <div className="min-h-screen bg-lime-500 text-ink">
       <TopBar title="Ruta activa" subtitle="Buscar y entregar" />
       <main className="page-container grid gap-6 lg:grid-cols-[1fr_380px] lg:gap-8">
         {/* Mobile phone frame */}
@@ -118,11 +151,11 @@ function DomiciliarioView() {
                   </p>
                   <h3 className="font-display text-xl font-semibold">{order.customerName}</h3>
                   <p className="mt-1 text-sm text-muted-foreground">{order.address}</p>
-                  {order.notes && (
-                    <p className="mt-2 rounded-lg bg-amber-brand/15 px-3 py-2 text-xs text-foreground">
-                      <span className="font-semibold">Nota:</span> {order.notes}
-                    </p>
-                  )}
+                  {order.notes ? (
+                    <div className="mt-2">
+                      <OrderSpecialInstructions notes={order.notes} compact />
+                    </div>
+                  ) : null}
                 </div>
 
                 {/* Items mini */}
@@ -187,7 +220,7 @@ function DomiciliarioView() {
           </p>
           <h3 className="mt-1 font-display text-xl font-semibold">Pedidos activos</h3>
           <ul className="mt-4 space-y-2">
-            {myQueue.map((o) => (
+            {myActiveOrders.map((o) => (
               <li key={o.id}>
                 <button
                   onClick={() => {
