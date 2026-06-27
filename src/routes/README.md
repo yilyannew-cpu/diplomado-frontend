@@ -35,3 +35,4 @@ Or manually: `bun run routes:gen`
 3. Commit **only** the route file(s) in `src/routes/` — not `routeTree.gen.ts`
 
 `bun dev` may regenerate this file anytime; that is expected and Git will ignore it.
+     
