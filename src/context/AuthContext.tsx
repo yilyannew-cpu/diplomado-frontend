@@ -1,59 +1,119 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { usersMock, type MockUser, type Role } from "@/mocks/usersMock";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { authApi } from "@/lib/api/endpoints/auth";
+import { setToken, getToken } from "@/lib/api/client";
+import type { User } from "@/lib/api/types";
 
 interface AuthState {
-  user: MockUser | null;
-  login: (email: string, password: string) => MockUser | null;
-  quickLogin: (role: Role) => MockUser;
-  logout: () => void;
+  user: User | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  login: (email: string, password: string) => Promise<User>;
+  logout: () => Promise<void>;
+  refreshUser: () => Promise<User | null>;
+  setSession: (token: string, user: User) => void;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
-const STORAGE_KEY = "burgercore.session";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<MockUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      try {
-        setUser(JSON.parse(raw));
-      } catch {
-        /* noop */
-      }
-    }
+  const setSession = useCallback((token: string, nextUser: User) => {
+    setToken(token);
+    setUser(nextUser);
   }, []);
 
-  const persist = (u: MockUser | null) => {
-    setUser(u);
-    if (typeof window === "undefined") return;
-    if (u) window.localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
-    else window.localStorage.removeItem(STORAGE_KEY);
-  };
+  const clearSession = useCallback(() => {
+    setToken(null);
+    setUser(null);
+  }, []);
 
-  const login = (email: string, password: string) => {
-    const found = usersMock.find(
-      (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password,
-    );
-    if (found) persist(found);
-    return found ?? null;
-  };
+  const refreshUser = useCallback(async (): Promise<User | null> => {
+    const token = getToken();
+    if (!token) {
+      setUser(null);
+      return null;
+    }
 
-  const quickLogin = (role: Role) => {
-    const found = usersMock.find((u) => u.role === role)!;
-    persist(found);
-    return found;
-  };
+    try {
+      const me = await authApi.me();
+      setUser(me);
+      return me;
+    } catch {
+      clearSession();
+      return null;
+    }
+  }, [clearSession]);
 
-  const logout = () => persist(null);
+  useEffect(() => {
+    let cancelled = false;
 
-  return (
-    <AuthContext.Provider value={{ user, login, quickLogin, logout }}>
-      {children}
-    </AuthContext.Provider>
+    async function hydrate() {
+      const token = getToken();
+      if (!token) {
+        if (!cancelled) setIsLoading(false);
+        return;
+      }
+
+      try {
+        const me = await authApi.me();
+        if (!cancelled) setUser(me);
+      } catch {
+        if (!cancelled) clearSession();
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+
+    void hydrate();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clearSession]);
+
+  const login = useCallback(
+    async (email: string, password: string): Promise<User> => {
+      const response = await authApi.login({ email, password });
+      setSession(response.token, response.user);
+      return response.user;
+    },
+    [setSession],
   );
+
+  const logout = useCallback(async (): Promise<void> => {
+    try {
+      if (getToken()) await authApi.logout();
+    } catch {
+      /* limpiar sesión local aunque falle el backend */
+    } finally {
+      clearSession();
+    }
+  }, [clearSession]);
+
+  const value = useMemo<AuthState>(
+    () => ({
+      user,
+      isLoading,
+      isAuthenticated: user !== null,
+      login,
+      logout,
+      refreshUser,
+      setSession,
+    }),
+    [user, isLoading, login, logout, refreshUser, setSession],
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
@@ -61,3 +121,6 @@ export function useAuth() {
   if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
   return ctx;
 }
+
+export type { User } from "@/lib/api/types";
+export type { Role } from "@/lib/api/types";
