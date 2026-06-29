@@ -7,6 +7,7 @@ interface ReportMetricCardProps {
   hint: string;
   accent?: "primary" | "ink" | "muted";
   footer?: ReactNode;
+  formatAsCount?: boolean;
 }
 
 export function ReportMetricCard({
@@ -15,6 +16,7 @@ export function ReportMetricCard({
   hint,
   accent = "muted",
   footer,
+  formatAsCount = false,
 }: ReportMetricCardProps) {
   const accentClass =
     accent === "primary"
@@ -29,7 +31,7 @@ export function ReportMetricCard({
         {label}
       </p>
       <p className={`mt-3 font-display text-2xl font-semibold tabular-nums sm:text-3xl ${accentClass}`}>
-        {formatReportAmount(value)}
+        {formatAsCount ? value.toLocaleString("es-CO") : formatReportAmount(value)}
       </p>
       <p className="mt-2 text-[11px] text-muted-foreground">{hint}</p>
       {footer ? <div className="mt-2 border-t border-border/60 pt-2">{footer}</div> : null}

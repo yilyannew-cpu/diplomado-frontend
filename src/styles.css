@@ -384,3 +384,34 @@
 .animate-kitchen-sla-blink {
   animation: kitchen-sla-blink 1.4s ease-in-out infinite;
 }
+
+@keyframes admin-nav-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes admin-nav-active-bar {
+  from {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.admin-nav-item-stagger {
+  animation: admin-nav-slide-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.admin-nav-active-bar {
+  transform-origin: center;
+  animation: admin-nav-active-bar 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}

@@ -1,10 +1,23 @@
 import type { MenuItem } from "@/mocks/menuMock";
 import type { Order, OrderItem } from "@/mocks/ordersMock";
+import {
+  MONITOR_STATIONS,
+  STATION_DELAY_SUBTITLE,
+  isOrderDelayed,
+  type MonitorStation,
+} from "@/lib/kitchenSla";
 
 export interface ConsolidatedItem {
   productId: string;
   name: string;
   quantity: number;
+}
+
+export interface DelayedStationGroup {
+  station: MonitorStation;
+  subtitle: string;
+  orders: Order[];
+  items: ConsolidatedItem[];
 }
 
 export function buildKitchenConsolidation(
@@ -37,4 +50,24 @@ export function formatConsolidationLine(items: ConsolidatedItem[]): string {
 
 export function sumItemQuantities(items: OrderItem[]): number {
   return items.reduce((sum, item) => sum + item.quantity, 0);
+}
+
+export function buildDelayedStationGroups(
+  orders: Order[],
+  menu: MenuItem[],
+  now: number,
+): DelayedStationGroup[] {
+  return MONITOR_STATIONS.map((station) => {
+    const stationOrders = orders.filter(
+      (order) => order.status === station && isOrderDelayed(order, now),
+    );
+    if (stationOrders.length === 0) return null;
+
+    return {
+      station,
+      subtitle: STATION_DELAY_SUBTITLE[station],
+      orders: stationOrders,
+      items: buildKitchenConsolidation(stationOrders, menu),
+    };
+  }).filter((group): group is DelayedStationGroup => group !== null);
 }
