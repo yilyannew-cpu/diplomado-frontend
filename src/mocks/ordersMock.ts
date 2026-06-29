@@ -34,6 +34,8 @@ export interface Order {
   createdAt: string;
   /** Marca de tiempo (ms) cuando el pedido entró al flujo de cocina. */
   receivedAt?: number;
+  /** Marca de tiempo (ms) cuando el pedido entró a su estado actual en el monitor. */
+  statusEnteredAt?: number;
 }
 
 export const ordersMock: Order[] = [
@@ -49,6 +51,7 @@ export const ordersMock: Order[] = [
     status: "Recibido",
     createdAt: "12:32 PM",
     receivedAt: Date.now() - 8 * 60_000,
+    statusEnteredAt: Date.now() - 5 * 60_000,
   },
   {
     id: "PED-102",
@@ -62,6 +65,7 @@ export const ordersMock: Order[] = [
     status: "En Cocina",
     createdAt: "12:18 PM",
     receivedAt: Date.now() - 18 * 60_000,
+    statusEnteredAt: Date.now() - 16 * 60_000,
   },
   {
     id: "PED-103",
@@ -74,6 +78,7 @@ export const ordersMock: Order[] = [
     status: "Listo",
     createdAt: "12:05 PM",
     receivedAt: Date.now() - 22 * 60_000,
+    statusEnteredAt: Date.now() - 8 * 60_000,
   },
   {
     id: "PED-106",
@@ -86,6 +91,7 @@ export const ordersMock: Order[] = [
     status: "Listo",
     createdAt: "12:08 PM",
     receivedAt: Date.now() - 26 * 60_000,
+    statusEnteredAt: Date.now() - 7 * 60_000,
   },
   {
     id: "PED-107",
@@ -98,6 +104,7 @@ export const ordersMock: Order[] = [
     status: "Listo",
     createdAt: "12:11 PM",
     receivedAt: Date.now() - 12 * 60_000,
+    statusEnteredAt: Date.now() - 3 * 60_000,
   },
   {
     id: "PED-108",
@@ -111,6 +118,7 @@ export const ordersMock: Order[] = [
     status: "Listo",
     createdAt: "12:14 PM",
     receivedAt: Date.now() - 10 * 60_000,
+    statusEnteredAt: Date.now() - 4 * 60_000,
   },
   {
     id: "PED-104",

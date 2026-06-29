@@ -114,6 +114,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       status: "Recibido",
       createdAt: new Date().toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" }),
       receivedAt: Date.now(),
+      statusEnteredAt: Date.now(),
     };
     setOrders((o) => [order, ...o]);
     setCart([]);
@@ -123,7 +124,11 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   };
 
   const updateOrderStatus = (id: string, status: OrderStatus) => {
-    setOrders((o) => o.map((or) => (or.id === id ? { ...or, status } : or)));
+    setOrders((o) =>
+      o.map((or) =>
+        or.id === id ? { ...or, status, statusEnteredAt: Date.now() } : or,
+      ),
+    );
   };
 
   const assignDeliveryPerson = (orderId: string, deliveryPersonId: string) => {

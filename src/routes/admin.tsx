@@ -5,6 +5,7 @@ import { ReportDateRangeSelector } from "@/components/admin/reports/ReportDateRa
 import type { ReportDateRange } from "@/lib/salesReports";
 import { RestaurantDashboard } from "@/components/admin/RestaurantDashboard";
 import { ActiveDeliveriesPanel } from "@/components/admin/ActiveDeliveriesPanel";
+import { AdminNavMobile, AdminNavSidebar, type AdminTab } from "@/components/admin/AdminNav";
 import { AddAdditionModal } from "@/components/admin/AddAdditionModal";
 import { AddProductModal } from "@/components/admin/AddProductModal";
 import { EditProductModal } from "@/components/admin/EditProductModal";
@@ -18,8 +19,6 @@ import { ADDITION_CATEGORY } from "@/mocks/menuMock";
 import type { Order } from "@/mocks/ordersMock";
 import { buildActiveDeliveryRows } from "@/lib/activeDeliveries";
 import { isPromotionActive } from "@/lib/promotions";
-
-type AdminTab = "dashboard" | "reportes" | "comandas" | "menu" | "promociones" | "domicilios";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -72,32 +71,34 @@ function AdminView() {
               ? "Promociones"
               : "Domicilios activos";
 
+  const navHints: Partial<Record<AdminTab, string>> = {
+    dashboard: "Ventas y reseñas",
+    reportes: "Ganancias y domicilios",
+    comandas: `${orders.length} activas`,
+    menu: `${menu.length} productos`,
+    promociones: `${activePromotionsCount} activas`,
+    domicilios: `${activeDeliveryCount} en ruta`,
+  };
+
   return (
     <div className="min-h-screen bg-cream">
       <TopBar title="Centro de cocina" subtitle="Monitor de comandas en tiempo real" />
 
       <div className="page-container flex flex-col gap-6 lg:flex-row lg:gap-8">
-        <nav className="hidden w-56 shrink-0 lg:block">
-          <div className="sticky top-24 space-y-1">
-            <SidebarItem active={tab === "dashboard"} onClick={() => setTab("dashboard")} label="Dashboard" hint="Ventas y reseñas" />
-            <SidebarItem active={tab === "reportes"} onClick={() => setTab("reportes")} label="Reportes de ventas" hint="Ganancias y domicilios" />
-            <SidebarItem active={tab === "comandas"} onClick={() => setTab("comandas")} label="Monitor de comandas" hint={`${orders.length} activas`} />
-            <SidebarItem active={tab === "menu"} onClick={() => setTab("menu")} label="Gestor de menú" hint={`${menu.length} productos`} />
-            <SidebarItem active={tab === "promociones"} onClick={() => setTab("promociones")} label="Promociones" hint={`${activePromotionsCount} activas`} />
-            <SidebarItem active={tab === "domicilios"} onClick={() => setTab("domicilios")} label="Domicilios activos" hint={`${activeDeliveryCount} en ruta`} />
-            <SidebarItem label="Historial" hint="Próximamente" disabled />
-          </div>
-        </nav>
+        <AdminNavSidebar active={tab} onSelect={setTab} hints={navHints} />
 
         <main className="flex-1">
           <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-primary">
-                Sede El Poblado
-              </p>
-              <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight sm:text-3xl">
-                {pageTitle}
-              </h1>
+            <div className="flex min-w-0 flex-1 items-start gap-3">
+              <AdminNavMobile active={tab} onSelect={setTab} hints={navHints} />
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-primary">
+                  Sede El Poblado
+                </p>
+                <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+                  {pageTitle}
+                </h1>
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {tab === "reportes" && (
@@ -122,14 +123,6 @@ function AdminView() {
                   </button>
                 </>
               )}
-              <div className="flex flex-wrap gap-2 lg:hidden">
-                <button onClick={() => setTab("dashboard")} className={tabBtn(tab === "dashboard")}>Dashboard</button>
-                <button onClick={() => setTab("reportes")} className={tabBtn(tab === "reportes")}>Reportes</button>
-                <button onClick={() => setTab("comandas")} className={tabBtn(tab === "comandas")}>Comandas</button>
-                <button onClick={() => setTab("menu")} className={tabBtn(tab === "menu")}>Menú</button>
-                <button onClick={() => setTab("promociones")} className={tabBtn(tab === "promociones")}>Promos</button>
-                <button onClick={() => setTab("domicilios")} className={tabBtn(tab === "domicilios")}>Domicilios</button>
-              </div>
             </div>
           </div>
 
@@ -272,45 +265,4 @@ function AdminView() {
       />
     </div>
   );
-}
-
-function SidebarItem({
-  label,
-  hint,
-  active,
-  disabled,
-  onClick,
-}: {
-  label: string;
-  hint?: string;
-  active?: boolean;
-  disabled?: boolean;
-  onClick?: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={`w-full rounded-xl px-4 py-3 text-left transition-colors ${
-        active
-          ? "bg-ink text-cream"
-          : disabled
-            ? "cursor-not-allowed text-muted-foreground"
-            : "text-foreground hover:bg-secondary"
-      }`}
-    >
-      <p className="text-sm font-medium">{label}</p>
-      {hint && (
-        <p className={`text-[11px] ${active ? "text-cream/60" : "text-muted-foreground"}`}>
-          {hint}
-        </p>
-      )}
-    </button>
-  );
-}
-
-function tabBtn(active: boolean) {
-  return `rounded-lg px-3 py-1.5 text-xs font-medium ${
-    active ? "bg-ink text-cream" : "border border-border bg-card"
-  }`;
 }
