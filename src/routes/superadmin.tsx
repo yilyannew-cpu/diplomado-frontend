@@ -1,6 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { ApprovalsPanel, ApprovalsSummaryCard } from "@/components/superadmin/ApprovalsPanel";
+import { SuperadminNav } from "@/components/superadmin/SuperadminNav";
 import { RoleGuard, TopBar } from "@/components/shared/RoleShell";
+import { usePendingApprovals } from "@/hooks/usePendingApprovals";
 import { usersMock, type MockUser, type Role } from "@/mocks/usersMock";
 import { useOrders, formatCOP } from "@/context/OrderContext";
 
@@ -27,6 +30,7 @@ const roleLabel: Record<Role, string> = {
 
 function SuperadminView() {
   const { orders } = useOrders();
+  const approvals = usePendingApprovals();
   const [users, setUsers] = useState<MockUser[]>(usersMock);
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<Role | "todos">("todos");
@@ -60,6 +64,8 @@ function SuperadminView() {
       <TopBar title="Consola global" subtitle="Gobernanza del ecosistema BurgerCore" />
 
       <main className="page-container space-y-6 sm:space-y-8">
+        <SuperadminNav pendingCount={approvals.pendingCount} />
+
         <header>
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary sm:text-[11px] sm:tracking-[0.25em]">
             Gobernanza
@@ -74,8 +80,16 @@ function SuperadminView() {
           <MetricCard label="Ventas hoy" value={formatCOP(sales)} delta="+12% vs ayer" tone="primary" />
           <MetricCard label="Clientes registrados" value={String(counts.cliente)} delta="Activos en plataforma" />
           <MetricCard label="Admins activos" value={String(counts.admin)} delta={`${counts.admin} sedes operando`} />
-          <MetricCard label="Domiciliarios" value={String(counts.domiciliario)} delta="En ruta o disponibles" tone="amber" />
+          <Link to="/superadmin/aprobaciones" className="block transition-transform hover:-translate-y-0.5">
+            <ApprovalsSummaryCard
+              pendingCount={approvals.pendingCount}
+              restaurantCount={approvals.restaurantPending.length}
+              courierCount={approvals.courierPending.length}
+            />
+          </Link>
         </section>
+
+        <ApprovalsPanel compact state={approvals} />
 
         {/* Users table */}
         <section className="overflow-hidden rounded-2xl border border-border bg-card">
