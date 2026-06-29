@@ -24,7 +24,8 @@ export type AdminTab =
   | "comandas"
   | "menu"
   | "promociones"
-  | "domicilios";
+  | "domicilios"
+  | "historial";
 
 type NavItem = {
   id: AdminTab;
@@ -40,6 +41,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { id: "menu", label: "Gestor de menú", shortLabel: "Menú", icon: UtensilsCrossed },
   { id: "promociones", label: "Promociones", shortLabel: "Promos", icon: Tag },
   { id: "domicilios", label: "Domicilios activos", shortLabel: "Domicilios", icon: Bike },
+  { id: "historial", label: "Historial de despachos", shortLabel: "Historial", icon: History },
 ];
 
 interface AdminNavProps {
@@ -137,12 +139,6 @@ export function AdminNavSidebar({ active, onSelect, hints }: AdminNavProps) {
             layout="sidebar"
           />
         ))}
-        <NavButton
-          item={{ id: "historial", label: "Historial", icon: History }}
-          hint="Próximamente"
-          disabled
-          layout="sidebar"
-        />
       </div>
     </nav>
   );
@@ -209,13 +205,6 @@ export function AdminNavMobile({ active, onSelect, hints }: AdminNavProps) {
                 layout="sheet"
               />
             ))}
-            <NavButton
-              item={{ id: "historial", label: "Historial", icon: History }}
-              hint="Próximamente"
-              disabled
-              staggerIndex={ADMIN_NAV_ITEMS.length + 1}
-              layout="sheet"
-            />
           </div>
         </SheetContent>
       </Sheet>

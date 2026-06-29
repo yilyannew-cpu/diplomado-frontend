@@ -36,6 +36,8 @@ export interface Order {
   receivedAt?: number;
   /** Marca de tiempo (ms) cuando el pedido entró a su estado actual en el monitor. */
   statusEnteredAt?: number;
+  /** Marca de tiempo (ms) cuando el pedido fue despachado (Listo → En camino). */
+  dispatchedAt?: number;
 }
 
 export const ordersMock: Order[] = [
@@ -132,6 +134,7 @@ export const ordersMock: Order[] = [
     deliveryPersonId: "USR-04",
     createdAt: "11:48 AM",
     receivedAt: Date.now() - 45 * 60_000,
+    dispatchedAt: Date.now() - 35 * 60_000,
   },
   {
     id: "PED-109",
@@ -144,6 +147,7 @@ export const ordersMock: Order[] = [
     status: "En Camino",
     deliveryPersonId: "USR-04",
     createdAt: "11:55 AM",
+    dispatchedAt: Date.now() - 28 * 60_000,
   },
   {
     id: "PED-105",
@@ -157,5 +161,6 @@ export const ordersMock: Order[] = [
     status: "Entregado",
     deliveryPersonId: "USR-06",
     createdAt: "11:20 AM",
+    dispatchedAt: Date.now() - 3 * 60 * 60_000,
   },
 ];

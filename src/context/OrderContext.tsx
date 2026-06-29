@@ -1,9 +1,11 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { dispatchHistoryMock, type DispatchRecord } from "@/mocks/dispatchHistoryMock";
 import { menuMock, type MenuItem } from "@/mocks/menuMock";
 import { ordersMock, type Order, type OrderStatus } from "@/mocks/ordersMock";
 import { promotionsMock, type Promotion } from "@/mocks/promotionsMock";
 import { canAssignBatchToCourier } from "@/lib/deliveryLimits";
 import { DEFAULT_DELIVERY_FEE_COP } from "@/lib/deliveryFees";
+import { orderToDispatchRecord } from "@/lib/orderHistory";
 import { getProductPricing } from "@/lib/promotions";
 
 export interface CartItem {
@@ -18,6 +20,7 @@ export type ClientModule = "inicio" | "promociones" | "rankin";
 interface OrderState {
   menu: MenuItem[];
   orders: Order[];
+  dispatchHistory: DispatchRecord[];
   promotions: Promotion[];
   cart: CartItem[];
   cartItemCount: number;
@@ -57,6 +60,7 @@ const OrderContext = createContext<OrderState | null>(null);
 export function OrderProvider({ children }: { children: ReactNode }) {
   const [menu, setMenu] = useState<MenuItem[]>(menuMock);
   const [orders, setOrders] = useState<Order[]>(ordersMock);
+  const [dispatchHistory, setDispatchHistory] = useState<DispatchRecord[]>(dispatchHistoryMock);
   const [promotions, setPromotions] = useState<Promotion[]>(promotionsMock);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
@@ -152,10 +156,28 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 
   const dispatchOrderBatch = (orderIds: string[]) => {
     const idSet = new Set(orderIds);
+    const now = Date.now();
+
+    const toDispatch = orders.filter(
+      (o) => idSet.has(o.id) && o.status === "Listo" && o.deliveryPersonId,
+    );
+
+    if (toDispatch.length > 0) {
+      setDispatchHistory((history) => [
+        ...toDispatch.map((o) => orderToDispatchRecord(o, now)),
+        ...history,
+      ]);
+    }
+
     setOrders((o) =>
       o.map((or) =>
         idSet.has(or.id) && or.status === "Listo"
-          ? { ...or, status: "En Camino" as OrderStatus }
+          ? {
+              ...or,
+              status: "En Camino" as OrderStatus,
+              dispatchedAt: now,
+              statusEnteredAt: now,
+            }
           : or,
       ),
     );
@@ -213,6 +235,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       value={{
         menu,
         orders,
+        dispatchHistory,
         promotions,
         cart,
         cartItemCount,
