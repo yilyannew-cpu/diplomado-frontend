@@ -11,7 +11,7 @@ interface BrandLogoProps {
   linkTo?: string | null;
   size?: "sm" | "md" | "lg";
   variant?: "light" | "dark";
-  /** Solo muestra el icono B, sin nombre */
+  /** Solo muestra el icono FF, sin nombre */
   iconOnly?: boolean;
   /** Solo icono en pantallas muy pequeñas (oculta nombre) */
   compact?: boolean;
@@ -19,15 +19,15 @@ interface BrandLogoProps {
 
 const sizeStyles = {
   sm: {
-    icon: "size-9 text-lg rounded-xl",
+    icon: "size-9 text-sm rounded-xl",
     name: "text-base",
   },
   md: {
-    icon: "size-9 text-lg rounded-xl",
+    icon: "size-9 text-sm rounded-xl",
     name: "text-lg",
   },
   lg: {
-    icon: "size-11 text-xl rounded-2xl",
+    icon: "size-11 text-base rounded-2xl",
     name: "text-2xl",
   },
 };
@@ -51,7 +51,7 @@ export function BrandLogo({
           s.icon,
         )}
       >
-        B
+        FF
       </span>
       <span
         className={cn(
@@ -62,7 +62,7 @@ export function BrandLogo({
           !iconOnly && compact && "hidden min-[380px]:inline",
         )}
       >
-        BurgerCore
+        FFCore
       </span>
     </>
   );

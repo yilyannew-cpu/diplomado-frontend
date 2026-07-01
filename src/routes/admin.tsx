@@ -31,7 +31,7 @@ import { isPromotionActive } from "@/lib/promotions";
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Admin Restaurante · BurgerCore" },
+      { title: "Admin Restaurante · FFCore" },
       { name: "description", content: "Monitor de comandas Kanban y CRUD visual del menú del restaurante." },
     ],
   }),
@@ -116,7 +116,7 @@ function AdminView() {
               <AdminNavMobile active={tab} onSelect={setTab} hints={navHints} />
               <div className="min-w-0 flex-1">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary sm:tracking-[0.25em]">
-                  Sede El Poblado
+                  Sede Caobos
                 </p>
                 <h1 className="mt-1 font-display text-xl font-semibold leading-tight tracking-tight sm:mt-2 sm:text-2xl lg:text-3xl">
                   {pageTitle}

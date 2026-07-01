@@ -156,7 +156,7 @@ export function AddProductModal({ open, onClose, onSave }: AddProductModalProps)
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ej. Burger Especial"
+              placeholder="Ej. Combo Especial"
               className={inputClass}
             />
           </div>

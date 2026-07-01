@@ -25,7 +25,7 @@ export const restaurantReviewsMock: RestaurantReview[] = [
     id: "REV-03",
     customerName: "Diana Restrepo",
     rating: 5,
-    comment: "Excelente atención en la sede El Poblado. El brownie es espectacular.",
+    comment: "Excelente atención en la sede Caobos. El brownie es espectacular.",
     createdAt: "Ayer",
   },
   {
