@@ -15,7 +15,7 @@ import { DiscountBadge, ProductPriceDisplay } from "@/components/shared/ProductP
 export const Route = createFileRoute("/cliente")({
   head: () => ({
     meta: [
-      { title: "Cliente · BurgerCore" },
+      { title: "Cliente · FFCore" },
       { name: "description", content: "Catálogo interactivo, carrito reactivo y seguimiento en tiempo real del pedido." },
     ],
   }),

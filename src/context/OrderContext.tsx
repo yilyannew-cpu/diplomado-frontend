@@ -203,7 +203,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       const newItem: MenuItem = {
         ...item,
         id: `prod-${String(maxNum + 1).padStart(2, "0")}`,
-        restaurantId: "rest-burgercore",
+        restaurantId: "rest-ffcore",
       };
       return [...m, newItem];
     });

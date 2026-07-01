@@ -9,7 +9,7 @@ import type { Order, OrderStatus } from "@/mocks/ordersMock";
 export const Route = createFileRoute("/domiciliario")({
   head: () => ({
     meta: [
-      { title: "Domiciliario · BurgerCore" },
+      { title: "Domiciliario · FFCore" },
       { name: "description", content: "Interfaz mobile-first para entregas: buscador, ficha del cliente y cambio de estado logístico." },
     ],
   }),

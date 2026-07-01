@@ -10,7 +10,7 @@ import { useOrders, formatCOP } from "@/context/OrderContext";
 export const Route = createFileRoute("/superadmin")({
   head: () => ({
     meta: [
-      { title: "Superadmin · BurgerCore" },
+      { title: "Superadmin · FFCore" },
       { name: "description", content: "Gobernanza global: métricas, gestión de usuarios y registro corporativo." },
     ],
   }),
@@ -61,7 +61,7 @@ function SuperadminView() {
 
   return (
     <div className="min-h-screen bg-cream">
-      <TopBar title="Consola global" subtitle="Gobernanza del ecosistema BurgerCore" />
+      <TopBar title="Consola global" subtitle="Gobernanza del ecosistema FFCore" />
 
       <main className="page-container space-y-6 sm:space-y-8">
         <SuperadminNav pendingCount={approvals.pendingCount} />
@@ -182,7 +182,7 @@ function SuperadminView() {
             </p>
             <form className="grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={(e) => e.preventDefault()}>
               <Field label="Nombre completo" placeholder="Ej. María Restrepo" />
-              <Field label="Correo corporativo" placeholder="usuario@burgercore.co" />
+              <Field label="Correo corporativo" placeholder="usuario@ffcore.co" />
               <Field label="Teléfono" placeholder="+57 300 000 0000" />
               <Field label="Placa / vehículo" placeholder="Opcional para domiciliarios" />
               <div>

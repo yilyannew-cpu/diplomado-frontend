@@ -182,7 +182,7 @@ export function AdminNavMobile({ active, onSelect, hints }: AdminNavProps) {
         <SheetContent side="left" className="w-[min(100%,300px)] border-r p-0 sm:max-w-[300px]">
           <SheetHeader className="border-b border-border bg-secondary/30 px-5 py-5 text-left">
             <SheetTitle className="font-display text-lg">Centro de cocina</SheetTitle>
-            <p className="text-xs text-muted-foreground">Sede El Poblado</p>
+            <p className="text-xs text-muted-foreground">Sede Caobos</p>
             {activeItem && (
               <p className="admin-nav-item-stagger mt-2 text-[11px] font-medium text-primary">
                 Módulo actual: {activeItem.shortLabel}
