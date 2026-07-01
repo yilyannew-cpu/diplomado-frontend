@@ -11,7 +11,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "routes:gen": "tsr generate",
-    "postinstall": "bun run routes:gen"
+    "postinstall": "npm run routes:gen"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
