@@ -37,3 +37,6 @@ src/routeTree.gen.ts
 
 # Archivos de contexto para IA
 .instrucciones_ai.md
+
+# Metadatos del editor Lovable (no necesarios para build/deploy)
+.lovable/

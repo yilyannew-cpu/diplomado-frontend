@@ -5,7 +5,7 @@ export function getOrderZone(address: string): string {
   const parts = address.split(",").map((p) => p.trim()).filter(Boolean);
   if (parts.length >= 2) {
     const city = parts[parts.length - 1].toLowerCase();
-    if (city.includes("medellín") || city.includes("medellin")) {
+    if (city.includes("cúcuta") || city.includes("cucuta")) {
       return parts[parts.length - 2];
     }
   }

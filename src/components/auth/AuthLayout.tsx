@@ -52,7 +52,7 @@ export function AuthLayout({
           </div>
 
           <p className="relative z-10 text-[11px] uppercase tracking-widest text-cream/40">
-            Medellín · CO — FFCore API
+            Cúcuta · CO
           </p>
 
           <div

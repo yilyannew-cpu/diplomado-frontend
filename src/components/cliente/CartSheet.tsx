@@ -28,7 +28,7 @@ export function CartSheet() {
   } = useOrders();
 
   const [step, setStep] = useState<CheckoutStep>("cart");
-  const [address, setAddress] = useState("Calle 10 #43-28, El Poblado, Medellín");
+  const [address, setAddress] = useState("Av. 0 #12-34, Caobos, Cúcuta");
   const [isPaying, setIsPaying] = useState(false);
 
   const deliveryFee = cart.length > 0 ? DEFAULT_DELIVERY_FEE_COP : 0;

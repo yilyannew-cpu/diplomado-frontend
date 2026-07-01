@@ -44,7 +44,7 @@ export const ordersMock: Order[] = [
   {
     id: "PED-101",
     customerName: "Laura Martínez",
-    address: "Carrera 43A #1-50, Apto 902, El Poblado, Medellín",
+    address: "Av. 0 #12-34, Apto 902, Caobos, Cúcuta",
     notes: "Torre B. Portería 24h.",
     phone: "+573105550102",
     items: [{ productId: "prod-01", quantity: 2 }, { productId: "prod-05", quantity: 1 }],
@@ -58,7 +58,7 @@ export const ordersMock: Order[] = [
   {
     id: "PED-102",
     customerName: "Juan Pablo Montoya",
-    address: "Calle 45 #12-34, Apto 302, Laureles, Medellín",
+    address: "Calle 15 #11-45, Apto 302, Centro, Cúcuta",
     notes: "Sin cebolla por favor.",
     phone: "+573155550544",
     items: [{ productId: "prod-02", quantity: 1 }, { productId: "prod-07", quantity: 2 }],
@@ -72,7 +72,7 @@ export const ordersMock: Order[] = [
   {
     id: "PED-103",
     customerName: "Valeria Ospina",
-    address: "Calle 10 #36-12, Manila, Medellín",
+    address: "Calle 10 #5-20, Atalaya, Cúcuta",
     phone: "+573175550766",
     items: [{ productId: "prod-04", quantity: 1 }, { productId: "prod-06", quantity: 1 }],
     total: 31400,
@@ -85,7 +85,7 @@ export const ordersMock: Order[] = [
   {
     id: "PED-106",
     customerName: "Camila Henao",
-    address: "Cra 35 #10-22, Manila, Medellín",
+    address: "Cra 11 #14-08, Atalaya, Cúcuta",
     phone: "+573198880111",
     items: [{ productId: "prod-01", quantity: 1 }],
     total: 29900,
@@ -98,7 +98,7 @@ export const ordersMock: Order[] = [
   {
     id: "PED-107",
     customerName: "Felipe Gómez",
-    address: "Cl 8 #43-15, El Poblado, Medellín",
+    address: "Cl 12 #2-30, Caobos, Cúcuta",
     phone: "+573187770222",
     items: [{ productId: "prod-02", quantity: 1 }, { productId: "prod-05", quantity: 1 }],
     total: 38000,
@@ -111,7 +111,7 @@ export const ordersMock: Order[] = [
   {
     id: "PED-108",
     customerName: "Natalia Ruiz",
-    address: "Cra 43A #3-80, El Poblado, Medellín",
+    address: "Av. 3 #15-80, Caobos, Cúcuta",
     notes: "Edificio verde, apto 501.",
     phone: "+573176660333",
     items: [{ productId: "prod-03", quantity: 1 }],
@@ -125,7 +125,7 @@ export const ordersMock: Order[] = [
   {
     id: "PED-104",
     customerName: "Andrés Quintero",
-    address: "Cra 70 #C2-21, Estadio, Medellín",
+    address: "Cra 7 #16-21, San Luis, Cúcuta",
     phone: "+573145550199",
     items: [{ productId: "prod-01", quantity: 1 }, { productId: "prod-08", quantity: 1 }],
     total: 36400,
@@ -139,7 +139,7 @@ export const ordersMock: Order[] = [
   {
     id: "PED-109",
     customerName: "Ricardo Mejía",
-    address: "Calle 50 #45-10, Estadio, Medellín",
+    address: "Calle 8 #10-15, San Luis, Cúcuta",
     phone: "+573191112233",
     items: [{ productId: "prod-05", quantity: 2 }],
     total: 23900,
@@ -152,7 +152,7 @@ export const ordersMock: Order[] = [
   {
     id: "PED-105",
     customerName: "Diana Restrepo",
-    address: "Cl 33 #74-50, Conquistadores, Medellín",
+    address: "Cl 13 #7-50, El Zulia, Cúcuta",
     notes: "Dejar en recepción.",
     phone: "+573164440111",
     items: [{ productId: "prod-02", quantity: 2 }],

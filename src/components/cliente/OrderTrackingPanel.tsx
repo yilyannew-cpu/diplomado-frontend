@@ -145,7 +145,7 @@ export function OrderTrackingPanel() {
                 ¡Pedido entregado!
               </p>
               <p className="mt-1 text-sm text-cream/60">
-                Gracias por usar BurgerCore. ¡Buen provecho!
+                Gracias por usar FFCore. ¡Buen provecho!
               </p>
             </div>
           )}

@@ -146,7 +146,7 @@ export function ClientModuleNavMobile({
       </button>
       <SheetContent side="left" className="w-[min(100%,280px)] p-0">
         <SheetHeader className="border-b border-border px-5 py-5 text-left">
-          <SheetTitle className="font-display text-lg">BurgerCore</SheetTitle>
+          <SheetTitle className="font-display text-lg">FFCore</SheetTitle>
           {slogan && subtitle && (
             <p className="text-xs font-medium text-primary">{subtitle}</p>
           )}
