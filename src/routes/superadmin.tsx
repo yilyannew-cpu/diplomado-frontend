@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
-import { RoleGuard, TopBar } from "@/components/shared/RoleShell";
+import { RoleGuard } from "@/components/shared/RoleShell";
 import { useOrders } from "@/context/OrderContext";
 import { toast } from "sonner";
 
@@ -8,12 +8,17 @@ import { toast } from "sonner";
 import { usersApi } from "@/lib/api/endpoints/users";
 import { type User, type PendingUser, type Role } from "@/lib/api/types";
 
-// Componentes modulares del dashboard
+// Componentes modulares
+import { SuperadminSidebar, type SuperadminModule } from "@/components/superadmin/SuperadminSidebar";
 import { SuperadminMetrics } from "@/components/superadmin/SuperadminMetrics";
 import { ApprovalQueue } from "@/components/superadmin/ApprovalQueue";
 import { UsersTable } from "@/components/superadmin/UsersTable";
 import { NewUserForm } from "@/components/superadmin/NewUserForm";
 import { SystemStatus } from "@/components/superadmin/SystemStatus";
+
+import { usersMock, type MockUser } from "@/mocks/usersMock";
+
+// ...
 
 export const Route = createFileRoute("/superadmin")({
   head: () => ({
@@ -29,34 +34,68 @@ export const Route = createFileRoute("/superadmin")({
   ),
 });
 
+const FAKE_PENDING_USERS: PendingUser[] = [
+  { 
+    id: "PEN-01", 
+    name: "Carlos Pérez", 
+    email: "carlos@burgerhouse.co", 
+    role: "admin",
+    status: "Pendiente", 
+    phone: "3201234567",
+    created_at: new Date().toISOString(),
+    restaurant: {
+      id: "REST-01",
+      name: "Burger House El Poblado",
+      city: "Medellín",
+      address: "Cra 43 #10-12",
+      status: "Pendiente"
+    }
+  },
+  { 
+    id: "PEN-02", 
+    name: "Miguel Ángel", 
+    email: "miguel@domi.co", 
+    role: "domiciliario",
+    status: "Pendiente",
+    document_id: "1020304050",
+    phone: "3109876543",
+    vehicle: "Moto - ABC-12D",
+    created_at: new Date().toISOString()
+  },
+];
+
 function SuperadminView() {
   const { orders } = useOrders();
-  const [users, setUsers] = useState<User[]>([]);
-  const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
   
+  // Usar datos falsos para visualización (MOCKS)
+  const [users, setUsers] = useState<User[]>(usersMock as unknown as User[]);
+  const [pendingUsers, setPendingUsers] = useState<PendingUser[]>(FAKE_PENDING_USERS);
+  
+  // Navigation State
+  const [activeModule, setActiveModule] = useState<SuperadminModule>("dashboard");
+
   // Estado para la tabla de usuarios
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<Role | "todos">("todos");
 
-  // Fetch data
   const loadData = async () => {
-    try {
-      const [allUsers, pending] = await Promise.all([
-        usersApi.list(),
-        usersApi.listPending()
-      ]);
-      setUsers(allUsers);
-      setPendingUsers(pending);
-    } catch (error) {
-      toast.error("Error al cargar los usuarios desde el servidor");
-    }
+    // Desactivamos temporalmente el consumo real de la API para mostrar los Mocks
+    // try {
+    //   const [allUsers, pending] = await Promise.all([
+    //     usersApi.list(),
+    //     usersApi.listPending()
+    //   ]);
+    //   setUsers(allUsers);
+    //   setPendingUsers(pending);
+    // } catch (error) {
+    //   toast.error("Error al cargar los usuarios desde el servidor");
+    // }
   };
 
   useEffect(() => {
     loadData();
   }, []);
 
-  // Métricas
   const counts = useMemo(
     () => ({
       cliente: users.filter((u) => u.role === "cliente").length,
@@ -67,14 +106,11 @@ function SuperadminView() {
   );
   const sales = orders.reduce((a, o) => a + o.total, 0);
 
-  // Acciones conectadas a la API
   const toggleStatus = async (id: string) => {
     const user = users.find(u => u.id === id);
     if (!user) return;
     
     const newStatus = user.status === "Activo" ? "Suspendido" : "Activo";
-    
-    // Optimistic update
     setUsers((arr) => arr.map((u) => u.id === id ? { ...u, status: newStatus } : u));
 
     try {
@@ -82,7 +118,7 @@ function SuperadminView() {
       toast.success(`Estado actualizado a ${newStatus}`);
     } catch (error: any) {
       toast.error("Error al cambiar estado");
-      loadData(); // revert
+      loadData();
     }
   };
 
@@ -107,40 +143,82 @@ function SuperadminView() {
   };
 
   return (
-    <div className="min-h-screen bg-cream">
-      <TopBar title="Consola global" subtitle="Gobernanza del ecosistema BurgerCore" />
+    <div className="flex h-screen overflow-hidden bg-cream/50">
+      <SuperadminSidebar 
+        activeModule={activeModule} 
+        setActiveModule={setActiveModule} 
+        pendingCount={pendingUsers.length} 
+      />
 
-      <main className="page-container space-y-6 sm:space-y-8">
-        <header>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary sm:text-[11px] sm:tracking-[0.25em]">
-            Gobernanza
-          </p>
-          <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight sm:text-3xl">
-            Métricas y gestión de personal
-          </h1>
+      <main className="flex-1 flex flex-col h-full overflow-y-auto">
+        {/* Top Header */}
+        <header className="sticky top-0 z-10 bg-cream/80 backdrop-blur-md border-b border-border/50 px-8 py-5 flex items-center justify-between">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
+              Módulo de Gobernanza
+            </p>
+            <h2 className="mt-1 font-display text-2xl font-semibold tracking-tight capitalize">
+              {activeModule === 'dashboard' ? 'Métricas y Visión Global' : 
+               activeModule === 'approvals' ? 'Cola de Aprobaciones' :
+               activeModule === 'users' ? 'Gestión de Personal' : 
+               activeModule === 'register' ? 'Registro Operativo' :
+               'Seguimiento Logístico'}
+            </h2>
+          </div>
         </header>
 
-        {/* 1. Tarjetas de Métricas (KPIs) */}
-        <SuperadminMetrics counts={counts} sales={sales} />
+        <div className="p-8 max-w-6xl w-full mx-auto space-y-8">
+          {activeModule === "dashboard" && (
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <SuperadminMetrics counts={counts} sales={sales} />
+              {/* Aquí luego añadiremos las pestañas de Resumen e Histórico */}
+              <SystemStatus />
+            </div>
+          )}
 
-        {/* 2. Cola de Aprobación (Nuevo componente visual) */}
-        <ApprovalQueue pendingUsers={pendingUsers} approveUser={approveUser} rejectUser={rejectUser} />
+          {activeModule === "approvals" && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              {/* Pestañas (mock visual por ahora) */}
+              <div className="flex items-center gap-4 border-b border-border mb-6">
+                <button className="border-b-2 border-primary pb-3 px-1 text-sm font-semibold text-foreground">
+                  Restaurantes & Domiciliarios
+                </button>
+                <button className="border-b-2 border-transparent pb-3 px-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                  Historial de Rechazos
+                </button>
+              </div>
+              <ApprovalQueue pendingUsers={pendingUsers} approveUser={approveUser} rejectUser={rejectUser} />
+            </div>
+          )}
 
-        {/* 3. Directorio General de Usuarios */}
-        <UsersTable 
-          users={users}
-          query={query}
-          setQuery={setQuery}
-          roleFilter={roleFilter}
-          setRoleFilter={setRoleFilter}
-          toggleStatus={toggleStatus}
-        />
+          {activeModule === "users" && (
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <UsersTable 
+                users={users}
+                query={query}
+                setQuery={setQuery}
+                roleFilter={roleFilter}
+                setRoleFilter={setRoleFilter}
+                toggleStatus={toggleStatus}
+              />
+            </div>
+          )}
 
-        {/* 4. Formulario de Registro y Estado del Sistema */}
-        <section className="grid gap-6 lg:grid-cols-3">
-          <NewUserForm onUserCreated={loadData} />
-          <SystemStatus />
-        </section>
+          {activeModule === "register" && (
+            <div className="max-w-md animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <NewUserForm onUserCreated={loadData} />
+            </div>
+          )}
+
+          {activeModule === "operations" && (
+            <div className="flex items-center justify-center h-64 border-2 border-dashed border-border rounded-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="text-center">
+                <p className="text-muted-foreground">Módulo operativo en desarrollo</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">Aquí vendrán métricas en tiempo real</p>
+              </div>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );
