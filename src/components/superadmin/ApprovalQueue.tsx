@@ -1,7 +1,7 @@
-import { type MockUser } from "@/mocks/usersMock";
+import { type PendingUser } from "@/lib/api/types";
 
 interface ApprovalQueueProps {
-  pendingUsers: MockUser[];
+  pendingUsers: PendingUser[];
   approveUser: (id: string) => void;
   rejectUser: (id: string) => void;
 }

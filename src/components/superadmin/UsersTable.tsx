@@ -1,4 +1,4 @@
-import { type MockUser, type Role } from "@/mocks/usersMock";
+import { type User, type Role } from "@/lib/api/types";
 
 const roleLabel: Record<Role, string> = {
   cliente: "Cliente",
@@ -8,7 +8,7 @@ const roleLabel: Record<Role, string> = {
 };
 
 interface UsersTableProps {
-  users: MockUser[];
+  users: User[];
   query: string;
   setQuery: (q: string) => void;
   roleFilter: Role | "todos";

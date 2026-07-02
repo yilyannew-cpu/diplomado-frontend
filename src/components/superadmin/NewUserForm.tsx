@@ -2,7 +2,7 @@ import { useState } from "react";
 import { apiClient } from "@/lib/api/client";
 import { toast } from "sonner";
 
-export function NewUserForm() {
+export function NewUserForm({ onUserCreated }: { onUserCreated?: () => void }) {
   const [role, setRole] = useState("Cliente");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -71,6 +71,11 @@ export function NewUserForm() {
       }
 
       toast.success(`Usuario ${name} creado exitosamente como ${role}`);
+      
+      // Llamar al callback si existe para recargar la tabla
+      if (onUserCreated) {
+        onUserCreated();
+      }
       
       // Limpiar formulario
       setName("");

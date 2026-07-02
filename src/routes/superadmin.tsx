@@ -1,8 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { RoleGuard, TopBar } from "@/components/shared/RoleShell";
-import { usersMock, type MockUser, type Role } from "@/mocks/usersMock";
 import { useOrders } from "@/context/OrderContext";
+import { toast } from "sonner";
+
+// API
+import { usersApi } from "@/lib/api/endpoints/users";
+import { type User, type PendingUser, type Role } from "@/lib/api/types";
 
 // Componentes modulares del dashboard
 import { SuperadminMetrics } from "@/components/superadmin/SuperadminMetrics";
@@ -27,11 +31,30 @@ export const Route = createFileRoute("/superadmin")({
 
 function SuperadminView() {
   const { orders } = useOrders();
-  const [users, setUsers] = useState<MockUser[]>(usersMock);
+  const [users, setUsers] = useState<User[]>([]);
+  const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
   
   // Estado para la tabla de usuarios
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<Role | "todos">("todos");
+
+  // Fetch data
+  const loadData = async () => {
+    try {
+      const [allUsers, pending] = await Promise.all([
+        usersApi.list(),
+        usersApi.listPending()
+      ]);
+      setUsers(allUsers);
+      setPendingUsers(pending);
+    } catch (error) {
+      toast.error("Error al cargar los usuarios desde el servidor");
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   // Métricas
   const counts = useMemo(
@@ -44,22 +67,44 @@ function SuperadminView() {
   );
   const sales = orders.reduce((a, o) => a + o.total, 0);
 
-  // Usuarios pendientes (para la Cola de Aprobación)
-  const pendingUsers = useMemo(() => users.filter((u) => u.status === "Pendiente"), [users]);
-
-  // Acciones (mocks temporales)
-  const toggleStatus = (id: string) =>
-    setUsers((arr) =>
-      arr.map((u) =>
-        u.id === id ? { ...u, status: u.status === "Activo" ? "Suspendido" : "Activo" } : u,
-      ),
-    );
-
-  const approveUser = (id: string) => 
-    setUsers((arr) => arr.map((u) => u.id === id ? { ...u, status: "Activo" } : u));
+  // Acciones conectadas a la API
+  const toggleStatus = async (id: string) => {
+    const user = users.find(u => u.id === id);
+    if (!user) return;
     
-  const rejectUser = (id: string) => 
-    setUsers((arr) => arr.map((u) => u.id === id ? { ...u, status: "Rechazado" } : u));
+    const newStatus = user.status === "Activo" ? "Suspendido" : "Activo";
+    
+    // Optimistic update
+    setUsers((arr) => arr.map((u) => u.id === id ? { ...u, status: newStatus } : u));
+
+    try {
+      await usersApi.update(id, { status: newStatus });
+      toast.success(`Estado actualizado a ${newStatus}`);
+    } catch (error: any) {
+      toast.error("Error al cambiar estado");
+      loadData(); // revert
+    }
+  };
+
+  const approveUser = async (id: string) => {
+    try {
+      await usersApi.approve(id);
+      toast.success("Usuario aprobado exitosamente");
+      loadData();
+    } catch (error: any) {
+      toast.error(error.message || "Error al aprobar usuario");
+    }
+  };
+    
+  const rejectUser = async (id: string) => {
+    try {
+      await usersApi.reject(id, "Rechazado por el administrador");
+      toast.success("Usuario rechazado exitosamente");
+      loadData();
+    } catch (error: any) {
+      toast.error(error.message || "Error al rechazar usuario");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-cream">
@@ -93,7 +138,7 @@ function SuperadminView() {
 
         {/* 4. Formulario de Registro y Estado del Sistema */}
         <section className="grid gap-6 lg:grid-cols-3">
-          <NewUserForm />
+          <NewUserForm onUserCreated={loadData} />
           <SystemStatus />
         </section>
       </main>

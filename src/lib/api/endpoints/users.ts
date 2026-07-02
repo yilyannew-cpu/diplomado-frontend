@@ -44,4 +44,8 @@ export const usersApi = {
   create(payload: CreateUserPayload): Promise<{ data: User } | User> {
     return apiClient("/users", { method: "POST", auth: true, body: payload });
   },
+
+  update(id: string, payload: Partial<User>): Promise<{ data: User } | User> {
+    return apiClient(`/users/${id}`, { method: "PATCH", auth: true, body: payload });
+  },
 };
