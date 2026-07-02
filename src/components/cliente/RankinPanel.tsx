@@ -13,7 +13,7 @@ export function RankinPanel() {
           Rankin de la zona
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Los favoritos de la comunidad BurgerCore este mes.
+          Los favoritos de la comunidad FFCore este mes.
         </p>
       </div>
 

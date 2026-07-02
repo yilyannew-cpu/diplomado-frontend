@@ -25,10 +25,10 @@ function NotFoundComponent() {
         </p>
         <div className="mt-6">
           <Link
-            to="/"
+            to="/login/cliente"
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Go home
+            Ir al login
           </Link>
         </div>
       </div>
@@ -79,16 +79,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "BurgerCore — Sistema Integral de Gestión y Domicilios" },
+      { title: "FFCore — Fast Food Core · Sistema integral de gestión y domicilios" },
       { name: "description", content: "Prototipo no funcional multirrol para gestión de comandas, menú, usuarios y entregas." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "BurgerCore" },
-      { property: "og:description", content: "Sistema integral de gestión y domicilios" },
+      { property: "og:title", content: "FFCore" },
+      { property: "og:description", content: "Fast Food Core — delivery y gestión de restaurantes" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
+      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
       {
         rel: "stylesheet",
         href: appCss,

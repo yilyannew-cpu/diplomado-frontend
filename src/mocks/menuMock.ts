@@ -1,4 +1,15 @@
-export type Category = "Hamburguesas" | "Acompañamientos" | "Bebidas" | "Postres";
+export const CATEGORIES = [
+  "Entradas",
+  "Platos principales",
+  "Acompañamientos",
+  "Bebidas",
+  "Postres",
+  "Adiciones",
+] as const;
+
+export const ADDITION_CATEGORY = "Adiciones" as const satisfies Category;
+
+export type Category = (typeof CATEGORIES)[number];
 
 export interface MenuItem {
   id: string;
@@ -16,27 +27,27 @@ export const menuMock: MenuItem[] = [
     id: "prod-01",
     name: "Monster Bacon",
     price: 24900,
-    category: "Hamburguesas",
+    category: "Platos principales",
     description: "Doble carne premium, tocino crujiente y queso cheddar fundido.",
     image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=80",
     available: true,
-    restaurantId: "rest-burgercore",
+    restaurantId: "rest-ffcore",
   },
   {
     id: "prod-02",
     name: "La Paisa Smash",
     price: 28500,
-    category: "Hamburguesas",
+    category: "Platos principales",
     description: "Carne Angus, chicharrón, plátano maduro y queso costeño.",
     image: "https://images.unsplash.com/photo-1550317138-10000687a72b?auto=format&fit=crop&w=800&q=80",
     available: true,
-    restaurantId: "rest-burgercore",
+    restaurantId: "rest-ffcore",
   },
   {
     id: "prod-03",
     name: "Chicken Buffalo",
     price: 26900,
-    category: "Hamburguesas",
+    category: "Platos principales",
     description: "Pollo crocante, salsa buffalo, blue cheese y apio.",
     image: "https://images.unsplash.com/photo-1606755962773-d324e0a13086?auto=format&fit=crop&w=800&q=80",
     available: false,
@@ -46,7 +57,7 @@ export const menuMock: MenuItem[] = [
     id: "prod-04",
     name: "Veggie Supreme",
     price: 22500,
-    category: "Hamburguesas",
+    category: "Platos principales",
     description: "Medallón de garbanzo, aguacate, rúgula y mayo de chipotle.",
     image: "https://images.unsplash.com/photo-1525059696034-4967a729002e?auto=format&fit=crop&w=800&q=80",
     available: true,
@@ -60,7 +71,7 @@ export const menuMock: MenuItem[] = [
     description: "Papas en gajos con piel, sal de mar y aioli de la casa.",
     image: "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=800&q=80",
     available: true,
-    restaurantId: "rest-burgercore",
+    restaurantId: "rest-ffcore",
   },
   {
     id: "prod-06",
@@ -91,5 +102,25 @@ export const menuMock: MenuItem[] = [
     image: "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=800&q=80",
     available: true,
     restaurantId: "rest-dulcecaribe",
+  },
+  {
+    id: "prod-09",
+    name: "Queso cheddar extra",
+    price: 3500,
+    category: "Adiciones",
+    description: "Porción adicional de queso cheddar fundido.",
+    image: "https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?auto=format&fit=crop&w=800&q=80",
+    available: true,
+    restaurantId: "rest-ffcore",
+  },
+  {
+    id: "prod-10",
+    name: "Tocino crujiente",
+    price: 4200,
+    category: "Adiciones",
+    description: "Dos tiras de tocino ahumado extra crocante.",
+    image: "https://images.unsplash.com/photo-1528607929212-2636ec44253e?auto=format&fit=crop&w=800&q=80",
+    available: true,
+    restaurantId: "rest-ffcore",
   },
 ];

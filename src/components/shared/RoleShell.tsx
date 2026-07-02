@@ -2,6 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { LogOut, Settings, ShoppingCart, User } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 import { BrandLogo } from "@/components/shared/BrandLogo";
+import { UserAvatar } from "@/components/shared/UserAvatar";
 import {
   ClientModuleNavDesktop,
   ClientModuleNavMobile,
@@ -17,7 +18,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/context/AuthContext";
 import { useOrders } from "@/context/OrderContext";
-import type { Role } from "@/mocks/usersMock";
+import { roleRoutes, getLoginPathForRole } from "@/lib/auth/roleRoutes";
+import type { Role } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
 
 const roleLabels: Record<Role, string> = {
@@ -27,28 +29,22 @@ const roleLabels: Record<Role, string> = {
   domiciliario: "Domiciliario",
 };
 
-const roleRoutes: Record<Role, string> = {
-  cliente: "/cliente",
-  admin: "/admin",
-  superadmin: "/superadmin",
-  domiciliario: "/domiciliario",
-};
-
 export function RoleGuard({ role, children }: { role: Role; children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (isLoading) return;
     if (!user) {
-      navigate({ to: "/" });
+      navigate({ to: getLoginPathForRole(role) });
       return;
     }
     if (user.role !== role) {
       navigate({ to: roleRoutes[user.role] });
     }
-  }, [user, role, navigate]);
+  }, [user, isLoading, role, navigate]);
 
-  if (!user || user.role !== role) {
+  if (isLoading || !user || user.role !== role) {
     return (
       <div className="grid min-h-screen place-items-center text-sm text-muted-foreground">
         Verificando sesión…
@@ -136,6 +132,11 @@ export function TopBar({
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   if (!user) return null;
+
+  const handleLogout = () => {
+    const loginPath = getLoginPathForRole(user.role);
+    void logout().then(() => navigate({ to: loginPath }));
+  };
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur">
       <div className="mx-auto max-w-screen-2xl px-4 sm:px-6">
@@ -209,13 +210,7 @@ export function TopBar({
                       {roleLabels[user.role]}
                     </p>
                   </div>
-                  <div className="grid size-9 place-items-center rounded-full bg-ink text-sm font-semibold text-cream sm:size-10">
-                    {user.name
-                      .split(" ")
-                      .map((p) => p[0])
-                      .slice(0, 2)
-                      .join("")}
-                  </div>
+                  <UserAvatar name={user.name} src={user.avatar} className="size-9 sm:size-10" />
                 </button>
               </DropdownMenuTrigger>
 
@@ -236,10 +231,7 @@ export function TopBar({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className={cn("cursor-pointer gap-2 text-destructive focus:text-destructive")}
-                  onSelect={() => {
-                    logout();
-                    navigate({ to: "/" });
-                  }}
+                  onSelect={handleLogout}
                 >
                   <LogOut className="size-4" />
                   Cerrar sesión
