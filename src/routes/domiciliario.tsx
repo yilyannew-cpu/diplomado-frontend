@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RoleGuard, TopBar } from "@/components/shared/RoleShell";
+import { OrderSpecialInstructions } from "@/components/shared/OrderSpecialInstructions";
+import { useAuth } from "@/context/AuthContext";
 import { useOrders, formatCOP } from "@/context/OrderContext";
 import type { Order, OrderStatus } from "@/mocks/ordersMock";
 import {
@@ -24,7 +26,7 @@ import {
 export const Route = createFileRoute("/domiciliario")({
   head: () => ({
     meta: [
-      { title: "Domiciliario · BurgerCore" },
+      { title: "Domiciliario · FFCore" },
       {
         name: "description",
         content:
