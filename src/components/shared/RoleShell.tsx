@@ -1,6 +1,8 @@
 import { useNavigate } from "@tanstack/react-router";
-import { LogOut, Settings, ShoppingCart, User } from "lucide-react";
-import { useEffect, type ReactNode } from "react";
+import { LogOut, Settings, ShoppingCart, User, Bike } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { PerfilDrawer } from "@/components/domiciliario/PerfilDrawer";
+import type { DrawerView } from "@/components/domiciliario/PerfilDrawer";
 import { BrandLogo } from "@/components/shared/BrandLogo";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import {
@@ -131,7 +133,9 @@ export function TopBar({
 }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [perfilDrawer, setPerfilDrawer] = useState<DrawerView>(null);
   if (!user) return null;
+  const isDomi = user.role === "domiciliario";
 
   const handleLogout = () => {
     const loginPath = getLoginPathForRole(user.role);
@@ -220,10 +224,24 @@ export function TopBar({
                   <p className="mt-0.5 text-xs text-muted-foreground">{user.email}</p>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="cursor-pointer gap-2">
+                <DropdownMenuItem
+                  className="cursor-pointer gap-2"
+                  onSelect={() => {
+                    if (isDomi) setPerfilDrawer("mi-cuenta");
+                  }}
+                >
                   <User className="size-4" />
                   Mi cuenta
                 </DropdownMenuItem>
+                {isDomi && (
+                  <DropdownMenuItem
+                    className="cursor-pointer gap-2"
+                    onSelect={() => setPerfilDrawer("mi-vehiculo")}
+                  >
+                    <Bike className="size-4" />
+                    Mi vehículo
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem className="cursor-pointer gap-2">
                   <Settings className="size-4" />
                   Configuración
@@ -238,6 +256,11 @@ export function TopBar({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Drawer de perfil (solo domiciliario) */}
+            {isDomi && (
+              <PerfilDrawer open={perfilDrawer} onOpenChange={setPerfilDrawer} />
+            )}
           </div>
         </div>
       </div>
