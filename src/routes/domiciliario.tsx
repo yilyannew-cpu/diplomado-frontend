@@ -3,12 +3,33 @@ import { useState } from "react";
 import { RoleGuard, TopBar } from "@/components/shared/RoleShell";
 import { useOrders, formatCOP } from "@/context/OrderContext";
 import type { Order, OrderStatus } from "@/mocks/ordersMock";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
+  User,
+  Package,
+  Store,
+  Phone,
+  MessageCircle,
+  MapPin,
+  Navigation,
+  ChevronLeft,
+  Clock,
+} from "lucide-react";
 
 export const Route = createFileRoute("/domiciliario")({
   head: () => ({
     meta: [
       { title: "Domiciliario · BurgerCore" },
-      { name: "description", content: "Interfaz mobile-first para entregas: buscador, ficha del cliente y cambio de estado logístico." },
+      {
+        name: "description",
+        content:
+          "Interfaz mobile-first para entregas: buscador, ficha del cliente y cambio de estado logístico.",
+      },
     ],
   }),
   component: () => (
@@ -18,201 +39,440 @@ export const Route = createFileRoute("/domiciliario")({
   ),
 });
 
+/* ─── Flujo de estados logísticos ─── */
 const NEXT: Record<OrderStatus, { next?: OrderStatus; label: string }> = {
   Recibido: { next: "Recogido", label: "Marcar como recogido en tienda" },
   "En Cocina": { next: "Recogido", label: "Marcar como recogido en tienda" },
   Listo: { next: "Recogido", label: "Marcar como recogido en tienda" },
   Recogido: { next: "En Camino", label: "Marcar como en camino" },
   "En Camino": { next: "Entregado", label: "Marcar como entregado con éxito" },
-  Entregado: { label: "Entrega completada" },
+  Entregado: { label: "Entrega completada ✓" },
 };
 
-function DomiciliarioView() {
-  const { findOrder, menu, updateOrderStatus, orders } = useOrders();
-  const [code, setCode] = useState("PED-104");
-  const [order, setOrder] = useState<Order | null>(() => findOrder("PED-104") ?? null);
-  const [error, setError] = useState<string | null>(null);
+const STATUS_COLORS: Record<OrderStatus, string> = {
+  Recibido: "bg-blue-100 text-blue-700",
+  "En Cocina": "bg-amber-100 text-amber-700",
+  Listo: "bg-emerald-100 text-emerald-700",
+  Recogido: "bg-violet-100 text-violet-700",
+  "En Camino": "bg-primary/15 text-primary",
+  Entregado: "bg-green-100 text-green-700",
+};
 
-  const search = (e: React.FormEvent) => {
-    e.preventDefault();
-    const found = findOrder(code);
-    if (!found) {
-      setError("No se encontró ningún pedido con ese código.");
-      setOrder(null);
-      return;
-    }
-    setError(null);
-    setOrder(found);
-  };
+/* ═════════════════════════════════════════════════
+   Vista Principal (Hub) — Listas de Pedidos
+   ═════════════════════════════════════════════════ */
+function HubView({
+  onSelectOrder,
+}: {
+  onSelectOrder: (order: Order) => void;
+}) {
+  const { orders } = useOrders();
 
-  const advance = () => {
-    if (!order) return;
-    const next = NEXT[order.status].next;
-    if (!next) return;
-    updateOrderStatus(order.id, next);
-    setOrder({ ...order, status: next });
-  };
+  // Pedidos Actuales: ya están en manos del domiciliario (Recogido / En Camino)
+  const actuales = orders.filter((o) =>
+    ["Recogido", "En Camino"].includes(o.status)
+  );
 
-  const myQueue = orders.filter((o) => ["Recibido", "Listo", "Recogido", "En Camino"].includes(o.status)).slice(0, 4);
+  // Pedidos Aceptados: asignados pero aún en cocina/listo/recibido
+  const aceptados = orders.filter((o) =>
+    ["Recibido", "En Cocina", "Listo"].includes(o.status)
+  );
 
   return (
-    <div className="min-h-screen bg-lime-500 text-ink">
-      <TopBar title="Ruta activa" subtitle="Buscar y entregar" />
-      <main className="page-container grid gap-6 lg:grid-cols-[1fr_380px] lg:gap-8">
-        {/* Mobile phone frame */}
-        <section className="mx-auto w-full max-w-[420px] lg:max-w-none">
-          <div className="overflow-hidden rounded-2xl border border-border bg-cream text-foreground shadow-xl sm:rounded-[36px] sm:border-[6px] sm:border-white/10 sm:shadow-2xl">
-            <div className="bg-ink px-4 py-4 text-cream sm:px-6">
-              <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-cream/50">
-                <span>9:41</span>
-                <span>Domicilio · 4G</span>
-              </div>
-              <div className="mt-3 flex items-center justify-between">
-                <h2 className="font-display text-xl font-semibold sm:text-2xl">Nueva entrega</h2>
-                {order && (
-                  <span className="rounded-full bg-primary px-2.5 py-1 text-[10px] font-semibold text-cream">
-                    {order.id}
-                  </span>
-                )}
-              </div>
-            </div>
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* ── Pedidos Actuales ── */}
+      <section>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="size-2.5 rounded-full bg-primary animate-pulse" />
+          <h3 className="font-display text-lg font-semibold">
+            Pedidos Actuales
+          </h3>
+          <span className="ml-auto rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-bold text-primary">
+            {actuales.length}
+          </span>
+        </div>
 
-            <form onSubmit={search} className="space-y-2 bg-cream px-4 py-4 sm:px-6 sm:py-5">
-              <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-                Buscar pedido por código
-              </label>
-              <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                <input
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  placeholder="PED-104"
-                  className="flex-1 rounded-xl border border-border bg-card px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30 sm:text-base"
-                />
-                <button className="rounded-xl bg-ink px-4 py-3 text-sm font-semibold text-cream min-[400px]:py-0">
-                  Buscar
-                </button>
-              </div>
-              {error && <p className="text-xs text-destructive">{error}</p>}
-            </form>
-
-            {order ? (
-              <div className="space-y-5 bg-cream px-4 pb-6 sm:px-6">
-                {/* Map */}
-                <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-amber-brand/30 via-cream to-primary/15">
-                  <svg className="absolute inset-0 size-full" viewBox="0 0 400 300" preserveAspectRatio="none" aria-hidden>
-                    <path d="M0 220 L60 200 L100 230 L160 180 L220 200 L280 150 L340 170 L400 130" stroke="oklch(0.5 0.02 60)" strokeOpacity="0.25" strokeWidth="1.5" fill="none" />
-                    <path d="M0 160 L80 140 L140 160 L200 110 L260 140 L320 90 L400 110" stroke="oklch(0.5 0.02 60)" strokeOpacity="0.2" strokeWidth="1" fill="none" />
-                    <path d="M40 280 Q 140 200 220 220 T 360 100" stroke="oklch(0.58 0.22 18)" strokeWidth="3" strokeDasharray="6 4" fill="none" />
-                  </svg>
-                  <span className="absolute left-6 top-6 grid size-8 place-items-center rounded-full bg-ink text-[10px] font-bold text-cream">A</span>
-                  <span className="absolute bottom-6 right-6 grid size-9 place-items-center rounded-full bg-primary text-[11px] font-bold text-cream shadow-lg shadow-primary/40">B</span>
-                  <div className="absolute bottom-3 left-3 rounded-full bg-cream/90 px-3 py-1 text-[10px] font-medium uppercase tracking-widest text-foreground">
-                    Ruta optimizada · 2.4 km
-                  </div>
-                </div>
-
-                {/* Customer info */}
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-                    Cliente
-                  </p>
-                  <h3 className="font-display text-xl font-semibold">{order.customerName}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{order.address}</p>
-                  {order.notes && (
-                    <p className="mt-2 rounded-lg bg-amber-brand/15 px-3 py-2 text-xs text-foreground">
-                      <span className="font-semibold">Nota:</span> {order.notes}
-                    </p>
-                  )}
-                </div>
-
-                {/* Items mini */}
-                <div className="rounded-xl border border-border bg-card p-3">
-                  <ul className="space-y-1.5 text-xs">
-                    {order.items.map((i) => {
-                      const p = menu.find((m) => m.id === i.productId);
-                      return (
-                        <li key={i.productId} className="flex justify-between">
-                          <span><span className="font-mono">{i.quantity}×</span> {p?.name ?? i.productId}</span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                  <div className="mt-2 flex justify-between border-t border-dashed border-border pt-2 text-xs font-semibold">
-                    <span>Total a cobrar</span>
-                    <span className="font-mono text-primary">{formatCOP(order.total)}</span>
-                  </div>
-                </div>
-
-                {/* Contact actions */}
-                <div className="grid grid-cols-2 gap-3">
-                  <a
-                    href={`tel:${order.phone}`}
-                    className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card py-3 text-xs font-semibold uppercase tracking-wider"
-                  >
-                    <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.72 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.59 2.81.72a2 2 0 0 1 1.72 2z"/></svg>
-                    Llamar
-                  </a>
-                  <a
-                    href={`https://wa.me/${order.phone.replace(/\D/g, "")}`}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-[#25D366] py-3 text-xs font-semibold uppercase tracking-wider text-white"
-                  >
-                    <svg className="size-4" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.2-1.8-.9-2-1s-.5-.1-.7.1-.8 1-1 1.2-.4.2-.7.1c-1-.4-1.9-1-2.7-1.9-.7-.7-1.2-1.7-1.4-2.1-.1-.3 0-.5.1-.6l.5-.5c.1-.2.2-.3.3-.5s.1-.3 0-.5-.7-1.7-1-2.3c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4s-1 1-1 2.4 1 2.8 1.2 3 2 3.1 4.9 4.3c.7.3 1.2.4 1.6.5.7.2 1.3.2 1.8.1.5-.1 1.7-.7 2-1.4.2-.7.2-1.2.1-1.4-.1-.1-.3-.2-.5-.3zM12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20z"/></svg>
-                    WhatsApp
-                  </a>
-                </div>
-
-                {/* Big CTA */}
-                <button
-                  onClick={advance}
-                  disabled={!NEXT[order.status].next}
-                  className="w-full rounded-2xl bg-primary py-5 text-base font-bold uppercase tracking-wider text-primary-foreground shadow-xl shadow-primary/30 transition-transform active:scale-[0.98] disabled:bg-secondary disabled:text-muted-foreground disabled:shadow-none"
-                >
-                  {NEXT[order.status].label}
-                </button>
-              </div>
-            ) : (
-              <div className="bg-cream px-6 pb-10 pt-6 text-center">
-                <p className="text-sm text-muted-foreground">
-                  Digita el código del pedido para ver la ficha de entrega.
-                </p>
-              </div>
-            )}
+        {actuales.length === 0 ? (
+          <div className="rounded-2xl border-2 border-dashed border-border py-10 text-center">
+            <p className="text-sm text-muted-foreground">
+              No tienes pedidos en ruta
+            </p>
+            <p className="text-xs text-muted-foreground/60 mt-1">
+              Aparecerán aquí cuando recojas un pedido
+            </p>
           </div>
-        </section>
-
-        {/* Side queue */}
-        <aside className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-amber-brand">
-            Tu cola de hoy
-          </p>
-          <h3 className="mt-1 font-display text-xl font-semibold">Pedidos activos</h3>
-          <ul className="mt-4 space-y-2">
-            {myQueue.map((o) => (
+        ) : (
+          <ul className="space-y-3">
+            {actuales.map((o) => (
               <li key={o.id}>
-                <button
-                  onClick={() => {
-                    setOrder(o);
-                    setCode(o.id);
-                    setError(null);
-                  }}
-                  className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition-colors ${
-                    order?.id === o.id
-                      ? "border-primary/40 bg-primary/15"
-                      : "border-white/10 bg-white/5 hover:bg-white/10"
-                  }`}
-                >
-                  <div>
-                    <p className="font-mono text-xs text-cream/60">{o.id}</p>
-                    <p className="font-medium">{o.customerName}</p>
-                  </div>
-                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-cream/80">
-                    {o.status}
-                  </span>
-                </button>
+                <OrderCard order={o} onSelect={onSelectOrder} />
               </li>
             ))}
           </ul>
-        </aside>
+        )}
+      </section>
+
+      {/* ── Pedidos Aceptados ── */}
+      <section>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="size-2.5 rounded-full bg-amber-400" />
+          <h3 className="font-display text-lg font-semibold">
+            Pedidos Aceptados
+          </h3>
+          <span className="ml-auto rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-700">
+            {aceptados.length}
+          </span>
+        </div>
+
+        {aceptados.length === 0 ? (
+          <div className="rounded-2xl border-2 border-dashed border-border py-10 text-center">
+            <p className="text-sm text-muted-foreground">
+              Sin pedidos en espera
+            </p>
+          </div>
+        ) : (
+          <ul className="space-y-3">
+            {aceptados.map((o) => (
+              <li key={o.id}>
+                <OrderCard order={o} onSelect={onSelectOrder} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
+
+/* ─── Tarjeta de Pedido (reutilizable) ─── */
+function OrderCard({
+  order,
+  onSelect,
+}: {
+  order: Order;
+  onSelect: (o: Order) => void;
+}) {
+  return (
+    <button
+      onClick={() => onSelect(order)}
+      className="flex w-full items-center justify-between rounded-2xl border border-border bg-cream px-5 py-4 text-left shadow-sm transition-all hover:shadow-md hover:border-primary/30 active:scale-[0.98]"
+    >
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className="font-mono text-xs text-muted-foreground">{order.id}</p>
+          <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1">
+            <Clock className="size-3" />
+            {order.createdAt}
+          </span>
+        </div>
+        <p className="font-display font-semibold mt-0.5 truncate">
+          {order.customerName}
+        </p>
+        <p className="text-xs text-muted-foreground truncate mt-0.5">
+          {order.address}
+        </p>
+      </div>
+      <div className="ml-3 shrink-0 flex flex-col items-end gap-1.5">
+        <span
+          className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${STATUS_COLORS[order.status]}`}
+        >
+          {order.status}
+        </span>
+        <span className="font-mono text-xs font-semibold text-primary">
+          {formatCOP(order.total)}
+        </span>
+      </div>
+    </button>
+  );
+}
+
+/* ═════════════════════════════════════════════════
+   Vista Detalle — Ficha de Ejecución con Acordeones
+   ═════════════════════════════════════════════════ */
+function OrderDetailView({
+  order,
+  onBack,
+}: {
+  order: Order;
+  onBack: () => void;
+}) {
+  const { menu, updateOrderStatus } = useOrders();
+  const [currentStatus, setCurrentStatus] = useState(order.status);
+
+  const advance = () => {
+    const next = NEXT[currentStatus].next;
+    if (!next) return;
+    updateOrderStatus(order.id, next);
+    setCurrentStatus(next);
+  };
+
+  const encodedAddress = encodeURIComponent(order.address);
+  const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+  const wazeUrl = `https://waze.com/ul?q=${encodedAddress}`;
+
+  return (
+    <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-400">
+      {/* Botón volver */}
+      <button
+        onClick={onBack}
+        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors -ml-1"
+      >
+        <ChevronLeft className="size-5" />
+        Volver a mis pedidos
+      </button>
+
+      {/* Cabecera */}
+      <div className="rounded-2xl border border-border bg-cream p-5 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Pedido
+            </p>
+            <h2 className="font-display text-2xl font-bold mt-0.5">
+              {order.id}
+            </h2>
+          </div>
+          <span
+            className={`rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wider ${STATUS_COLORS[currentStatus]}`}
+          >
+            {currentStatus}
+          </span>
+        </div>
+      </div>
+
+      {/* ── Mapa Integrado ── */}
+      <div className="rounded-2xl border border-border overflow-hidden shadow-sm">
+        <div className="relative aspect-[16/9] bg-gradient-to-br from-amber-brand/20 via-cream to-primary/10">
+          <svg
+            className="absolute inset-0 size-full"
+            viewBox="0 0 400 225"
+            preserveAspectRatio="none"
+            aria-hidden
+          >
+            <path
+              d="M0 180 L60 160 L100 185 L160 140 L220 160 L280 110 L340 130 L400 90"
+              stroke="oklch(0.5 0.02 60)"
+              strokeOpacity="0.25"
+              strokeWidth="1.5"
+              fill="none"
+            />
+            <path
+              d="M0 130 L80 110 L140 130 L200 80 L260 110 L320 60 L400 80"
+              stroke="oklch(0.5 0.02 60)"
+              strokeOpacity="0.2"
+              strokeWidth="1"
+              fill="none"
+            />
+            <path
+              d="M40 200 Q 140 140 220 160 T 360 60"
+              stroke="oklch(0.58 0.22 18)"
+              strokeWidth="3"
+              strokeDasharray="6 4"
+              fill="none"
+            />
+          </svg>
+          <span className="absolute left-5 top-5 grid size-8 place-items-center rounded-full bg-ink text-[10px] font-bold text-cream shadow-md">
+            A
+          </span>
+          <span className="absolute bottom-5 right-5 grid size-9 place-items-center rounded-full bg-primary text-[11px] font-bold text-cream shadow-lg shadow-primary/40">
+            B
+          </span>
+          <div className="absolute bottom-3 left-3 rounded-full bg-cream/90 px-3 py-1 text-[10px] font-medium uppercase tracking-widest text-foreground backdrop-blur-sm">
+            <MapPin className="size-3 inline mr-1 -mt-0.5" />
+            Ruta estimada · 2.4 km
+          </div>
+        </div>
+
+        {/* Botones de navegación externa */}
+        <div className="grid grid-cols-2 divide-x divide-border border-t border-border bg-cream">
+          <a
+            href={googleMapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 py-3.5 text-xs font-semibold uppercase tracking-wider text-foreground hover:bg-secondary/50 transition-colors"
+          >
+            <Navigation className="size-4 text-primary" />
+            Google Maps
+          </a>
+          <a
+            href={wazeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 py-3.5 text-xs font-semibold uppercase tracking-wider text-foreground hover:bg-secondary/50 transition-colors"
+          >
+            <Navigation className="size-4 text-[#33CCFF]" />
+            Waze
+          </a>
+        </div>
+      </div>
+
+      {/* ── Acordeones (Cerrados por defecto) ── */}
+      <div className="rounded-2xl border border-border bg-cream shadow-sm overflow-hidden">
+        <Accordion type="multiple" className="w-full">
+          {/* Datos del Cliente */}
+          <AccordionItem value="cliente" className="border-border px-5">
+            <AccordionTrigger className="hover:no-underline">
+              <span className="flex items-center gap-2 text-sm font-semibold">
+                <User className="size-4 text-primary" />
+                Datos del Cliente
+              </span>
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="space-y-3 pb-1">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                    Nombre
+                  </p>
+                  <p className="font-display text-base font-semibold mt-0.5">
+                    {order.customerName}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                    Dirección
+                  </p>
+                  <p className="text-sm mt-0.5">{order.address}</p>
+                </div>
+                {order.notes && (
+                  <div className="rounded-xl bg-amber-brand/10 px-4 py-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-amber-700 mb-1">
+                      Nota del cliente
+                    </p>
+                    <p className="text-sm">{order.notes}</p>
+                  </div>
+                )}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          {/* Resumen de Compra */}
+          <AccordionItem value="compra" className="border-border px-5">
+            <AccordionTrigger className="hover:no-underline">
+              <span className="flex items-center gap-2 text-sm font-semibold">
+                <Package className="size-4 text-primary" />
+                Resumen de Compra
+              </span>
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="rounded-xl border border-border bg-card p-4">
+                <ul className="space-y-2 text-sm">
+                  {order.items.map((i) => {
+                    const p = menu.find((m) => m.id === i.productId);
+                    return (
+                      <li key={i.productId} className="flex justify-between">
+                        <span>
+                          <span className="font-mono text-muted-foreground">
+                            {i.quantity}×
+                          </span>{" "}
+                          {p?.name ?? i.productId}
+                        </span>
+                        {p && (
+                          <span className="font-mono text-muted-foreground">
+                            {formatCOP(p.price * i.quantity)}
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+                <div className="mt-3 flex justify-between border-t border-dashed border-border pt-3 font-semibold">
+                  <span>Total a cobrar</span>
+                  <span className="font-mono text-primary">
+                    {formatCOP(order.total)}
+                  </span>
+                </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          {/* Datos de Recogida */}
+          <AccordionItem
+            value="recogida"
+            className="border-b-0 border-border px-5"
+          >
+            <AccordionTrigger className="hover:no-underline">
+              <span className="flex items-center gap-2 text-sm font-semibold">
+                <Store className="size-4 text-primary" />
+                Datos de Recogida
+              </span>
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="space-y-2 pb-1">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                    Restaurante
+                  </p>
+                  <p className="text-sm font-medium mt-0.5">
+                    BurgerCore — Sede Principal
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                    Dirección de recogida
+                  </p>
+                  <p className="text-sm mt-0.5">
+                    Cra 48 #10-45, El Poblado, Medellín
+                  </p>
+                </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </div>
+
+      {/* ── Acciones rápidas ── */}
+      <div className="grid grid-cols-2 gap-3">
+        <a
+          href={`tel:${order.phone}`}
+          className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-cream py-4 text-xs font-semibold uppercase tracking-wider shadow-sm hover:bg-secondary/50 transition-colors"
+        >
+          <Phone className="size-4" />
+          Llamar
+        </a>
+        <a
+          href={`https://wa.me/${order.phone.replace(/\D/g, "")}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] py-4 text-xs font-semibold uppercase tracking-wider text-white shadow-sm hover:bg-[#20BD5A] transition-colors"
+        >
+          <MessageCircle className="size-4" />
+          WhatsApp
+        </a>
+      </div>
+
+      {/* ── CTA Principal ── */}
+      <button
+        onClick={advance}
+        disabled={!NEXT[currentStatus].next}
+        className="w-full rounded-2xl bg-primary py-5 text-base font-bold uppercase tracking-wider text-primary-foreground shadow-xl shadow-primary/30 transition-transform active:scale-[0.98] disabled:bg-secondary disabled:text-muted-foreground disabled:shadow-none"
+      >
+        {NEXT[currentStatus].label}
+      </button>
+    </div>
+  );
+}
+
+/* ═════════════════════════════════════════════════
+   Vista Raíz — Controlador de navegación interna
+   ═════════════════════════════════════════════════ */
+function DomiciliarioView() {
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+
+  return (
+    <div className="min-h-screen bg-cream/50 text-foreground">
+      <TopBar
+        title={selectedOrder ? `Pedido ${selectedOrder.id}` : "Ruta activa"}
+        subtitle={selectedOrder ? selectedOrder.customerName : "Buscar y entregar"}
+      />
+      <main className="mx-auto max-w-lg px-4 py-6 sm:px-6">
+        {selectedOrder ? (
+          <OrderDetailView
+            order={selectedOrder}
+            onBack={() => setSelectedOrder(null)}
+          />
+        ) : (
+          <HubView onSelectOrder={setSelectedOrder} />
+        )}
       </main>
     </div>
   );
