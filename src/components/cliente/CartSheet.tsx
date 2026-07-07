@@ -46,11 +46,18 @@ export function CartSheet() {
     if (!user || cart.length === 0) return;
     setIsPaying(true);
     await new Promise((r) => setTimeout(r, 900));
-    confirmCart({
-      name: user.name,
-      address,
-      phone: user.phone ?? "",
-    });
+    try {
+      await confirmCart({
+        name: user.name,
+        address,
+        phone: user.phone ?? "",
+      });
+    } catch (e) {
+      console.error("Error creating order:", e);
+      alert("Hubo un error al procesar tu pedido. Intenta nuevamente.");
+      setIsPaying(false);
+      return;
+    }
     setIsPaying(false);
     setStep("cart");
     setCartOpen(false);

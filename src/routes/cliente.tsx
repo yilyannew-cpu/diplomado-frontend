@@ -31,7 +31,7 @@ export const Route = createFileRoute("/cliente")({
 const categories: Array<Category | "Todo"> = ["Todo", ...CATEGORIES];
 
 function ClienteView() {
-  const { menu, addToCart, clientTab, clientModule, promotions } = useOrders();
+  const { menu, isLoadingMenu, addToCart, clientTab, clientModule, promotions } = useOrders();
   const [activeCat, setActiveCat] = useState<(typeof categories)[number]>("Todo");
   const [activeRest, setActiveRest] = useState<string | "Todos">("Todos");
   const [selectedProduct, setSelectedProduct] = useState<{ product: MenuItem; basePrice: number } | null>(null);
@@ -51,6 +51,14 @@ function ClienteView() {
     () => Object.fromEntries(restaurantsMock.map((r) => [r.id, r])),
     [],
   );
+
+  if (isLoadingMenu) {
+    return (
+      <div className="min-h-screen bg-cream flex items-center justify-center">
+        <div className="text-primary font-semibold text-xl">Cargando menú delicioso...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-cream">

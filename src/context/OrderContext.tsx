@@ -1,6 +1,8 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { dispatchHistoryMock, type DispatchRecord } from "@/mocks/dispatchHistoryMock";
-import { menuMock, type MenuItem } from "@/mocks/menuMock";
+import { type MenuItem } from "@/mocks/menuMock";
+import { apiClient } from "@/lib/apiClient";
 import { ordersMock, type Order, type OrderStatus } from "@/mocks/ordersMock";
 import { promotionsMock, type Promotion } from "@/mocks/promotionsMock";
 import { canAssignBatchToCourier } from "@/lib/deliveryLimits";
@@ -27,6 +29,7 @@ export type ClientModule = "inicio" | "promociones" | "rankin";
 
 interface OrderState {
   menu: MenuItem[];
+  isLoadingMenu: boolean;
   orders: Order[];
   dispatchHistory: DispatchRecord[];
   promotions: Promotion[];
@@ -43,7 +46,7 @@ interface OrderState {
   removeFromCart: (cartItemId: string) => void;
   clearCart: () => void;
   cartTotal: number;
-  confirmCart: (customer: { name: string; address: string; phone: string }) => Order;
+  confirmCart: (customer: { name: string; address: string; phone: string }) => Promise<Order>;
   updateOrderStatus: (id: string, status: OrderStatus) => void;
   assignDeliveryPerson: (orderId: string, deliveryPersonId: string) => void;
   assignDeliveryPersonBatch: (orderIds: string[], deliveryPersonId: string) => void;
@@ -71,8 +74,25 @@ interface OrderState {
 const OrderContext = createContext<OrderState | null>(null);
 
 export function OrderProvider({ children }: { children: ReactNode }) {
-  const [menu, setMenu] = useState<MenuItem[]>(menuMock);
-  const [orders, setOrders] = useState<Order[]>(ordersMock);
+  const queryClient = useQueryClient();
+
+  const { data: menu = [], isLoading: isLoadingMenu } = useQuery<MenuItem[]>({
+    queryKey: ['products'],
+    queryFn: async () => {
+      const res = await apiClient.get('/products');
+      return res.data;
+    }
+  });
+
+  const { data: orders = [] } = useQuery<Order[]>({
+    queryKey: ['orders', 'restaurant', 'rest-ffcore'],
+    queryFn: async () => {
+      const res = await apiClient.get('/orders/restaurant/rest-ffcore');
+      return res.data;
+    },
+    refetchInterval: 5000, // Poll every 5s for now until websockets
+  });
+
   const [dispatchHistory, setDispatchHistory] = useState<DispatchRecord[]>(dispatchHistoryMock);
   const [promotions, setPromotions] = useState<Promotion[]>(promotionsMock);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -122,94 +142,76 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     [cart, promotions],
   );
 
-  const confirmCart: OrderState["confirmCart"] = (customer) => {
-    const id = `PED-${(orders.length + 101).toString()}`;
+  const confirmCart: OrderState["confirmCart"] = async (customer) => {
     const deliveryFee = DEFAULT_DELIVERY_FEE_COP;
-    const order: Order = {
-      id,
+    const payload = {
       customerName: customer.name,
       address: customer.address,
       phone: customer.phone,
-      items: cart.map((c) => ({ productId: c.product.id, quantity: c.quantity })),
-      total: cartTotal + deliveryFee,
-      deliveryFee,
-      status: "Recibido",
-      createdAt: new Date().toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" }),
-      receivedAt: Date.now(),
-      statusEnteredAt: Date.now(),
+      restaurantId: "rest-ffcore", // Defaulting for now
+      items: cart.map((c) => ({
+        productId: c.product.id,
+        quantity: c.quantity,
+        customizations: c.customizations,
+      })),
     };
-    setOrders((o) => [order, ...o]);
+
+    const res = await apiClient.post('/orders', payload);
+    const order = res.data;
+
+    await queryClient.invalidateQueries({ queryKey: ['orders'] });
     setCart([]);
     setActiveClientOrderId(order.id);
     setClientTab("tracking");
     return order;
   };
 
-  const updateOrderStatus = (id: string, status: OrderStatus) => {
-    setOrders((o) =>
-      o.map((or) =>
-        or.id === id ? { ...or, status, statusEnteredAt: Date.now() } : or,
-      ),
-    );
+  const updateOrderStatus = async (id: string, status: OrderStatus) => {
+    try {
+      await apiClient.patch(`/orders/${id}/status`, { status });
+      await queryClient.invalidateQueries({ queryKey: ['orders'] });
+    } catch (e) {
+      console.error("Failed to update status:", e);
+    }
   };
 
   const assignDeliveryPerson = (orderId: string, deliveryPersonId: string) => {
     assignDeliveryPersonBatch([orderId], deliveryPersonId);
   };
 
-  const assignDeliveryPersonBatch = (orderIds: string[], deliveryPersonId: string) => {
-    assignCourierOnlyBatch(orderIds, deliveryPersonId);
-    dispatchOrderBatch(orderIds);
+  const assignDeliveryPersonBatch = async (orderIds: string[], deliveryPersonId: string) => {
+    try {
+      await Promise.all(orderIds.map(id => apiClient.patch(`/orders/${id}/assign`, { courierId: deliveryPersonId })));
+      await queryClient.invalidateQueries({ queryKey: ['orders'] });
+    } catch (e) {
+      console.error("Failed to assign batch:", e);
+    }
   };
 
   const assignCourierOnlyBatch = (orderIds: string[], deliveryPersonId: string) => {
-    if (!canAssignBatchToCourier(orders, deliveryPersonId, orderIds)) {
-      return;
-    }
-    const idSet = new Set(orderIds);
-    setOrders((o) =>
-      o.map((or) => (idSet.has(or.id) ? { ...or, deliveryPersonId } : or)),
-    );
+    // This was mostly used for local state preview, we'll just forward to the assignBatch now
+    assignDeliveryPersonBatch(orderIds, deliveryPersonId);
   };
 
-  const dispatchOrderBatch = (orderIds: string[]) => {
-    const idSet = new Set(orderIds);
-    const now = Date.now();
-
-    const toDispatch = orders.filter(
-      (o) => idSet.has(o.id) && o.status === "Listo" && o.deliveryPersonId,
-    );
-
-    if (toDispatch.length > 0) {
-      setDispatchHistory((history) => [
-        ...toDispatch.map((o) => orderToDispatchRecord(o, now)),
-        ...history,
-      ]);
+  const dispatchOrderBatch = async (orderIds: string[]) => {
+    try {
+      // In the backend, dispatching might just mean setting status to "En Camino"
+      await Promise.all(orderIds.map(id => apiClient.patch(`/orders/${id}/status`, { status: "En Camino" })));
+      await queryClient.invalidateQueries({ queryKey: ['orders'] });
+    } catch (e) {
+      console.error("Failed to dispatch batch:", e);
     }
-
-    setOrders((o) =>
-      o.map((or) =>
-        idSet.has(or.id) && or.status === "Listo"
-          ? {
-              ...or,
-              status: "En Camino" as OrderStatus,
-              dispatchedAt: now,
-              statusEnteredAt: now,
-            }
-          : or,
-      ),
-    );
   };
 
   const toggleAvailability = (id: string) => {
-    setMenu((m) => m.map((p) => (p.id === id ? { ...p, available: !p.available } : p)));
+    // To be implemented as mutation later
   };
 
   const updateMenuItem = (
     id: string,
     updates: Pick<MenuItem, "price" | "description" | "image" | "available">,
   ) => {
-    setMenu((m) => m.map((p) => (p.id === id ? { ...p, ...updates } : p)));
+    // To be implemented as mutation later
   };
 
   const updateProductCustomization = (
@@ -217,22 +219,11 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     ingredients: MenuItem["ingredients"],
     modifierGroups: MenuItem["modifierGroups"],
   ) => {
-    setMenu((m) => m.map((p) => (p.id === id ? { ...p, ingredients, modifierGroups } : p)));
+    // To be implemented as mutation later
   };
 
   const addMenuItem = (item: Omit<MenuItem, "id" | "restaurantId">) => {
-    setMenu((m) => {
-      const maxNum = m.reduce((max, p) => {
-        const n = Number.parseInt(p.id.replace("prod-", ""), 10);
-        return Number.isNaN(n) ? max : Math.max(max, n);
-      }, 0);
-      const newItem: MenuItem = {
-        ...item,
-        id: `prod-${String(maxNum + 1).padStart(2, "0")}`,
-        restaurantId: "rest-ffcore",
-      };
-      return [...m, newItem];
-    });
+    // To be implemented as mutation later
   };
 
   const addPromotion = (promotion: Omit<Promotion, "id" | "createdAt">) => {
@@ -260,6 +251,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     <OrderContext.Provider
       value={{
         menu,
+        isLoadingMenu,
         orders,
         dispatchHistory,
         promotions,
