@@ -8,9 +8,17 @@ import { DEFAULT_DELIVERY_FEE_COP } from "@/lib/deliveryFees";
 import { orderToDispatchRecord } from "@/lib/orderHistory";
 import { getProductPricing } from "@/lib/promotions";
 
+export interface Customizations {
+  removedIngredients: string[]; // array of ingredient ids
+  addedModifiers: Record<string, string[]>; // groupId -> array of option ids
+  extraPrice: number;
+}
+
 export interface CartItem {
+  id: string; // unique hash to distinguish same product with different customizations
   product: MenuItem;
   quantity: number;
+  customizations?: Customizations;
 }
 
 export type ClientTab = "menu" | "tracking";
@@ -31,8 +39,8 @@ interface OrderState {
   setClientTab: (tab: ClientTab) => void;
   clientModule: ClientModule;
   setClientModule: (module: ClientModule) => void;
-  addToCart: (product: MenuItem) => void;
-  removeFromCart: (productId: string) => void;
+  addToCart: (product: MenuItem, customizations?: Customizations) => void;
+  removeFromCart: (cartItemId: string) => void;
   clearCart: () => void;
   cartTotal: number;
   confirmCart: (customer: { name: string; address: string; phone: string }) => Order;
@@ -45,6 +53,11 @@ interface OrderState {
   updateMenuItem: (
     id: string,
     updates: Pick<MenuItem, "price" | "description" | "image" | "available">,
+  ) => void;
+  updateProductCustomization: (
+    id: string,
+    ingredients: MenuItem["ingredients"],
+    modifierGroups: MenuItem["modifierGroups"],
   ) => void;
   addMenuItem: (item: Omit<MenuItem, "id" | "restaurantId">) => void;
   addPromotion: (promotion: Omit<Promotion, "id" | "createdAt">) => void;
@@ -73,22 +86,26 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     [cart],
   );
 
-  const addToCart = (product: MenuItem) => {
+  const addToCart = (product: MenuItem, customizations?: Customizations) => {
+    const hash = customizations
+      ? `${product.id}-${JSON.stringify(customizations.removedIngredients)}-${JSON.stringify(customizations.addedModifiers)}`
+      : product.id;
+
     setCart((c) => {
-      const existing = c.find((i) => i.product.id === product.id);
+      const existing = c.find((i) => i.id === hash);
       if (existing) {
         return c.map((i) =>
-          i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i,
+          i.id === hash ? { ...i, quantity: i.quantity + 1 } : i,
         );
       }
-      return [...c, { product, quantity: 1 }];
+      return [...c, { id: hash, product, quantity: 1, customizations }];
     });
   };
 
-  const removeFromCart = (productId: string) => {
+  const removeFromCart = (cartItemId: string) => {
     setCart((c) =>
       c
-        .map((i) => (i.product.id === productId ? { ...i, quantity: i.quantity - 1 } : i))
+        .map((i) => (i.id === cartItemId ? { ...i, quantity: i.quantity - 1 } : i))
         .filter((i) => i.quantity > 0),
     );
   };
@@ -99,7 +116,8 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     () =>
       cart.reduce((acc, item) => {
         const pricing = getProductPricing(item.product, promotions);
-        return acc + pricing.salePrice * item.quantity;
+        const extraPrice = item.customizations?.extraPrice || 0;
+        return acc + (pricing.salePrice + extraPrice) * item.quantity;
       }, 0),
     [cart, promotions],
   );
@@ -194,6 +212,14 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     setMenu((m) => m.map((p) => (p.id === id ? { ...p, ...updates } : p)));
   };
 
+  const updateProductCustomization = (
+    id: string,
+    ingredients: MenuItem["ingredients"],
+    modifierGroups: MenuItem["modifierGroups"],
+  ) => {
+    setMenu((m) => m.map((p) => (p.id === id ? { ...p, ingredients, modifierGroups } : p)));
+  };
+
   const addMenuItem = (item: Omit<MenuItem, "id" | "restaurantId">) => {
     setMenu((m) => {
       const maxNum = m.reduce((max, p) => {
@@ -258,6 +284,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
         dispatchOrderBatch,
         toggleAvailability,
         updateMenuItem,
+        updateProductCustomization,
         addMenuItem,
         addPromotion,
         updatePromotion,

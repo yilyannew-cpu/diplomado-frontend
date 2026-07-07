@@ -11,6 +11,29 @@ export const ADDITION_CATEGORY = "Adiciones" as const satisfies Category;
 
 export type Category = (typeof CATEGORIES)[number];
 
+export interface Ingredient {
+  id: string;
+  name: string;
+  available: boolean;
+}
+
+export interface ModifierOption {
+  id: string;
+  name: string;
+  priceExtra: number;
+  available: boolean;
+  groupId: string;
+}
+
+export interface ModifierGroup {
+  id: string;
+  name: string;
+  productId: string;
+  minSelections: number;
+  maxSelections: number;
+  options: ModifierOption[];
+}
+
 export interface MenuItem {
   id: string;
   name: string;
@@ -20,6 +43,8 @@ export interface MenuItem {
   image: string;
   available: boolean;
   restaurantId: string;
+  ingredients?: Ingredient[];
+  modifierGroups?: ModifierGroup[];
 }
 
 export const menuMock: MenuItem[] = [
@@ -32,6 +57,41 @@ export const menuMock: MenuItem[] = [
     image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=80",
     available: true,
     restaurantId: "rest-ffcore",
+    ingredients: [
+      { id: "ing-pan", name: "Pan Brioche", available: true },
+      { id: "ing-carne", name: "Carne de Res (150g)", available: true },
+      { id: "ing-queso", name: "Queso Cheddar", available: true },
+      { id: "ing-tocino", name: "Tocino", available: true },
+      { id: "ing-salsa", name: "Salsa de la casa", available: true },
+      { id: "ing-tomate", name: "Tomate", available: true },
+      { id: "ing-cebolla", name: "Cebolla Grillé", available: true },
+    ],
+    modifierGroups: [
+      {
+        id: "modg-termino-01",
+        name: "Término de la carne",
+        productId: "prod-01",
+        minSelections: 1,
+        maxSelections: 1,
+        options: [
+          { id: "modo-term-0", name: "Medio", priceExtra: 0, available: true, groupId: "modg-termino-01" },
+          { id: "modo-term-1", name: "Tres Cuartos", priceExtra: 0, available: true, groupId: "modg-termino-01" },
+          { id: "modo-term-2", name: "Bien Asada", priceExtra: 0, available: true, groupId: "modg-termino-01" },
+        ],
+      },
+      {
+        id: "modg-extras-01",
+        name: "Adiciona Extras",
+        productId: "prod-01",
+        minSelections: 0,
+        maxSelections: 3,
+        options: [
+          { id: "modo-extra-0", name: "Tocino Crujiente", priceExtra: 3500, available: true, groupId: "modg-extras-01" },
+          { id: "modo-extra-1", name: "Queso Cheddar", priceExtra: 2500, available: true, groupId: "modg-extras-01" },
+          { id: "modo-extra-2", name: "Papas a la francesa pequeñas", priceExtra: 4000, available: true, groupId: "modg-extras-01" },
+        ],
+      },
+    ],
   },
   {
     id: "prod-02",
