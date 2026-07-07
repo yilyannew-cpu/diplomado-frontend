@@ -32,24 +32,21 @@ const roleLabels: Record<Role, string> = {
 };
 
 export function RoleGuard({ role, children }: { role: Role; children: ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, quickLogin } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (isLoading) return;
-    if (!user) {
-      navigate({ to: getLoginPathForRole(role) });
+    if (!user || user.role !== role) {
+      quickLogin(role);
       return;
     }
-    if (user.role !== role) {
-      navigate({ to: roleRoutes[user.role] });
-    }
-  }, [user, isLoading, role, navigate]);
+  }, [user, isLoading, role, navigate, quickLogin]);
 
   if (isLoading || !user || user.role !== role) {
     return (
       <div className="grid min-h-screen place-items-center text-sm text-muted-foreground">
-        Verificando sesión…
+        Cargando…
       </div>
     );
   }
@@ -138,8 +135,12 @@ export function TopBar({
   const isDomi = user.role === "domiciliario";
 
   const handleLogout = () => {
-    const loginPath = getLoginPathForRole(user.role);
-    void logout().then(() => navigate({ to: loginPath }));
+    // Escapar a la ruta raíz de los 4 botones inmediatamente
+    navigate({ to: "/" });
+    // Limpiar la sesión en el siguiente tick de JS para evitar que el RoleGuard intente hacer auto-login en esta misma vista
+    setTimeout(() => {
+      void logout();
+    }, 0);
   };
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur">
