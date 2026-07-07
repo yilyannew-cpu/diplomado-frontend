@@ -37,6 +37,7 @@ function ClienteView() {
     () =>
       menu.filter(
         (m) =>
+          m.available &&
           (activeCat === "Todo" || m.category === activeCat) &&
           (activeRest === "Todos" || m.restaurantId === activeRest),
       ),
@@ -150,7 +151,7 @@ function ClienteView() {
             ))}
           </div>
 
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((p) => (
               (() => {
                 const brand = restaurantById[p.restaurantId];
