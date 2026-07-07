@@ -37,6 +37,7 @@ function ClienteView() {
     () =>
       menu.filter(
         (m) =>
+          m.available &&
           (activeCat === "Todo" || m.category === activeCat) &&
           (activeRest === "Todos" || m.restaurantId === activeRest),
       ),
