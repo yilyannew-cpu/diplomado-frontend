@@ -31,9 +31,8 @@ export const Route = createFileRoute("/cliente")({
 const categories: Array<Category | "Todo"> = ["Todo", ...CATEGORIES];
 
 function ClienteView() {
-  const { menu, isLoadingMenu, addToCart, clientTab, clientModule, promotions } = useOrders();
+  const { menu, isLoadingMenu, addToCart, clientTab, clientModule, promotions, restaurants, activeRestaurantId, setActiveRestaurantId } = useOrders();
   const [activeCat, setActiveCat] = useState<(typeof categories)[number]>("Todo");
-  const [activeRest, setActiveRest] = useState<string | "Todos">("Todos");
   const [selectedProduct, setSelectedProduct] = useState<{ product: MenuItem; basePrice: number } | null>(null);
 
   const filtered = useMemo(
@@ -41,15 +40,14 @@ function ClienteView() {
       menu.filter(
         (m) =>
           m.available &&
-          (activeCat === "Todo" || m.category === activeCat) &&
-          (activeRest === "Todos" || m.restaurantId === activeRest),
+          (activeCat === "Todo" || m.category === activeCat)
       ),
-    [menu, activeCat, activeRest],
+    [menu, activeCat],
   );
 
   const restaurantById = useMemo(
-    () => Object.fromEntries(restaurantsMock.map((r) => [r.id, r])),
-    [],
+    () => Object.fromEntries(restaurants.map((r) => [r.id, r])),
+    [restaurants],
   );
 
   if (isLoadingMenu) {
@@ -99,30 +97,22 @@ function ClienteView() {
               <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground sm:text-[11px] sm:tracking-[0.2em]">
                 Restaurantes en tu zona
               </p>
-              <button
-                onClick={() => setActiveRest("Todos")}
-                className={`shrink-0 text-[10px] font-medium uppercase tracking-wider transition-colors sm:text-[11px] ${
-                  activeRest === "Todos" ? "text-primary" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Ver todos
-              </button>
             </div>
             <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 md:grid-cols-4">
-              {restaurantsMock.map((r) => {
-                const isActive = activeRest === r.id;
-                const count = menu.filter((m) => m.restaurantId === r.id).length;
+              {restaurants.map((r) => {
+                const isActive = activeRestaurantId === r.id;
+                // We no longer count locally because menu only has active restaurant items
                 return (
                   <button
                     key={r.id}
-                    onClick={() => setActiveRest(isActive ? "Todos" : r.id)}
+                    onClick={() => setActiveRestaurantId(r.id)}
                     className={`group flex w-full items-center gap-3 rounded-2xl border bg-card p-3 text-left transition-all hover:-translate-y-0.5 hover:shadow-md sm:p-3.5 ${
                       isActive ? "border-primary/60 ring-2 ring-primary/20" : "border-border"
                     }`}
                   >
                     <span
                       className="grid size-10 shrink-0 place-items-center rounded-xl font-display text-sm font-semibold text-white sm:size-11"
-                      style={{ backgroundColor: r.accent }}
+                      style={{ backgroundColor: r.accent || '#4f46e5' }}
                     >
                       {r.initials}
                     </span>
@@ -132,12 +122,10 @@ function ClienteView() {
                       </span>
                       <span className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-muted-foreground">
                         <span className="inline-flex items-center gap-0.5 font-medium text-amber-brand">
-                          ★ {r.rating.toFixed(1)}
+                          ★ {r.rating?.toFixed(1) || '0.0'}
                         </span>
                         <span aria-hidden>·</span>
-                        <span>{r.deliveryMinutes} min</span>
-                        <span aria-hidden>·</span>
-                        <span>{count} ítems</span>
+                        <span>{r.deliveryMinutes || 30} min</span>
                       </span>
                     </span>
                   </button>

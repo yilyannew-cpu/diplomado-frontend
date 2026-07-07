@@ -9,8 +9,7 @@ import {
 } from "react";
 import { authApi } from "@/lib/api/endpoints/auth";
 import { setToken, getToken } from "@/lib/api/client";
-import type { User, Role } from "@/lib/api/types";
-import { usersMock } from "@/mocks/usersMock";
+import type { User } from "@/lib/api/types";
 
 interface AuthState {
   user: User | null;
@@ -20,15 +19,13 @@ interface AuthState {
   logout: () => Promise<void>;
   refreshUser: () => Promise<User | null>;
   setSession: (token: string, user: User) => void;
-  /** Inyecta un usuario mock de forma síncrona — sin API. */
-  quickLogin: (role: Role) => User;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(!!(getToken()));
+  const [isLoading, setIsLoading] = useState(!!getToken());
 
   const setSession = useCallback((token: string, nextUser: User) => {
     setToken(token);
@@ -44,22 +41,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = getToken();
     if (!token) {
       setUser(null);
-      return null;
-    }
-
-    if (token.startsWith("mock-token-")) {
-      const role = token.replace("mock-token-", "") as Role;
-      const mock = usersMock.find((u) => u.role === role && u.status === "Activo");
-      if (mock) {
-        const fakeUser: User = {
-          id: mock.id, name: mock.name, email: mock.email, role: mock.role,
-          phone: mock.phone ?? null, vehicle: mock.vehicle ?? null,
-          document_id: mock.document_id ?? null, avatar: mock.avatar ?? null, status: mock.status,
-        };
-        setUser(fakeUser);
-        return fakeUser;
-      }
-      clearSession();
       return null;
     }
 
@@ -79,22 +60,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function hydrate() {
       const token = getToken();
       if (!token) {
-        if (!cancelled) setIsLoading(false);
-        return;
-      }
-
-      if (token.startsWith("mock-token-")) {
-        const role = token.replace("mock-token-", "") as Role;
-        const mock = usersMock.find((u) => u.role === role && u.status === "Activo");
-        if (mock && !cancelled) {
-          setUser({
-            id: mock.id, name: mock.name, email: mock.email, role: mock.role,
-            phone: mock.phone ?? null, vehicle: mock.vehicle ?? null,
-            document_id: mock.document_id ?? null, avatar: mock.avatar ?? null, status: mock.status,
-          });
-        } else if (!mock && !cancelled) {
-          clearSession();
-        }
         if (!cancelled) setIsLoading(false);
         return;
       }
@@ -129,11 +94,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = getToken();
     if (!token) return;
     
-    if (token.startsWith("mock-token-")) {
-      clearSession();
-      return;
-    }
-
     try {
       await authApi.logout();
     } catch {
@@ -142,28 +102,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearSession();
     }
   }, [clearSession]);
-
-  const quickLogin = useCallback(
-    (role: Role): User => {
-      const mock = usersMock.find((u) => u.role === role && u.status === "Activo");
-      if (!mock) throw new Error(`No hay usuario mock activo para el rol "${role}"`);
-      const fakeUser: User = {
-        id: mock.id,
-        name: mock.name,
-        email: mock.email,
-        role: mock.role,
-        phone: mock.phone ?? null,
-        vehicle: mock.vehicle ?? null,
-        document_id: mock.document_id ?? null,
-        avatar: mock.avatar ?? null,
-        status: mock.status,
-      };
-      setToken("mock-token-" + role);
-      setUser(fakeUser);
-      return fakeUser;
-    },
-    [],
-  );
 
   const value = useMemo<AuthState>(
     () => ({
@@ -174,9 +112,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       refreshUser,
       setSession,
-      quickLogin,
     }),
-    [user, isLoading, login, logout, refreshUser, setSession, quickLogin],
+    [user, isLoading, login, logout, refreshUser, setSession],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

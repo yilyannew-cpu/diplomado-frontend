@@ -32,16 +32,20 @@ const roleLabels: Record<Role, string> = {
 };
 
 export function RoleGuard({ role, children }: { role: Role; children: ReactNode }) {
-  const { user, isLoading, quickLogin } = useAuth();
+  const { user, isLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (isLoading) return;
-    if (!user || user.role !== role) {
-      quickLogin(role);
+    if (!user) {
+      const path = getLoginPathForRole(role);
+      navigate({ to: path, replace: true });
       return;
     }
-  }, [user, isLoading, role, navigate, quickLogin]);
+    if (user.role !== role) {
+      navigate({ to: roleRoutes[user.role], replace: true });
+    }
+  }, [user, isLoading, role, navigate]);
 
   if (isLoading || !user || user.role !== role) {
     return (

@@ -1,5 +1,6 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useState, useEffect, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { io } from "socket.io-client";
 import { dispatchHistoryMock, type DispatchRecord } from "@/mocks/dispatchHistoryMock";
 import { type MenuItem } from "@/mocks/menuMock";
 import { apiClient } from "@/lib/apiClient";
@@ -69,28 +70,75 @@ interface OrderState {
     updates: Omit<Promotion, "id" | "createdAt">,
   ) => void;
   findOrder: (code: string) => Order | undefined;
+  restaurants: any[];
+  activeRestaurantId: string | null;
+  setActiveRestaurantId: (id: string) => void;
 }
 
 const OrderContext = createContext<OrderState | null>(null);
 
 export function OrderProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
+  const [activeRestaurantId, setActiveRestaurantId] = useState<string | null>(null);
 
-  const { data: menu = [], isLoading: isLoadingMenu } = useQuery<MenuItem[]>({
-    queryKey: ['products'],
+  const { data: restaurants = [] } = useQuery<any[]>({
+    queryKey: ['restaurants'],
     queryFn: async () => {
-      const res = await apiClient.get('/products');
+      const res = await apiClient.get('/restaurants');
       return res.data;
     }
   });
 
-  const { data: orders = [] } = useQuery<Order[]>({
-    queryKey: ['orders', 'restaurant', 'rest-ffcore'],
+  useEffect(() => {
+    if (restaurants.length > 0 && !activeRestaurantId) {
+      // Por defecto la primera sede
+      setActiveRestaurantId(restaurants[0].id);
+    }
+  }, [restaurants, activeRestaurantId]);
+
+  useEffect(() => {
+    // Determine WS URL based on API URL, or fallback
+    const socketUrl = import.meta.env.VITE_API_URL 
+      ? import.meta.env.VITE_API_URL.replace('/api/v1', '')
+      : 'http://localhost:3000';
+      
+    const socket = io(socketUrl);
+
+    socket.on('connect', () => {
+      console.log('WS Conectado:', socket.id);
+    });
+
+    socket.on('new_order', (order) => {
+      console.log('Nuevo pedido recibido vía WS:', order.id);
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    });
+
+    socket.on('order_status_changed', (order) => {
+      console.log('Cambio de estado recibido vía WS:', order.id, order.status);
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [queryClient]);
+
+  const { data: menu = [], isLoading: isLoadingMenu } = useQuery<MenuItem[]>({
+    queryKey: ['products', activeRestaurantId],
     queryFn: async () => {
-      const res = await apiClient.get('/orders/restaurant/rest-ffcore');
+      const res = await apiClient.get(`/products?restaurantId=${activeRestaurantId}`);
       return res.data;
     },
-    refetchInterval: 5000, // Poll every 5s for now until websockets
+    enabled: !!activeRestaurantId
+  });
+
+  const { data: orders = [] } = useQuery<Order[]>({
+    queryKey: ['orders', 'restaurant', activeRestaurantId],
+    queryFn: async () => {
+      const res = await apiClient.get(`/orders/restaurant/${activeRestaurantId}`);
+      return res.data;
+    },
+    enabled: !!activeRestaurantId
   });
 
   const [dispatchHistory, setDispatchHistory] = useState<DispatchRecord[]>(dispatchHistoryMock);
@@ -148,7 +196,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       customerName: customer.name,
       address: customer.address,
       phone: customer.phone,
-      restaurantId: "rest-ffcore", // Defaulting for now
+      restaurantId: activeRestaurantId || "rest-ffcore", // Fallback to rest-ffcore if null
       items: cart.map((c) => ({
         productId: c.product.id,
         quantity: c.quantity,
@@ -281,6 +329,9 @@ export function OrderProvider({ children }: { children: ReactNode }) {
         addPromotion,
         updatePromotion,
         findOrder,
+        restaurants,
+        activeRestaurantId,
+        setActiveRestaurantId,
       }}
     >
       {children}
