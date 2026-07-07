@@ -9,6 +9,7 @@ import { AdminNavMobile, AdminNavSidebar, type AdminTab } from "@/components/adm
 import { AddAdditionModal } from "@/components/admin/AddAdditionModal";
 import { AddProductModal } from "@/components/admin/AddProductModal";
 import { EditProductModal } from "@/components/admin/EditProductModal";
+import { ProductCustomizationModal } from "@/components/admin/ProductCustomizationModal";
 import { AssignCourierModal } from "@/components/admin/AssignCourierModal";
 import { OrderCommandMonitor } from "@/components/admin/kitchen/OrderCommandMonitor";
 import { HistoryPanel } from "@/components/admin/history/HistoryPanel";
@@ -51,11 +52,13 @@ function AdminView() {
     dispatchHistory,
     toggleAvailability,
     updateMenuItem,
+    updateProductCustomization,
     addMenuItem,
     promotions,
   } = useOrders();
   const [tab, setTab] = useState<AdminTab>("dashboard");
   const [editing, setEditing] = useState<MenuItem | null>(null);
+  const [customizing, setCustomizing] = useState<MenuItem | null>(null);
   const [assigningOrders, setAssigningOrders] = useState<Order[] | null>(null);
   const [addingProduct, setAddingProduct] = useState(false);
   const [addingAddition, setAddingAddition] = useState(false);
@@ -182,7 +185,7 @@ function AdminView() {
                 <span className="col-span-2">Categoría</span>
                 <span className="col-span-2 text-right">Precio</span>
                 <span className="col-span-2 text-center">Disponibilidad</span>
-                <span className="col-span-1 text-right">Editar</span>
+                <span className="col-span-1 text-right">Acciones</span>
               </div>
               {filteredMenu.length === 0 ? (
                 <div className="px-5 py-12 text-center">
@@ -237,13 +240,22 @@ function AdminView() {
                           />
                         </button>
                       </label>
-                      <button
-                        type="button"
-                        onClick={() => setEditing(p)}
-                        className="shrink-0 rounded-lg bg-primary/10 px-3.5 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/15 active:scale-[0.98]"
-                      >
-                        Editar
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setCustomizing(p)}
+                          className="shrink-0 rounded-lg bg-secondary px-3.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary/80 active:scale-[0.98]"
+                        >
+                          Receta
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditing(p)}
+                          className="shrink-0 rounded-lg bg-primary/10 px-3.5 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/15 active:scale-[0.98]"
+                        >
+                          Editar
+                        </button>
+                      </div>
                     </div>
                   </div>
                   {/* Desktop row */}
@@ -269,8 +281,11 @@ function AdminView() {
                       <span className={`size-5 rounded-full bg-white shadow transition-transform ${p.available ? "translate-x-5" : ""}`} />
                     </button>
                   </div>
-                  <div className="col-span-1 text-right">
-                    <button onClick={() => setEditing(p)} className="text-xs font-medium text-primary hover:underline">
+                  <div className="col-span-1 flex justify-end gap-2">
+                    <button onClick={() => setCustomizing(p)} className="text-xs font-medium text-foreground bg-secondary px-2 py-1 rounded hover:bg-secondary/80" title="Configurar receta (Ingredientes/Extras)">
+                      Receta
+                    </button>
+                    <button onClick={() => setEditing(p)} className="text-xs font-medium text-primary hover:underline px-1 py-1">
                       Editar
                     </button>
                   </div>
@@ -297,6 +312,18 @@ function AdminView() {
           onSave={(data) => {
             updateMenuItem(editing.id, data);
             setEditing(null);
+          }}
+        />
+      )}
+
+      {customizing && (
+        <ProductCustomizationModal
+          product={customizing}
+          open
+          onClose={() => setCustomizing(null)}
+          onSave={(ingredients, modifierGroups) => {
+            updateProductCustomization(customizing.id, ingredients, modifierGroups);
+            setCustomizing(null);
           }}
         />
       )}

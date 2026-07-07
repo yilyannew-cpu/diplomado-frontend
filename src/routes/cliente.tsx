@@ -11,6 +11,8 @@ import { CATEGORIES, type Category } from "@/mocks/menuMock";
 import { restaurantsMock } from "@/mocks/restaurantsMock";
 import { getProductPricing } from "@/lib/promotions";
 import { DiscountBadge, ProductPriceDisplay } from "@/components/shared/ProductPriceDisplay";
+import { ProductDetailModal } from "@/components/cliente/ProductDetailModal";
+import type { MenuItem } from "@/mocks/menuMock";
 
 export const Route = createFileRoute("/cliente")({
   head: () => ({
@@ -32,6 +34,7 @@ function ClienteView() {
   const { menu, addToCart, clientTab, clientModule, promotions } = useOrders();
   const [activeCat, setActiveCat] = useState<(typeof categories)[number]>("Todo");
   const [activeRest, setActiveRest] = useState<string | "Todos">("Todos");
+  const [selectedProduct, setSelectedProduct] = useState<{ product: MenuItem; basePrice: number } | null>(null);
 
   const filtered = useMemo(
     () =>
@@ -215,10 +218,16 @@ function ClienteView() {
                   <button
                     type="button"
                     disabled={!p.available}
-                    onClick={() => addToCart(p)}
+                    onClick={() => {
+                      if (p.ingredients?.length || p.modifierGroups?.length) {
+                        setSelectedProduct({ product: p, basePrice: pricing.salePrice });
+                      } else {
+                        addToCart(p);
+                      }
+                    }}
                     className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-ink py-2.5 text-xs font-semibold uppercase tracking-wider text-cream transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:bg-secondary disabled:text-muted-foreground"
                   >
-                    {p.available ? "+ Añadir a la orden" : "No disponible"}
+                    {p.available ? (p.ingredients?.length || p.modifierGroups?.length ? "Personalizar" : "+ Añadir a la orden") : "No disponible"}
                   </button>
                 </div>
               </article>
@@ -234,6 +243,14 @@ function ClienteView() {
         </section>
         )}
       </main>
+
+      {selectedProduct && (
+        <ProductDetailModal
+          product={selectedProduct.product}
+          basePrice={selectedProduct.basePrice}
+          onClose={() => setSelectedProduct(null)}
+        />
+      )}
     </div>
   );
 }
