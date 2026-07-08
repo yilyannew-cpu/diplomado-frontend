@@ -187,7 +187,7 @@ function ClienteView() {
                   {brand && (
                     <button
                       type="button"
-                      onClick={() => setActiveRest(brand.id)}
+                      onClick={() => setActiveRestaurantId(brand.id)}
                       className="mb-2 inline-flex w-fit items-center gap-2 rounded-full border border-border bg-secondary/60 py-1 pl-1 pr-2.5 text-[11px] font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
                       title={`Ver más de ${brand.name}`}
                     >
