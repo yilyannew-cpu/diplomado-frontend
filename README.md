@@ -2,6 +2,34 @@
 
 FFCore es una plataforma web de delivery y gestión de restaurantes orientada al mercado de Cúcuta, Norte de Santander. Este directorio contiene el frontend del proyecto, que provee una interfaz robusta y multi-rol para clientes, domiciliarios, restaurantes y superadministradores.
 
+---
+
+## 🔑 Credenciales de Prueba (Login)
+
+La aplicación tiene dos formas de iniciar sesión: mediante los botones rápidos en la pantalla principal (que no piden clave) o mediante el formulario de `/login/gobernanza` u otras rutas protegidas.
+
+Si decides usar el formulario manual, aquí tienes los usuarios predeterminados (Mock):
+
+- **Cliente Regular:** `cliente1@ffcore.co`, `cliente2@ffcore.co`, `cliente3@ffcore.co` | Clave: `demo`
+- **Admin Restaurante:** `admin1@ffcore.co`, `admin2@ffcore.co`, `admin3@ffcore.co` | Clave: `demo`
+- **Superadmin (Gobernanza):** `super@ffcore.co` | Clave: `demo`
+- **Domiciliario:** `domi1@ffcore.co`, `domi2@ffcore.co`, `domi3@ffcore.co` | Clave: `demo`
+
+*(Todos los usuarios utilizan la contraseña `demo`).*
+
+---
+
+## ☁️ Notas sobre la Base de Datos en la Nube (Neon)
+
+El backend de este proyecto utiliza una base de datos PostgreSQL alojada gratuitamente en **Neon.tech**. Si estás probando la conexión real con el backend y experimentas lentitud extrema o el error `P1001: Can't reach database server`, ten en cuenta lo siguiente:
+
+1. **El "Cold Start":** Neon pausa (duerme) la base de datos tras 5 minutos de inactividad. La primera petición que hagas tardará varios segundos (hasta 15s) mientras el servidor despierta.
+2. **Error de Conexión:** Si el servidor no despierta a tiempo o tu red bloquea el puerto `5432`, la conexión fallará.
+3. **¿Cómo solucionarlo?** 
+   - Puedes ir a [neon.tech](https://neon.tech), iniciar sesión y entrar al "Salpicadero" para despertar la base de datos manualmente.
+   - Si creaste un proyecto nuevo en Neon, asegúrate de **copiar la nueva Connection String** del salpicadero y pegarla en la variable `DATABASE_URL` de tu archivo `.env` en el backend.
+   - Si tu red bloquea conexiones a bases de datos, te recomendamos levantar una base de datos local (usando PostgreSQL local o el `docker-compose.yml` provisto).
+
 ## 🛠️ Stack Tecnológico
 
 El proyecto está construido sobre las herramientas más modernas del ecosistema React para garantizar escalabilidad, velocidad y una excelente experiencia de desarrollo:
@@ -68,21 +96,7 @@ No necesitas pasar por los formularios de `/login`. Al estar en modo desarrollo:
 
 > **Nota para Producción:** Esta lógica síncrona utiliza un sistema de tokens prefijados con `mock-token-`. Al momento de integrar la autenticación con la base de datos real y conectar el login, estos tokens falsos dejarán de usarse a favor del flujo JWT estándar definido en el backend.
 
----
 
-## 🔑 Base de Datos de Prueba (Mocks)
-
-La aplicación corre en gran medida sobre archivos ubicados en `src/mocks/`. Estos archivos simulan el comportamiento del servidor para el prototipado inicial.
-
-**Usuarios Base (`usersMock.ts`):**
-- `cliente@ffcore.co` (Rol: Cliente)
-- `admin@ffcore.co` (Rol: Admin Restaurante)
-- `super@ffcore.co` (Rol: Superadmin)
-- `domi@ffcore.co` (Rol: Domiciliario)
-
-*(Todos los usuarios mockeados utilizan la contraseña `demo` en caso de requerirse en algún formulario aislado).*
-
----
 
 ## 📚 Documentación Técnica Detallada
 
