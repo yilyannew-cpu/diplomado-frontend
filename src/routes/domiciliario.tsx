@@ -69,15 +69,16 @@ function HubView({
   onSelectOrder: (order: Order) => void;
 }) {
   const { orders } = useOrders();
+  const { user } = useAuth();
 
   // Pedidos Actuales: ya están en manos del domiciliario (Recogido / En Camino)
   const actuales = orders.filter((o) =>
-    ["Recogido", "En Camino"].includes(o.status)
+    o.deliveryPersonId === user?.id && ["Recogido", "En Camino"].includes(o.status)
   );
 
   // Pedidos Aceptados: asignados pero aún en cocina/listo/recibido
   const aceptados = orders.filter((o) =>
-    ["Recibido", "En Cocina", "Listo"].includes(o.status)
+    o.deliveryPersonId === user?.id && ["Recibido", "En Cocina", "Listo"].includes(o.status)
   );
 
   return (

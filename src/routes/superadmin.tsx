@@ -16,7 +16,7 @@ import { UsersTable } from "@/components/superadmin/UsersTable";
 import { NewUserForm } from "@/components/superadmin/NewUserForm";
 import { SystemStatus } from "@/components/superadmin/SystemStatus";
 
-import { usersMock, type MockUser } from "@/mocks/usersMock";
+// import { usersMock, type MockUser } from "@/mocks/usersMock";
 
 // ...
 
@@ -34,42 +34,13 @@ export const Route = createFileRoute("/superadmin")({
   ),
 });
 
-const FAKE_PENDING_USERS: PendingUser[] = [
-  { 
-    id: "PEN-01", 
-    name: "Carlos Pérez", 
-    email: "carlos@burgerhouse.co", 
-    role: "admin",
-    status: "Pendiente", 
-    phone: "3201234567",
-    created_at: new Date().toISOString(),
-    restaurant: {
-      id: "REST-01",
-      name: "Burger House El Poblado",
-      city: "Medellín",
-      address: "Cra 43 #10-12",
-      status: "Pendiente"
-    }
-  },
-  { 
-    id: "PEN-02", 
-    name: "Miguel Ángel", 
-    email: "miguel@domi.co", 
-    role: "domiciliario",
-    status: "Pendiente",
-    document_id: "1020304050",
-    phone: "3109876543",
-    vehicle: "Moto - ABC-12D",
-    created_at: new Date().toISOString()
-  },
-];
 
 function SuperadminView() {
   const { orders } = useOrders();
   
-  // Usar datos falsos para visualización (MOCKS)
-  const [users, setUsers] = useState<User[]>(usersMock as unknown as User[]);
-  const [pendingUsers, setPendingUsers] = useState<PendingUser[]>(FAKE_PENDING_USERS);
+  // Estado global de usuarios
+  const [users, setUsers] = useState<User[]>([]);
+  const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
   
   // Navigation State
   const [activeModule, setActiveModule] = useState<SuperadminModule>("dashboard");
@@ -79,17 +50,16 @@ function SuperadminView() {
   const [roleFilter, setRoleFilter] = useState<Role | "todos">("todos");
 
   const loadData = async () => {
-    // Desactivamos temporalmente el consumo real de la API para mostrar los Mocks
-    // try {
-    //   const [allUsers, pending] = await Promise.all([
-    //     usersApi.list(),
-    //     usersApi.listPending()
-    //   ]);
-    //   setUsers(allUsers);
-    //   setPendingUsers(pending);
-    // } catch (error) {
-    //   toast.error("Error al cargar los usuarios desde el servidor");
-    // }
+    try {
+      const [allUsers, pending] = await Promise.all([
+        usersApi.list(),
+        usersApi.listPending()
+      ]);
+      setUsers(allUsers);
+      setPendingUsers(pending);
+    } catch (error) {
+      toast.error("Error al cargar los usuarios desde el servidor");
+    }
   };
 
   useEffect(() => {

@@ -46,11 +46,18 @@ export function CartSheet() {
     if (!user || cart.length === 0) return;
     setIsPaying(true);
     await new Promise((r) => setTimeout(r, 900));
-    confirmCart({
-      name: user.name,
-      address,
-      phone: user.phone ?? "",
-    });
+    try {
+      await confirmCart({
+        name: user.name,
+        address,
+        phone: user.phone ?? "",
+      });
+    } catch (e) {
+      console.error("Error creating order:", e);
+      alert("Hubo un error al procesar tu pedido. Intenta nuevamente.");
+      setIsPaying(false);
+      return;
+    }
     setIsPaying(false);
     setStep("cart");
     setCartOpen(false);
@@ -87,23 +94,33 @@ export function CartSheet() {
                     const pricing = getProductPricing(c.product, promotions);
                     return (
                     <li
-                      key={c.product.id}
+                      key={c.id}
                       className="flex items-center justify-between gap-3 rounded-xl border border-border bg-secondary/30 p-3 text-sm"
                     >
                       <div className="flex items-center gap-3">
                         <button
                           type="button"
-                          onClick={() => removeFromCart(c.product.id)}
-                          className="grid size-7 place-items-center rounded-md border border-border bg-background text-xs hover:bg-secondary"
+                          onClick={() => removeFromCart(c.id)}
+                          className="grid size-7 shrink-0 place-items-center rounded-md border border-border bg-background text-xs hover:bg-secondary"
                           aria-label="Quitar uno"
                         >
                           −
                         </button>
-                        <span className="font-mono text-xs tabular-nums">{c.quantity}×</span>
-                        <span className="font-medium">{c.product.name}</span>
+                        <span className="shrink-0 font-mono text-xs tabular-nums">{c.quantity}×</span>
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-medium truncate">{c.product.name}</span>
+                          {c.customizations && (
+                            <span className="text-[10px] text-muted-foreground leading-tight mt-0.5">
+                              {c.customizations.removedIngredients.length > 0 && `Sin ${c.customizations.removedIngredients.join(', ')}`}
+                              {Object.entries(c.customizations.addedModifiers).map(([group, opts]) => 
+                                opts.length > 0 ? ` • +${opts.join(', ')}` : ''
+                              )}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <span className="shrink-0 font-mono text-xs tabular-nums">
-                        {formatCOP(pricing.salePrice * c.quantity)}
+                        {formatCOP((pricing.salePrice + (c.customizations?.extraPrice || 0)) * c.quantity)}
                       </span>
                     </li>
                     );

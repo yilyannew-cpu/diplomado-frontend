@@ -1,6 +1,9 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useState, useEffect, type ReactNode } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { io } from "socket.io-client";
 import { dispatchHistoryMock, type DispatchRecord } from "@/mocks/dispatchHistoryMock";
-import { menuMock, type MenuItem } from "@/mocks/menuMock";
+import { type MenuItem } from "@/mocks/menuMock";
+import { apiClient } from "@/lib/apiClient";
 import { ordersMock, type Order, type OrderStatus } from "@/mocks/ordersMock";
 import { promotionsMock, type Promotion } from "@/mocks/promotionsMock";
 import { canAssignBatchToCourier } from "@/lib/deliveryLimits";
@@ -8,9 +11,17 @@ import { DEFAULT_DELIVERY_FEE_COP } from "@/lib/deliveryFees";
 import { orderToDispatchRecord } from "@/lib/orderHistory";
 import { getProductPricing } from "@/lib/promotions";
 
+export interface Customizations {
+  removedIngredients: string[]; // array of ingredient ids
+  addedModifiers: Record<string, string[]>; // groupId -> array of option ids
+  extraPrice: number;
+}
+
 export interface CartItem {
+  id: string; // unique hash to distinguish same product with different customizations
   product: MenuItem;
   quantity: number;
+  customizations?: Customizations;
 }
 
 export type ClientTab = "menu" | "tracking";
@@ -19,6 +30,7 @@ export type ClientModule = "inicio" | "promociones" | "rankin";
 
 interface OrderState {
   menu: MenuItem[];
+  isLoadingMenu: boolean;
   orders: Order[];
   dispatchHistory: DispatchRecord[];
   promotions: Promotion[];
@@ -31,11 +43,11 @@ interface OrderState {
   setClientTab: (tab: ClientTab) => void;
   clientModule: ClientModule;
   setClientModule: (module: ClientModule) => void;
-  addToCart: (product: MenuItem) => void;
-  removeFromCart: (productId: string) => void;
+  addToCart: (product: MenuItem, customizations?: Customizations) => void;
+  removeFromCart: (cartItemId: string) => void;
   clearCart: () => void;
   cartTotal: number;
-  confirmCart: (customer: { name: string; address: string; phone: string }) => Order;
+  confirmCart: (customer: { name: string; address: string; phone: string }) => Promise<Order>;
   updateOrderStatus: (id: string, status: OrderStatus) => void;
   assignDeliveryPerson: (orderId: string, deliveryPersonId: string) => void;
   assignDeliveryPersonBatch: (orderIds: string[], deliveryPersonId: string) => void;
@@ -46,6 +58,11 @@ interface OrderState {
     id: string,
     updates: Pick<MenuItem, "price" | "description" | "image" | "available">,
   ) => void;
+  updateProductCustomization: (
+    id: string,
+    ingredients: MenuItem["ingredients"],
+    modifierGroups: MenuItem["modifierGroups"],
+  ) => void;
   addMenuItem: (item: Omit<MenuItem, "id" | "restaurantId">) => void;
   addPromotion: (promotion: Omit<Promotion, "id" | "createdAt">) => void;
   updatePromotion: (
@@ -53,13 +70,77 @@ interface OrderState {
     updates: Omit<Promotion, "id" | "createdAt">,
   ) => void;
   findOrder: (code: string) => Order | undefined;
+  restaurants: any[];
+  activeRestaurantId: string | null;
+  setActiveRestaurantId: (id: string) => void;
 }
 
 const OrderContext = createContext<OrderState | null>(null);
 
 export function OrderProvider({ children }: { children: ReactNode }) {
-  const [menu, setMenu] = useState<MenuItem[]>(menuMock);
-  const [orders, setOrders] = useState<Order[]>(ordersMock);
+  const queryClient = useQueryClient();
+  const [activeRestaurantId, setActiveRestaurantId] = useState<string | null>(null);
+
+  const { data: restaurants = [] } = useQuery<any[]>({
+    queryKey: ['restaurants'],
+    queryFn: async () => {
+      const res = await apiClient.get('/restaurants');
+      return res.data;
+    }
+  });
+
+  useEffect(() => {
+    if (restaurants.length > 0 && !activeRestaurantId) {
+      // Por defecto la primera sede
+      setActiveRestaurantId(restaurants[0].id);
+    }
+  }, [restaurants, activeRestaurantId]);
+
+  useEffect(() => {
+    // Determine WS URL based on API URL, or fallback
+    const socketUrl = import.meta.env.VITE_API_URL 
+      ? import.meta.env.VITE_API_URL.replace('/api/v1', '')
+      : 'http://localhost:3000';
+      
+    const socket = io(socketUrl);
+
+    socket.on('connect', () => {
+      console.log('WS Conectado:', socket.id);
+    });
+
+    socket.on('new_order', (order) => {
+      console.log('Nuevo pedido recibido vía WS:', order.id);
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    });
+
+    socket.on('order_status_changed', (order) => {
+      console.log('Cambio de estado recibido vía WS:', order.id, order.status);
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [queryClient]);
+
+  const { data: menu = [], isLoading: isLoadingMenu } = useQuery<MenuItem[]>({
+    queryKey: ['products', activeRestaurantId],
+    queryFn: async () => {
+      const res = await apiClient.get(`/products?restaurantId=${activeRestaurantId}`);
+      return res.data;
+    },
+    enabled: !!activeRestaurantId
+  });
+
+  const { data: orders = [] } = useQuery<Order[]>({
+    queryKey: ['orders', 'restaurant', activeRestaurantId],
+    queryFn: async () => {
+      const res = await apiClient.get(`/orders/restaurant/${activeRestaurantId}`);
+      return res.data;
+    },
+    enabled: !!activeRestaurantId
+  });
+
   const [dispatchHistory, setDispatchHistory] = useState<DispatchRecord[]>(dispatchHistoryMock);
   const [promotions, setPromotions] = useState<Promotion[]>(promotionsMock);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -73,22 +154,26 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     [cart],
   );
 
-  const addToCart = (product: MenuItem) => {
+  const addToCart = (product: MenuItem, customizations?: Customizations) => {
+    const hash = customizations
+      ? `${product.id}-${JSON.stringify(customizations.removedIngredients)}-${JSON.stringify(customizations.addedModifiers)}`
+      : product.id;
+
     setCart((c) => {
-      const existing = c.find((i) => i.product.id === product.id);
+      const existing = c.find((i) => i.id === hash);
       if (existing) {
         return c.map((i) =>
-          i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i,
+          i.id === hash ? { ...i, quantity: i.quantity + 1 } : i,
         );
       }
-      return [...c, { product, quantity: 1 }];
+      return [...c, { id: hash, product, quantity: 1, customizations }];
     });
   };
 
-  const removeFromCart = (productId: string) => {
+  const removeFromCart = (cartItemId: string) => {
     setCart((c) =>
       c
-        .map((i) => (i.product.id === productId ? { ...i, quantity: i.quantity - 1 } : i))
+        .map((i) => (i.id === cartItemId ? { ...i, quantity: i.quantity - 1 } : i))
         .filter((i) => i.quantity > 0),
     );
   };
@@ -99,114 +184,94 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     () =>
       cart.reduce((acc, item) => {
         const pricing = getProductPricing(item.product, promotions);
-        return acc + pricing.salePrice * item.quantity;
+        const extraPrice = item.customizations?.extraPrice || 0;
+        return acc + (pricing.salePrice + extraPrice) * item.quantity;
       }, 0),
     [cart, promotions],
   );
 
-  const confirmCart: OrderState["confirmCart"] = (customer) => {
-    const id = `PED-${(orders.length + 101).toString()}`;
+  const confirmCart: OrderState["confirmCart"] = async (customer) => {
     const deliveryFee = DEFAULT_DELIVERY_FEE_COP;
-    const order: Order = {
-      id,
+    const payload = {
       customerName: customer.name,
       address: customer.address,
       phone: customer.phone,
-      items: cart.map((c) => ({ productId: c.product.id, quantity: c.quantity })),
-      total: cartTotal + deliveryFee,
-      deliveryFee,
-      status: "Recibido",
-      createdAt: new Date().toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" }),
-      receivedAt: Date.now(),
-      statusEnteredAt: Date.now(),
+      restaurantId: activeRestaurantId || "rest-ffcore", // Fallback to rest-ffcore if null
+      items: cart.map((c) => ({
+        productId: c.product.id,
+        quantity: c.quantity,
+        customizations: c.customizations,
+      })),
     };
-    setOrders((o) => [order, ...o]);
+
+    const res = await apiClient.post('/orders', payload);
+    const order = res.data;
+
+    await queryClient.invalidateQueries({ queryKey: ['orders'] });
     setCart([]);
     setActiveClientOrderId(order.id);
     setClientTab("tracking");
     return order;
   };
 
-  const updateOrderStatus = (id: string, status: OrderStatus) => {
-    setOrders((o) =>
-      o.map((or) =>
-        or.id === id ? { ...or, status, statusEnteredAt: Date.now() } : or,
-      ),
-    );
+  const updateOrderStatus = async (id: string, status: OrderStatus) => {
+    try {
+      await apiClient.patch(`/orders/${id}/status`, { status });
+      await queryClient.invalidateQueries({ queryKey: ['orders'] });
+    } catch (e) {
+      console.error("Failed to update status:", e);
+    }
   };
 
   const assignDeliveryPerson = (orderId: string, deliveryPersonId: string) => {
     assignDeliveryPersonBatch([orderId], deliveryPersonId);
   };
 
-  const assignDeliveryPersonBatch = (orderIds: string[], deliveryPersonId: string) => {
-    assignCourierOnlyBatch(orderIds, deliveryPersonId);
-    dispatchOrderBatch(orderIds);
+  const assignDeliveryPersonBatch = async (orderIds: string[], deliveryPersonId: string) => {
+    try {
+      await Promise.all(orderIds.map(id => apiClient.patch(`/orders/${id}/assign`, { courierId: deliveryPersonId })));
+      await queryClient.invalidateQueries({ queryKey: ['orders'] });
+    } catch (e) {
+      console.error("Failed to assign batch:", e);
+    }
   };
 
   const assignCourierOnlyBatch = (orderIds: string[], deliveryPersonId: string) => {
-    if (!canAssignBatchToCourier(orders, deliveryPersonId, orderIds)) {
-      return;
-    }
-    const idSet = new Set(orderIds);
-    setOrders((o) =>
-      o.map((or) => (idSet.has(or.id) ? { ...or, deliveryPersonId } : or)),
-    );
+    // This was mostly used for local state preview, we'll just forward to the assignBatch now
+    assignDeliveryPersonBatch(orderIds, deliveryPersonId);
   };
 
-  const dispatchOrderBatch = (orderIds: string[]) => {
-    const idSet = new Set(orderIds);
-    const now = Date.now();
-
-    const toDispatch = orders.filter(
-      (o) => idSet.has(o.id) && o.status === "Listo" && o.deliveryPersonId,
-    );
-
-    if (toDispatch.length > 0) {
-      setDispatchHistory((history) => [
-        ...toDispatch.map((o) => orderToDispatchRecord(o, now)),
-        ...history,
-      ]);
+  const dispatchOrderBatch = async (orderIds: string[]) => {
+    try {
+      // In the backend, dispatching might just mean setting status to "En Camino"
+      await Promise.all(orderIds.map(id => apiClient.patch(`/orders/${id}/status`, { status: "En Camino" })));
+      await queryClient.invalidateQueries({ queryKey: ['orders'] });
+    } catch (e) {
+      console.error("Failed to dispatch batch:", e);
     }
-
-    setOrders((o) =>
-      o.map((or) =>
-        idSet.has(or.id) && or.status === "Listo"
-          ? {
-              ...or,
-              status: "En Camino" as OrderStatus,
-              dispatchedAt: now,
-              statusEnteredAt: now,
-            }
-          : or,
-      ),
-    );
   };
 
   const toggleAvailability = (id: string) => {
-    setMenu((m) => m.map((p) => (p.id === id ? { ...p, available: !p.available } : p)));
+    // To be implemented as mutation later
   };
 
   const updateMenuItem = (
     id: string,
     updates: Pick<MenuItem, "price" | "description" | "image" | "available">,
   ) => {
-    setMenu((m) => m.map((p) => (p.id === id ? { ...p, ...updates } : p)));
+    // To be implemented as mutation later
+  };
+
+  const updateProductCustomization = (
+    id: string,
+    ingredients: MenuItem["ingredients"],
+    modifierGroups: MenuItem["modifierGroups"],
+  ) => {
+    // To be implemented as mutation later
   };
 
   const addMenuItem = (item: Omit<MenuItem, "id" | "restaurantId">) => {
-    setMenu((m) => {
-      const maxNum = m.reduce((max, p) => {
-        const n = Number.parseInt(p.id.replace("prod-", ""), 10);
-        return Number.isNaN(n) ? max : Math.max(max, n);
-      }, 0);
-      const newItem: MenuItem = {
-        ...item,
-        id: `prod-${String(maxNum + 1).padStart(2, "0")}`,
-        restaurantId: "rest-ffcore",
-      };
-      return [...m, newItem];
-    });
+    // To be implemented as mutation later
   };
 
   const addPromotion = (promotion: Omit<Promotion, "id" | "createdAt">) => {
@@ -234,6 +299,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     <OrderContext.Provider
       value={{
         menu,
+        isLoadingMenu,
         orders,
         dispatchHistory,
         promotions,
@@ -258,10 +324,14 @@ export function OrderProvider({ children }: { children: ReactNode }) {
         dispatchOrderBatch,
         toggleAvailability,
         updateMenuItem,
+        updateProductCustomization,
         addMenuItem,
         addPromotion,
         updatePromotion,
         findOrder,
+        restaurants,
+        activeRestaurantId,
+        setActiveRestaurantId,
       }}
     >
       {children}
