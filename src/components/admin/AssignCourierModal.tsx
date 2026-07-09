@@ -1,4 +1,4 @@
-import { Bike, CheckCircle2, MapPin, Phone } from "lucide-react";
+import { Bike, CheckCircle2, MapPin } from "lucide-react";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { CourierRatingBadge } from "@/components/shared/CourierRatingBadge";
 import {
@@ -9,19 +9,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatCOP } from "@/context/OrderContext";
-import {
-  canAssignBatchToCourier,
-  getCourierRemainingCapacity,
-  MAX_ORDERS_PER_COURIER,
-} from "@/lib/deliveryLimits";
+import { MAX_ORDERS_PER_COURIER } from "@/lib/deliveryLimits";
 import { getOrderZone } from "@/lib/orderZones";
-import { getCourierRating } from "@/lib/courierRatings";
+import type { ApiAvailableCourier } from "@/lib/api/types/admin";
 import type { Order } from "@/mocks/ordersMock";
-import { usersMock } from "@/mocks/usersMock";
 
 interface AssignCourierModalProps {
   orders: Order[];
-  allOrders: Order[];
+  couriers: ApiAvailableCourier[];
   open: boolean;
   onClose: () => void;
   onAssign: (courierId: string) => void;
@@ -29,21 +24,17 @@ interface AssignCourierModalProps {
 
 export function AssignCourierModal({
   orders,
-  allOrders,
+  couriers,
   open,
   onClose,
   onAssign,
 }: AssignCourierModalProps) {
-  const couriers = usersMock.filter((u) => u.role === "domiciliario" && u.status === "Activo");
   const batchIds = orders.map((o) => o.id);
-  const batchIdSet = new Set(batchIds);
-  const zone = orders.length > 0 ? getOrderZone(orders[0].address) : "";
+  const zone = orders.length > 0 ? orders[0].zone ?? getOrderZone(orders[0].address) : "";
   const batchTotal = orders.reduce((sum, o) => sum + o.total, 0);
   const batchTooLarge = orders.length > MAX_ORDERS_PER_COURIER;
 
-  const availableCouriers = couriers.filter((c) =>
-    canAssignBatchToCourier(allOrders, c.id, batchIds),
-  );
+  const availableCouriers = couriers.filter((c) => c.can_take_batch);
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -110,51 +101,45 @@ export function AssignCourierModal({
 
         <ul className="max-h-72 space-y-2 overflow-y-auto">
           {couriers.map((courier) => {
-            const remaining = getCourierRemainingCapacity(allOrders, courier.id, batchIdSet);
-            const canAssign = canAssignBatchToCourier(allOrders, courier.id, batchIds);
-            const activeCount = MAX_ORDERS_PER_COURIER - remaining;
-            const rating = getCourierRating(courier.id);
+            const canAssign = courier.can_take_batch && !batchTooLarge;
+            const remaining = MAX_ORDERS_PER_COURIER - courier.active_orders;
 
             return (
               <li key={courier.id}>
                 <button
                   type="button"
-                  disabled={!canAssign || batchTooLarge}
+                  disabled={!canAssign}
                   onClick={() => onAssign(courier.id)}
                   className={`flex w-full items-center gap-3 rounded-2xl border p-4 text-left transition-colors ${
-                    !canAssign || batchTooLarge
+                    !canAssign
                       ? "cursor-not-allowed border-border bg-secondary/40 opacity-60"
                       : "border-border bg-card hover:border-primary/30 hover:bg-primary/5"
                   }`}
                 >
-                  <UserAvatar
-                    name={courier.name}
-                    src={courier.avatar}
-                    className="size-10"
-                  />
+                  <UserAvatar name={courier.name} className="size-10" />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="truncate text-sm font-semibold">{courier.name}</p>
                       <span
                         className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
-                          canAssign && !batchTooLarge
+                          canAssign
                             ? "bg-emerald-500/15 text-emerald-600"
                             : "bg-amber-brand/15 text-amber-brand"
                         }`}
                       >
-                        {canAssign && !batchTooLarge
+                        {canAssign
                           ? "Disponible"
-                          : remaining === 0
+                          : remaining <= 0
                             ? "Cupos llenos"
                             : `Solo ${remaining} cupo${remaining !== 1 ? "s" : ""}`}
                       </span>
                     </div>
                     <p className="mt-0.5 text-[11px] text-muted-foreground">
-                      {activeCount}/{MAX_ORDERS_PER_COURIER} pedidos en ruta
+                      {courier.active_orders}/{MAX_ORDERS_PER_COURIER} pedidos en ruta
                     </p>
                     <CourierRatingBadge
-                      averageRating={rating.averageRating}
-                      reviewCount={rating.reviewCount}
+                      averageRating={courier.average_rating}
+                      reviewCount={0}
                       className="mt-1"
                     />
                     {courier.vehicle && (
@@ -163,14 +148,8 @@ export function AssignCourierModal({
                         {courier.vehicle}
                       </p>
                     )}
-                    {courier.phone && (
-                      <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
-                        <Phone className="size-3 shrink-0" />
-                        {courier.phone}
-                      </p>
-                    )}
                   </div>
-                  {canAssign && !batchTooLarge && (
+                  {canAssign && (
                     <CheckCircle2 className="size-5 shrink-0 text-primary/40" />
                   )}
                 </button>

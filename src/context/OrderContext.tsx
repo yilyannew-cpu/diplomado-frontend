@@ -1,7 +1,7 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { dispatchHistoryMock, type DispatchRecord } from "@/mocks/dispatchHistoryMock";
 import { menuMock, type MenuItem } from "@/mocks/menuMock";
-import { ordersMock, type Order, type OrderStatus } from "@/mocks/ordersMock";
+import { ordersMock, type Order, type OrderItemCustomizations, type OrderStatus } from "@/mocks/ordersMock";
 import { promotionsMock, type Promotion } from "@/mocks/promotionsMock";
 import { restaurantsMock, type Restaurant } from "@/mocks/restaurantsMock";
 import { canAssignBatchToCourier } from "@/lib/deliveryLimits";
@@ -9,11 +9,7 @@ import { DEFAULT_DELIVERY_FEE_COP } from "@/lib/deliveryFees";
 import { orderToDispatchRecord } from "@/lib/orderHistory";
 import { getProductPricing } from "@/lib/promotions";
 
-export interface Customizations {
-  removedIngredients: string[];
-  addedModifiers: Record<string, string[]>;
-  extraPrice: number;
-}
+export type Customizations = OrderItemCustomizations;
 
 export interface CartItem {
   id: string;
@@ -146,7 +142,12 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       customerName: customer.name,
       address: customer.address,
       phone: customer.phone,
-      items: cart.map((c) => ({ productId: c.product.id, quantity: c.quantity })),
+      items: cart.map((c) => ({
+        lineId: c.id,
+        productId: c.product.id,
+        quantity: c.quantity,
+        ...(c.customizations ? { customizations: c.customizations } : {}),
+      })),
       total: cartTotal + deliveryFee,
       deliveryFee,
       status: "Recibido",

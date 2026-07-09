@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { ReadyDispatchColumn } from "@/components/admin/ReadyDispatchColumn";
 import { KitchenConsolidationBar } from "@/components/admin/kitchen/KitchenConsolidationBar";
 import { KitchenOrderCard } from "@/components/admin/kitchen/KitchenOrderCard";
-import { useOrders } from "@/context/OrderContext";
+import { useAdmin } from "@/context/AdminContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useKitchenTick } from "@/hooks/useKitchenTick";
 import { stationHasDelayedOrders, type MonitorStation } from "@/lib/kitchenSla";
@@ -52,7 +52,7 @@ type GroupedColumn = ColumnConfig & { orders: Order[] };
 
 interface OrderCommandMonitorProps {
   onAssignZone: (orders: Order[]) => void;
-  onDispatchBatch: (orderIds: string[]) => void;
+  onDispatchBatch: (orders: Order[]) => void;
 }
 
 function ColumnContent({
@@ -62,9 +62,9 @@ function ColumnContent({
   onDispatchBatch,
 }: {
   col: GroupedColumn;
-  onAdvance: (orderId: string, next: OrderStatus) => void;
+  onAdvance: (order: Order, next: OrderStatus) => void;
   onAssignZone: (orders: Order[]) => void;
-  onDispatchBatch: (orderIds: string[]) => void;
+  onDispatchBatch: (orders: Order[]) => void;
 }) {
   const EmptyIcon = col.icon;
 
@@ -100,7 +100,7 @@ function ColumnContent({
             order={order}
             actionLabel={col.nextLabel}
             onAdvance={
-              col.next ? () => onAdvance(order.id, col.next!) : undefined
+              col.next ? () => onAdvance(order, col.next!) : undefined
             }
           />
         </div>
@@ -110,7 +110,7 @@ function ColumnContent({
 }
 
 export function OrderCommandMonitor({ onAssignZone, onDispatchBatch }: OrderCommandMonitorProps) {
-  const { orders, updateOrderStatus } = useOrders();
+  const { kitchenOrders, updateOrderStatus } = useAdmin();
   const isMobile = useIsMobile();
   const now = useKitchenTick();
   const [mobileTab, setMobileTab] = useState<OrderStatus>("Recibido");
@@ -119,22 +119,22 @@ export function OrderCommandMonitor({ onAssignZone, onDispatchBatch }: OrderComm
     () =>
       COLUMNS.map((column) => ({
         ...column,
-        orders: orders.filter((order) => order.status === column.key),
+        orders: kitchenOrders.filter((order) => order.status === column.key),
       })),
-    [orders],
+    [kitchenOrders],
   );
 
   const monitorOrders = useMemo(
-    () => orders.filter((o) => o.status === "Recibido" || o.status === "En Cocina" || o.status === "Listo"),
-    [orders],
+    () => kitchenOrders.filter((o) => o.status === "Recibido" || o.status === "En Cocina" || o.status === "Listo"),
+    [kitchenOrders],
   );
   const activeMobileColumn = grouped.find((col) => col.key === mobileTab) ?? grouped[0];
 
   const isStationDelayed = (station: MonitorStation) =>
     stationHasDelayedOrders(monitorOrders, station, now);
 
-  const handleAdvance = (orderId: string, next: OrderStatus) => {
-    updateOrderStatus(orderId, next);
+  const handleAdvance = (order: Order, next: OrderStatus) => {
+    void updateOrderStatus(order, next);
     if (isMobile) setMobileTab(next);
   };
 

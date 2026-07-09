@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { RoleGuard, TopBar } from "@/components/shared/RoleShell";
 import { OrderSpecialInstructions } from "@/components/shared/OrderSpecialInstructions";
+import { OrderItemLines } from "@/components/shared/OrderItemLines";
 import { useAuth } from "@/context/AuthContext";
 import { useOrders, formatCOP } from "@/context/OrderContext";
 import type { Order, OrderStatus } from "@/mocks/ordersMock";
@@ -358,26 +359,7 @@ function OrderDetailView({
             </AccordionTrigger>
             <AccordionContent>
               <div className="rounded-xl border border-border bg-card p-4">
-                <ul className="space-y-2 text-sm">
-                  {order.items.map((i) => {
-                    const p = menu.find((m) => m.id === i.productId);
-                    return (
-                      <li key={i.productId} className="flex justify-between">
-                        <span>
-                          <span className="font-mono text-muted-foreground">
-                            {i.quantity}×
-                          </span>{" "}
-                          {p?.name ?? i.productId}
-                        </span>
-                        {p && (
-                          <span className="font-mono text-muted-foreground">
-                            {formatCOP(p.price * i.quantity)}
-                          </span>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
+                <OrderItemLines items={order.items} menu={menu} compact />
                 <div className="mt-3 flex justify-between border-t border-dashed border-border pt-3 font-semibold">
                   <span>Total a cobrar</span>
                   <span className="font-mono text-primary">

@@ -1,13 +1,15 @@
 import { CalendarRange, Sparkles, Tag } from "lucide-react";
 import { useMemo } from "react";
 import { DiscountBadge } from "@/components/shared/ProductPriceDisplay";
-import { formatCOP, useOrders } from "@/context/OrderContext";
+import { useAdmin } from "@/context/AdminContext";
+import { formatCOP } from "@/context/OrderContext";
 import {
   getActivePromotedProducts,
   getProductPricing,
   getPromotionStatus,
   isPromotionActive,
 } from "@/lib/promotions";
+import type { MenuItem } from "@/mocks/menuMock";
 import type { Promotion } from "@/mocks/promotionsMock";
 
 function formatDateLabel(isoDate: string): string {
@@ -17,7 +19,7 @@ function formatDateLabel(isoDate: string): string {
 }
 
 export function DashboardPromotionsCard() {
-  const { menu, promotions } = useOrders();
+  const { menu, promotions } = useAdmin();
 
   const activePromotions = useMemo(
     () => promotions.filter((promo) => isPromotionActive(promo)),
@@ -125,7 +127,10 @@ function PromotionGroup({
   products,
 }: {
   promo: Promotion;
-  products: { product: (typeof products)[number]["product"]; pricing: ReturnType<typeof getProductPricing> }[];
+  products: Array<{
+    product: MenuItem;
+    pricing: ReturnType<typeof getProductPricing>;
+  }>;
 }) {
   return (
     <article className="rounded-xl border border-primary/15 bg-background/70 p-4 shadow-sm backdrop-blur-sm">

@@ -20,6 +20,31 @@ type RequestOptions = {
   auth?: boolean;
 };
 
+type UploadOptions = {
+  auth?: boolean;
+};
+
+export function buildQuery(params?: Record<string, string | number | boolean | undefined>): string {
+  if (!params) return "";
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== "") {
+      search.set(key, String(value));
+    }
+  }
+  const qs = search.toString();
+  return qs ? `?${qs}` : "";
+}
+
+function authHeaders(auth: boolean): Record<string, string> {
+  const headers: Record<string, string> = {};
+  if (auth) {
+    const token = getToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return window.localStorage.getItem(TOKEN_KEY);
@@ -80,5 +105,61 @@ export async function apiClient<T>(path: string, options: RequestOptions = {}): 
   const text = await response.text();
   if (!text) return {} as T;
 
+  return JSON.parse(text) as T;
+}
+
+export async function apiDownload(path: string, options: RequestOptions = {}): Promise<Blob> {
+  const { method = "GET", auth = false } = options;
+  const response = await fetch(`${API_URL}${path}`, {
+    method,
+    headers: authHeaders(auth),
+  });
+
+  if (!response.ok) {
+    let payload: ApiErrorBody = {};
+    try {
+      payload = (await response.json()) as ApiErrorBody;
+    } catch {
+      /* respuesta no JSON */
+    }
+    throw new ApiError(
+      response.status,
+      payload.error ?? "UNKNOWN_ERROR",
+      payload.message ?? response.statusText,
+      payload.details,
+    );
+  }
+
+  return response.blob();
+}
+
+export async function apiUpload<T>(path: string, file: File, options: UploadOptions = {}): Promise<T> {
+  const { auth = false } = options;
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(`${API_URL}${path}`, {
+    method: "POST",
+    headers: authHeaders(auth),
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let payload: ApiErrorBody = {};
+    try {
+      payload = (await response.json()) as ApiErrorBody;
+    } catch {
+      /* respuesta no JSON */
+    }
+    throw new ApiError(
+      response.status,
+      payload.error ?? "UNKNOWN_ERROR",
+      payload.message ?? response.statusText,
+      payload.details,
+    );
+  }
+
+  const text = await response.text();
+  if (!text) return {} as T;
   return JSON.parse(text) as T;
 }

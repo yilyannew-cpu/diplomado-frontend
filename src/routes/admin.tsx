@@ -21,13 +21,13 @@ import {
   type MenuFiltersState,
 } from "@/components/admin/MenuFilters";
 import { RoleGuard, TopBar } from "@/components/shared/RoleShell";
-import { formatCOP, useOrders } from "@/context/OrderContext";
+import { AdminProvider, useAdmin } from "@/context/AdminContext";
+import { formatCOP } from "@/context/OrderContext";
 import type { MenuItem } from "@/mocks/menuMock";
 import { ADDITION_CATEGORY } from "@/mocks/menuMock";
 import type { Order } from "@/mocks/ordersMock";
-import { buildActiveDeliveryRows } from "@/lib/activeDeliveries";
-import { buildDispatchLedger, summarizeDispatchPeriod } from "@/lib/orderHistory";
 import { isPromotionActive } from "@/lib/promotions";
+import type { ApiAvailableCourier } from "@/lib/api/types/admin";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -38,28 +38,37 @@ export const Route = createFileRoute("/admin")({
   }),
   component: () => (
     <RoleGuard role="admin">
-      <AdminView />
+      <AdminProvider>
+        <AdminView />
+      </AdminProvider>
     </RoleGuard>
   ),
 });
 
 function AdminView() {
   const {
-    orders,
+    restaurant,
+    kitchenOrders,
     menu,
-    assignCourierOnlyBatch,
-    dispatchOrderBatch,
-    dispatchHistory,
+    promotions,
+    activeDeliveries,
+    dispatchSummary,
+    loading,
+    assignCourierBatch,
+    dispatchBatch,
     toggleAvailability,
     updateMenuItem,
     updateProductCustomization,
     addMenuItem,
-    promotions,
-  } = useOrders();
+    addAddition,
+    fetchAvailableCouriers,
+  } = useAdmin();
+
   const [tab, setTab] = useState<AdminTab>("dashboard");
   const [editing, setEditing] = useState<MenuItem | null>(null);
   const [customizing, setCustomizing] = useState<MenuItem | null>(null);
   const [assigningOrders, setAssigningOrders] = useState<Order[] | null>(null);
+  const [availableCouriers, setAvailableCouriers] = useState<ApiAvailableCourier[]>([]);
   const [addingProduct, setAddingProduct] = useState(false);
   const [addingAddition, setAddingAddition] = useState(false);
   const [reportDateRange, setReportDateRange] = useState<ReportDateRange>({ preset: "month" });
@@ -70,16 +79,13 @@ function AdminView() {
     [menu, menuFilters],
   );
 
-  const activeDeliveryCount = useMemo(() => buildActiveDeliveryRows(orders).length, [orders]);
+  const activeDeliveryCount = activeDeliveries.length;
   const activePromotionsCount = useMemo(
     () => promotions.filter((promo) => isPromotionActive(promo)).length,
     [promotions],
   );
 
-  const historyMonthCount = useMemo(() => {
-    const ledger = buildDispatchLedger(orders, dispatchHistory);
-    return summarizeDispatchPeriod(ledger, "month").dispatchedCount;
-  }, [orders, dispatchHistory]);
+  const historyMonthCount = dispatchSummary?.month ?? 0;
 
   const pageTitle =
     tab === "dashboard"
@@ -99,12 +105,33 @@ function AdminView() {
   const navHints: Partial<Record<AdminTab, string>> = {
     dashboard: "Ventas y reseñas",
     reportes: "Ganancias y domicilios",
-    comandas: `${orders.length} activas`,
+    comandas: `${kitchenOrders.length} activas`,
     menu: `${menu.length} productos`,
     promociones: `${activePromotionsCount} activas`,
     domicilios: `${activeDeliveryCount} en ruta`,
     historial: `${historyMonthCount} despachos este mes`,
   };
+
+  const openAssignModal = async (orders: Order[]) => {
+    setAssigningOrders(orders);
+    try {
+      const couriers = await fetchAvailableCouriers(orders.length);
+      setAvailableCouriers(couriers);
+    } catch {
+      setAvailableCouriers([]);
+    }
+  };
+
+  if (loading && !restaurant) {
+    return (
+      <div className="min-h-screen bg-cream">
+        <TopBar title="Centro de cocina" subtitle="Cargando panel…" />
+        <div className="page-container py-16 text-center text-sm text-muted-foreground">
+          Conectando con la sede…
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-cream">
@@ -119,7 +146,7 @@ function AdminView() {
               <AdminNavMobile active={tab} onSelect={setTab} hints={navHints} />
               <div className="min-w-0 flex-1">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary sm:tracking-[0.25em]">
-                  Sede Caobos
+                  {restaurant?.name ?? "Sede"}
                 </p>
                 <h1 className="mt-1 font-display text-xl font-semibold leading-tight tracking-tight sm:mt-2 sm:text-2xl lg:text-3xl">
                   {pageTitle}
@@ -175,8 +202,8 @@ function AdminView() {
             />
           ) : tab === "comandas" ? (
             <OrderCommandMonitor
-              onAssignZone={setAssigningOrders}
-              onDispatchBatch={dispatchOrderBatch}
+              onAssignZone={openAssignModal}
+              onDispatchBatch={(orders) => void dispatchBatch(orders)}
             />
           ) : tab === "menu" ? (
             <div className="overflow-hidden rounded-2xl border border-border bg-card">
@@ -204,7 +231,6 @@ function AdminView() {
               ) : (
                 filteredMenu.map((p) => (
                 <div key={p.id}>
-                  {/* Mobile card */}
                   <div className="border-b border-border p-4 last:border-b-0 md:hidden">
                     <div className="flex gap-3">
                       <img
@@ -228,7 +254,7 @@ function AdminView() {
                           role="switch"
                           aria-checked={p.available}
                           aria-label={`${p.available ? "Desactivar" : "Activar"} ${p.name}`}
-                          onClick={() => toggleAvailability(p.id)}
+                          onClick={() => void toggleAvailability(p.id)}
                           className={`flex h-7 w-12 shrink-0 items-center rounded-full p-0.5 transition-colors ${
                             p.available ? "bg-primary" : "bg-muted"
                           }`}
@@ -258,7 +284,6 @@ function AdminView() {
                       </div>
                     </div>
                   </div>
-                  {/* Desktop row */}
                   <div className="hidden grid-cols-12 items-center border-b border-border px-5 py-3 text-sm last:border-b-0 md:grid">
                   <div className="col-span-5 flex items-center gap-3">
                     <img src={p.image} alt="" className="size-10 rounded-lg object-cover" />
@@ -273,7 +298,7 @@ function AdminView() {
                   </span>
                   <div className="col-span-2 flex justify-center">
                     <button
-                      onClick={() => toggleAvailability(p.id)}
+                      onClick={() => void toggleAvailability(p.id)}
                       className={`flex h-6 w-11 items-center rounded-full p-0.5 transition-colors ${
                         p.available ? "bg-primary" : "bg-secondary"
                       }`}
@@ -297,7 +322,7 @@ function AdminView() {
           ) : tab === "promociones" ? (
             <PromotionsPanel />
           ) : tab === "domicilios" ? (
-            <ActiveDeliveriesPanel orders={orders} />
+            <ActiveDeliveriesPanel />
           ) : tab === "historial" ? (
             <HistoryPanel />
           ) : null}
@@ -310,8 +335,7 @@ function AdminView() {
           open
           onClose={() => setEditing(null)}
           onSave={(data) => {
-            updateMenuItem(editing.id, data);
-            setEditing(null);
+            void updateMenuItem(editing.id, data).then(() => setEditing(null));
           }}
         />
       )}
@@ -322,8 +346,9 @@ function AdminView() {
           open
           onClose={() => setCustomizing(null)}
           onSave={(ingredients, modifierGroups) => {
-            updateProductCustomization(customizing.id, ingredients, modifierGroups);
-            setCustomizing(null);
+            void updateProductCustomization(customizing.id, ingredients, modifierGroups).then(
+              () => setCustomizing(null),
+            );
           }}
         />
       )}
@@ -331,15 +356,17 @@ function AdminView() {
       {assigningOrders && assigningOrders.length > 0 && (
         <AssignCourierModal
           orders={assigningOrders}
-          allOrders={orders}
+          couriers={availableCouriers}
           open
-          onClose={() => setAssigningOrders(null)}
-          onAssign={(courierId) => {
-            assignCourierOnlyBatch(
-              assigningOrders.map((o) => o.id),
-              courierId,
-            );
+          onClose={() => {
             setAssigningOrders(null);
+            setAvailableCouriers([]);
+          }}
+          onAssign={(courierId) => {
+            void assignCourierBatch(assigningOrders, courierId).then(() => {
+              setAssigningOrders(null);
+              setAvailableCouriers([]);
+            });
           }}
         />
       )}
@@ -348,8 +375,7 @@ function AdminView() {
         open={addingProduct}
         onClose={() => setAddingProduct(false)}
         onSave={(data) => {
-          addMenuItem(data);
-          setAddingProduct(false);
+          void addMenuItem(data).then(() => setAddingProduct(false));
         }}
       />
 
@@ -357,8 +383,7 @@ function AdminView() {
         open={addingAddition}
         onClose={() => setAddingAddition(false)}
         onSave={(data) => {
-          addMenuItem({ ...data, category: ADDITION_CATEGORY });
-          setAddingAddition(false);
+          void addAddition(data).then(() => setAddingAddition(false));
         }}
       />
     </div>

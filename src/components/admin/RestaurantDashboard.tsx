@@ -8,21 +8,18 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { formatCOP, useOrders } from "@/context/OrderContext";
-import {
-  buildDashboardStats,
-  MONTHLY_SALES_GOAL_COP,
-  restaurantReviewsMock,
-} from "@/lib/restaurantDashboard";
-import type { CategorySalesRow, TopProductRow } from "@/lib/restaurantDashboard";
+import { useAdmin } from "@/context/AdminContext";
+import { formatCOP } from "@/context/OrderContext";
 
-const RANK_ACCENT = [
+const CHART_COLORS = [
   "var(--color-chart-1)",
   "var(--color-chart-2)",
   "var(--color-chart-3)",
   "var(--color-chart-4)",
   "var(--color-chart-5)",
 ];
+
+const RANK_ACCENT = CHART_COLORS;
 
 function slugifyCategory(category: string) {
   return category
@@ -32,7 +29,9 @@ function slugifyCategory(category: string) {
     .replace(/\s+/g, "-");
 }
 
-function buildCategoryChartConfig(rows: CategorySalesRow[]): ChartConfig {
+function buildCategoryChartConfig(
+  rows: { category: string; fill: string }[],
+): ChartConfig {
   const config: ChartConfig = {};
   for (const row of rows) {
     config[slugifyCategory(row.category)] = {
@@ -50,11 +49,250 @@ function rankBadgeClass(rank: number): string {
   return "bg-secondary text-muted-foreground";
 }
 
+function formatReviewDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("es-CO", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+export function RestaurantDashboard() {
+  const { dashboard, reviews, menu } = useAdmin();
+
+  const salesByCategory = useMemo(() => {
+    if (!dashboard) return [];
+    return dashboard.sales_by_category.map((row, index) => ({
+      category: row.category_name,
+      sales: row.total,
+      fill: CHART_COLORS[index % CHART_COLORS.length],
+      image: row.image,
+    }));
+  }, [dashboard]);
+
+  const topProducts = useMemo(() => {
+    if (!dashboard) return [];
+    return dashboard.top_products.map((product) => {
+      const menuItem = menu.find((m) => m.id === product.product_id);
+      return {
+        productId: product.product_id,
+        name: product.name,
+        category: menuItem?.category ?? "Menú",
+        image: menuItem?.image ?? "",
+        unitsSold: product.quantity_sold,
+        revenue: product.revenue,
+      };
+    });
+  }, [dashboard, menu]);
+
+  const categoryTotal = useMemo(
+    () => salesByCategory.reduce((sum, row) => sum + row.sales, 0),
+    [salesByCategory],
+  );
+
+  const categoryChartConfig = useMemo(
+    () => buildCategoryChartConfig(salesByCategory),
+    [salesByCategory],
+  );
+
+  const topProductsTotal = useMemo(
+    () => topProducts.reduce((sum, p) => sum + p.revenue, 0),
+    [topProducts],
+  );
+
+  if (!dashboard) {
+    return (
+      <div className="rounded-2xl border border-border bg-card p-12 text-center text-sm text-muted-foreground">
+        Cargando métricas del dashboard…
+      </div>
+    );
+  }
+
+  const goalProgress = Math.round(dashboard.goal_progress_percent);
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Ventas hoy"
+          value={formatCOP(dashboard.sales_today)}
+          hint={`${dashboard.orders_today} pedidos en curso o entregados`}
+          accent="primary"
+        />
+        <MetricCard
+          label="Ventas del mes"
+          value={formatCOP(dashboard.monthly_sales)}
+          hint={`Meta: ${formatCOP(dashboard.monthly_goal)}`}
+          accent="ink"
+        />
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+            Cumplimiento de meta
+          </p>
+          <div className="mt-3 flex items-end justify-between gap-3">
+            <p className="font-display text-3xl font-semibold tabular-nums">{goalProgress}%</p>
+            <TrendingUp className="size-5 text-emerald-600" />
+          </div>
+          <div className="mt-4 h-2 overflow-hidden rounded-full bg-secondary">
+            <div
+              className="h-full rounded-full bg-primary transition-all"
+              style={{ width: `${Math.min(100, goalProgress)}%` }}
+            />
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            {goalProgress >= 100
+              ? "¡Meta alcanzada!"
+              : `Faltan ${formatCOP(Math.max(0, dashboard.monthly_goal - dashboard.monthly_sales))}`}
+          </p>
+        </div>
+        <MetricCard
+          label="Calificación clientes"
+          value={`${dashboard.average_rating} / 5`}
+          hint={`${dashboard.review_count} reseñas recientes`}
+          accent="amber"
+        />
+      </div>
+
+      <DashboardPromotionsCard />
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <div className="mb-5">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-primary">
+              Ventas por categoría
+            </p>
+            <h2 className="mt-1 font-display text-lg font-semibold">Distribución del menú</h2>
+          </div>
+          {salesByCategory.length === 0 ? (
+            <p className="py-12 text-center text-sm text-muted-foreground">
+              Aún no hay ventas registradas por categoría.
+            </p>
+          ) : (
+            <div className="flex flex-col items-center gap-6 lg:flex-row lg:items-start">
+              <ChartContainer
+                config={categoryChartConfig}
+                className="mx-auto aspect-square h-[260px] w-full max-w-[280px] shrink-0"
+              >
+                <PieChart>
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        nameKey="category"
+                        formatter={(value) => formatCOP(Number(value))}
+                      />
+                    }
+                  />
+                  <Pie
+                    data={salesByCategory}
+                    dataKey="sales"
+                    nameKey="category"
+                    innerRadius={68}
+                    outerRadius={104}
+                    paddingAngle={2}
+                    strokeWidth={3}
+                    stroke="hsl(var(--card))"
+                  >
+                    {salesByCategory.map((entry) => (
+                      <Cell key={entry.category} fill={entry.fill} />
+                    ))}
+                    <Label
+                      content={({ viewBox }) => (
+                        <DonutCenterLabel
+                          viewBox={
+                            viewBox && "cx" in viewBox
+                              ? { cx: viewBox.cx, cy: viewBox.cy }
+                              : undefined
+                          }
+                          value={formatCOP(categoryTotal)}
+                          subtitle="Total categorías"
+                        />
+                      )}
+                    />
+                  </Pie>
+                </PieChart>
+              </ChartContainer>
+              <div className="w-full min-w-0 flex-1 lg:max-w-none">
+                <ChartLegend
+                  items={salesByCategory.map((row) => ({
+                    label: row.category,
+                    value: formatCOP(row.sales),
+                    percent: `${categoryTotal > 0 ? Math.round((row.sales / categoryTotal) * 100) : 0}%`,
+                    color: row.fill,
+                  }))}
+                />
+              </div>
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <div className="mb-5">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-primary">
+              Top 5 productos
+            </p>
+            <h2 className="mt-1 font-display text-lg font-semibold">Más vendidos</h2>
+          </div>
+          {topProducts.length === 0 ? (
+            <p className="py-12 text-center text-sm text-muted-foreground">
+              Sin datos de productos vendidos.
+            </p>
+          ) : (
+            <TopProductsRanking products={topProducts} totalRevenue={topProductsTotal} />
+          )}
+        </section>
+      </div>
+
+      <section className="rounded-2xl border border-border bg-card p-5">
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-primary">
+              Opiniones de clientes
+            </p>
+            <h2 className="mt-1 font-display text-lg font-semibold">Reseñas recientes</h2>
+          </div>
+          <div className="flex items-center gap-1 rounded-full bg-amber-brand/15 px-3 py-1">
+            <Star className="size-4 fill-amber-brand text-amber-brand" />
+            <span className="text-sm font-semibold">{dashboard.average_rating}</span>
+            <span className="text-xs text-muted-foreground">promedio</span>
+          </div>
+        </div>
+        {reviews.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">Sin reseñas todavía.</p>
+        ) : (
+          <ul className="grid gap-3 md:grid-cols-2">
+            {reviews.map((review) => (
+              <li key={review.id} className="rounded-xl border border-border bg-background/60 p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-medium">{review.customer_name}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {formatReviewDate(review.created_at)}
+                    </p>
+                  </div>
+                  <StarRating rating={review.rating} />
+                </div>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{review.comment}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function TopProductsRanking({
   products,
   totalRevenue,
 }: {
-  products: TopProductRow[];
+  products: {
+    productId: string;
+    name: string;
+    category: string;
+    image: string;
+    unitsSold: number;
+    revenue: number;
+  }[];
   totalRevenue: number;
 }) {
   const maxRevenue = products[0]?.revenue ?? 1;
@@ -81,11 +319,15 @@ function TopProductsRanking({
                 {rank === 1 ? <Trophy className="size-4" aria-hidden /> : rank}
               </div>
 
-              <img
-                src={product.image}
-                alt=""
-                className="size-12 shrink-0 rounded-lg object-cover ring-1 ring-border/60 transition-transform duration-300 group-hover:scale-105"
-              />
+              {product.image ? (
+                <img
+                  src={product.image}
+                  alt=""
+                  className="size-12 shrink-0 rounded-lg object-cover ring-1 ring-border/60 transition-transform duration-300 group-hover:scale-105"
+                />
+              ) : (
+                <div className="size-12 shrink-0 rounded-lg bg-secondary" />
+              )}
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
@@ -114,12 +356,6 @@ function TopProductsRanking({
                       } as CSSProperties
                     }
                   />
-                  {rank === 1 ? (
-                    <div
-                      className="animate-top-rank-shine pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/50 to-transparent"
-                      style={{ animationDelay: `${index * 90 + 700}ms` }}
-                    />
-                  ) : null}
                 </div>
               </div>
             </div>
@@ -180,186 +416,6 @@ function ChartLegend({
         </li>
       ))}
     </ul>
-  );
-}
-
-export function RestaurantDashboard() {
-  const { orders, menu } = useOrders();
-  const stats = useMemo(() => buildDashboardStats(orders, menu), [orders, menu]);
-
-  const categoryTotal = useMemo(
-    () => stats.salesByCategory.reduce((sum, row) => sum + row.sales, 0),
-    [stats.salesByCategory],
-  );
-
-  const categoryChartConfig = useMemo(
-    () => buildCategoryChartConfig(stats.salesByCategory),
-    [stats.salesByCategory],
-  );
-
-  const topProductsTotal = useMemo(
-    () => stats.topProducts.reduce((sum, p) => sum + p.revenue, 0),
-    [stats.topProducts],
-  );
-
-  return (
-    <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          label="Ventas hoy"
-          value={formatCOP(stats.salesToday)}
-          hint={`${stats.ordersToday} pedidos en curso o entregados`}
-          accent="primary"
-        />
-        <MetricCard
-          label="Ventas del mes"
-          value={formatCOP(stats.monthlySales)}
-          hint={`Meta: ${formatCOP(MONTHLY_SALES_GOAL_COP)}`}
-          accent="ink"
-        />
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-            Cumplimiento de meta
-          </p>
-          <div className="mt-3 flex items-end justify-between gap-3">
-            <p className="font-display text-3xl font-semibold tabular-nums">{stats.goalProgress}%</p>
-            <TrendingUp className="size-5 text-emerald-600" />
-          </div>
-          <div className="mt-4 h-2 overflow-hidden rounded-full bg-secondary">
-            <div
-              className="h-full rounded-full bg-primary transition-all"
-              style={{ width: `${stats.goalProgress}%` }}
-            />
-          </div>
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            {stats.goalProgress >= 100
-              ? "¡Meta alcanzada!"
-              : `Faltan ${formatCOP(Math.max(0, MONTHLY_SALES_GOAL_COP - stats.monthlySales))}`}
-          </p>
-        </div>
-        <MetricCard
-          label="Calificación clientes"
-          value={`${stats.averageRating} / 5`}
-          hint={`${stats.reviewCount} reseñas recientes`}
-          accent="amber"
-        />
-      </div>
-
-      <DashboardPromotionsCard />
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <div className="mb-5">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-primary">
-              Ventas por categoría
-            </p>
-            <h2 className="mt-1 font-display text-lg font-semibold">Distribución del menú</h2>
-          </div>
-          {stats.salesByCategory.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">
-              Aún no hay ventas registradas por categoría.
-            </p>
-          ) : (
-            <div className="flex flex-col items-center gap-6 lg:flex-row lg:items-start">
-              <ChartContainer
-                config={categoryChartConfig}
-                className="mx-auto aspect-square h-[260px] w-full max-w-[280px] shrink-0"
-              >
-                <PieChart>
-                  <ChartTooltip
-                    content={
-                      <ChartTooltipContent
-                        nameKey="category"
-                        formatter={(value) => formatCOP(Number(value))}
-                      />
-                    }
-                  />
-                  <Pie
-                    data={stats.salesByCategory}
-                    dataKey="sales"
-                    nameKey="category"
-                    innerRadius={68}
-                    outerRadius={104}
-                    paddingAngle={2}
-                    strokeWidth={3}
-                    stroke="hsl(var(--card))"
-                  >
-                    {stats.salesByCategory.map((entry) => (
-                      <Cell key={entry.category} fill={entry.fill} />
-                    ))}
-                    <Label
-                      content={({ viewBox }) => (
-                        <DonutCenterLabel
-                          viewBox={viewBox}
-                          value={formatCOP(categoryTotal)}
-                          subtitle="Total categorías"
-                        />
-                      )}
-                    />
-                  </Pie>
-                </PieChart>
-              </ChartContainer>
-              <div className="w-full min-w-0 flex-1 lg:max-w-none">
-                <ChartLegend
-                  items={stats.salesByCategory.map((row) => ({
-                    label: row.category,
-                    value: formatCOP(row.sales),
-                    percent: `${categoryTotal > 0 ? Math.round((row.sales / categoryTotal) * 100) : 0}%`,
-                    color: row.fill,
-                  }))}
-                />
-              </div>
-            </div>
-          )}
-        </section>
-
-        <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <div className="mb-5">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-primary">
-              Top 5 productos
-            </p>
-            <h2 className="mt-1 font-display text-lg font-semibold">Más vendidos</h2>
-          </div>
-          {stats.topProducts.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">
-              Sin datos de productos vendidos.
-            </p>
-          ) : (
-            <TopProductsRanking products={stats.topProducts} totalRevenue={topProductsTotal} />
-          )}
-        </section>
-      </div>
-
-      <section className="rounded-2xl border border-border bg-card p-5">
-        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-primary">
-              Opiniones de clientes
-            </p>
-            <h2 className="mt-1 font-display text-lg font-semibold">Reseñas recientes</h2>
-          </div>
-          <div className="flex items-center gap-1 rounded-full bg-amber-brand/15 px-3 py-1">
-            <Star className="size-4 fill-amber-brand text-amber-brand" />
-            <span className="text-sm font-semibold">{stats.averageRating}</span>
-            <span className="text-xs text-muted-foreground">promedio</span>
-          </div>
-        </div>
-        <ul className="grid gap-3 md:grid-cols-2">
-          {restaurantReviewsMock.map((review) => (
-            <li key={review.id} className="rounded-xl border border-border bg-background/60 p-4">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="font-medium">{review.customerName}</p>
-                  <p className="text-[11px] text-muted-foreground">{review.createdAt}</p>
-                </div>
-                <StarRating rating={review.rating} />
-              </div>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{review.comment}</p>
-            </li>
-          ))}
-        </ul>
-      </section>
-    </div>
   );
 }
 
