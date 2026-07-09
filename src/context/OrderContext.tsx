@@ -1,24 +1,22 @@
-import { createContext, useContext, useMemo, useState, useEffect, type ReactNode } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { io } from "socket.io-client";
+import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { dispatchHistoryMock, type DispatchRecord } from "@/mocks/dispatchHistoryMock";
-import { type MenuItem } from "@/mocks/menuMock";
-import { apiClient } from "@/lib/apiClient";
+import { menuMock, type MenuItem } from "@/mocks/menuMock";
 import { ordersMock, type Order, type OrderStatus } from "@/mocks/ordersMock";
 import { promotionsMock, type Promotion } from "@/mocks/promotionsMock";
+import { restaurantsMock, type Restaurant } from "@/mocks/restaurantsMock";
 import { canAssignBatchToCourier } from "@/lib/deliveryLimits";
 import { DEFAULT_DELIVERY_FEE_COP } from "@/lib/deliveryFees";
 import { orderToDispatchRecord } from "@/lib/orderHistory";
 import { getProductPricing } from "@/lib/promotions";
 
 export interface Customizations {
-  removedIngredients: string[]; // array of ingredient ids
-  addedModifiers: Record<string, string[]>; // groupId -> array of option ids
+  removedIngredients: string[];
+  addedModifiers: Record<string, string[]>;
   extraPrice: number;
 }
 
 export interface CartItem {
-  id: string; // unique hash to distinguish same product with different customizations
+  id: string;
   product: MenuItem;
   quantity: number;
   customizations?: Customizations;
@@ -70,7 +68,7 @@ interface OrderState {
     updates: Omit<Promotion, "id" | "createdAt">,
   ) => void;
   findOrder: (code: string) => Order | undefined;
-  restaurants: any[];
+  restaurants: Restaurant[];
   activeRestaurantId: string | null;
   setActiveRestaurantId: (id: string) => void;
 }
@@ -78,69 +76,8 @@ interface OrderState {
 const OrderContext = createContext<OrderState | null>(null);
 
 export function OrderProvider({ children }: { children: ReactNode }) {
-  const queryClient = useQueryClient();
-  const [activeRestaurantId, setActiveRestaurantId] = useState<string | null>(null);
-
-  const { data: restaurants = [] } = useQuery<any[]>({
-    queryKey: ['restaurants'],
-    queryFn: async () => {
-      const res = await apiClient.get('/restaurants');
-      return res.data;
-    }
-  });
-
-  useEffect(() => {
-    if (restaurants.length > 0 && !activeRestaurantId) {
-      // Por defecto la primera sede
-      setActiveRestaurantId(restaurants[0].id);
-    }
-  }, [restaurants, activeRestaurantId]);
-
-  useEffect(() => {
-    // Determine WS URL based on API URL, or fallback
-    const socketUrl = import.meta.env.VITE_API_URL 
-      ? import.meta.env.VITE_API_URL.replace('/api/v1', '')
-      : 'http://localhost:3000';
-      
-    const socket = io(socketUrl);
-
-    socket.on('connect', () => {
-      console.log('WS Conectado:', socket.id);
-    });
-
-    socket.on('new_order', (order) => {
-      console.log('Nuevo pedido recibido vía WS:', order.id);
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
-    });
-
-    socket.on('order_status_changed', (order) => {
-      console.log('Cambio de estado recibido vía WS:', order.id, order.status);
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, [queryClient]);
-
-  const { data: menu = [], isLoading: isLoadingMenu } = useQuery<MenuItem[]>({
-    queryKey: ['products', activeRestaurantId],
-    queryFn: async () => {
-      const res = await apiClient.get(`/products?restaurantId=${activeRestaurantId}`);
-      return res.data;
-    },
-    enabled: !!activeRestaurantId
-  });
-
-  const { data: orders = [] } = useQuery<Order[]>({
-    queryKey: ['orders', 'restaurant', activeRestaurantId],
-    queryFn: async () => {
-      const res = await apiClient.get(`/orders/restaurant/${activeRestaurantId}`);
-      return res.data;
-    },
-    enabled: !!activeRestaurantId
-  });
-
+  const [allMenu, setAllMenu] = useState<MenuItem[]>(menuMock);
+  const [orders, setOrders] = useState<Order[]>(ordersMock);
   const [dispatchHistory, setDispatchHistory] = useState<DispatchRecord[]>(dispatchHistoryMock);
   const [promotions, setPromotions] = useState<Promotion[]>(promotionsMock);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -148,6 +85,19 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const [activeClientOrderId, setActiveClientOrderId] = useState<string | null>(null);
   const [clientTab, setClientTab] = useState<ClientTab>("menu");
   const [clientModule, setClientModule] = useState<ClientModule>("inicio");
+  const [activeRestaurantId, setActiveRestaurantId] = useState<string | null>(
+    restaurantsMock[0]?.id ?? null,
+  );
+
+  const restaurants = restaurantsMock;
+
+  const menu = useMemo(
+    () =>
+      activeRestaurantId
+        ? allMenu.filter((item) => item.restaurantId === activeRestaurantId)
+        : allMenu,
+    [allMenu, activeRestaurantId],
+  );
 
   const cartItemCount = useMemo(
     () => cart.reduce((acc, i) => acc + i.quantity, 0),
@@ -162,9 +112,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     setCart((c) => {
       const existing = c.find((i) => i.id === hash);
       if (existing) {
-        return c.map((i) =>
-          i.id === hash ? { ...i, quantity: i.quantity + 1 } : i,
-        );
+        return c.map((i) => (i.id === hash ? { ...i, quantity: i.quantity + 1 } : i));
       }
       return [...c, { id: hash, product, quantity: 1, customizations }];
     });
@@ -184,82 +132,98 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     () =>
       cart.reduce((acc, item) => {
         const pricing = getProductPricing(item.product, promotions);
-        const extraPrice = item.customizations?.extraPrice || 0;
+        const extraPrice = item.customizations?.extraPrice ?? 0;
         return acc + (pricing.salePrice + extraPrice) * item.quantity;
       }, 0),
     [cart, promotions],
   );
 
   const confirmCart: OrderState["confirmCart"] = async (customer) => {
+    const id = `PED-${(orders.length + 101).toString()}`;
     const deliveryFee = DEFAULT_DELIVERY_FEE_COP;
-    const payload = {
+    const order: Order = {
+      id,
       customerName: customer.name,
       address: customer.address,
       phone: customer.phone,
-      restaurantId: activeRestaurantId || "rest-ffcore", // Fallback to rest-ffcore if null
-      items: cart.map((c) => ({
-        productId: c.product.id,
-        quantity: c.quantity,
-        customizations: c.customizations,
-      })),
+      items: cart.map((c) => ({ productId: c.product.id, quantity: c.quantity })),
+      total: cartTotal + deliveryFee,
+      deliveryFee,
+      status: "Recibido",
+      createdAt: new Date().toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" }),
+      receivedAt: Date.now(),
+      statusEnteredAt: Date.now(),
     };
-
-    const res = await apiClient.post('/orders', payload);
-    const order = res.data;
-
-    await queryClient.invalidateQueries({ queryKey: ['orders'] });
+    setOrders((o) => [order, ...o]);
     setCart([]);
     setActiveClientOrderId(order.id);
     setClientTab("tracking");
     return order;
   };
 
-  const updateOrderStatus = async (id: string, status: OrderStatus) => {
-    try {
-      await apiClient.patch(`/orders/${id}/status`, { status });
-      await queryClient.invalidateQueries({ queryKey: ['orders'] });
-    } catch (e) {
-      console.error("Failed to update status:", e);
-    }
+  const updateOrderStatus = (id: string, status: OrderStatus) => {
+    setOrders((o) =>
+      o.map((or) => (or.id === id ? { ...or, status, statusEnteredAt: Date.now() } : or)),
+    );
   };
 
   const assignDeliveryPerson = (orderId: string, deliveryPersonId: string) => {
     assignDeliveryPersonBatch([orderId], deliveryPersonId);
   };
 
-  const assignDeliveryPersonBatch = async (orderIds: string[], deliveryPersonId: string) => {
-    try {
-      await Promise.all(orderIds.map(id => apiClient.patch(`/orders/${id}/assign`, { courierId: deliveryPersonId })));
-      await queryClient.invalidateQueries({ queryKey: ['orders'] });
-    } catch (e) {
-      console.error("Failed to assign batch:", e);
-    }
+  const assignDeliveryPersonBatch = (orderIds: string[], deliveryPersonId: string) => {
+    assignCourierOnlyBatch(orderIds, deliveryPersonId);
+    dispatchOrderBatch(orderIds);
   };
 
   const assignCourierOnlyBatch = (orderIds: string[], deliveryPersonId: string) => {
-    // This was mostly used for local state preview, we'll just forward to the assignBatch now
-    assignDeliveryPersonBatch(orderIds, deliveryPersonId);
+    if (!canAssignBatchToCourier(orders, deliveryPersonId, orderIds)) {
+      return;
+    }
+    const idSet = new Set(orderIds);
+    setOrders((o) =>
+      o.map((or) => (idSet.has(or.id) ? { ...or, deliveryPersonId } : or)),
+    );
   };
 
-  const dispatchOrderBatch = async (orderIds: string[]) => {
-    try {
-      // In the backend, dispatching might just mean setting status to "En Camino"
-      await Promise.all(orderIds.map(id => apiClient.patch(`/orders/${id}/status`, { status: "En Camino" })));
-      await queryClient.invalidateQueries({ queryKey: ['orders'] });
-    } catch (e) {
-      console.error("Failed to dispatch batch:", e);
+  const dispatchOrderBatch = (orderIds: string[]) => {
+    const idSet = new Set(orderIds);
+    const now = Date.now();
+
+    const toDispatch = orders.filter(
+      (o) => idSet.has(o.id) && o.status === "Listo" && o.deliveryPersonId,
+    );
+
+    if (toDispatch.length > 0) {
+      setDispatchHistory((history) => [
+        ...toDispatch.map((o) => orderToDispatchRecord(o, now)),
+        ...history,
+      ]);
     }
+
+    setOrders((o) =>
+      o.map((or) =>
+        idSet.has(or.id) && or.status === "Listo"
+          ? {
+              ...or,
+              status: "En Camino" as OrderStatus,
+              dispatchedAt: now,
+              statusEnteredAt: now,
+            }
+          : or,
+      ),
+    );
   };
 
   const toggleAvailability = (id: string) => {
-    // To be implemented as mutation later
+    setAllMenu((m) => m.map((p) => (p.id === id ? { ...p, available: !p.available } : p)));
   };
 
   const updateMenuItem = (
     id: string,
     updates: Pick<MenuItem, "price" | "description" | "image" | "available">,
   ) => {
-    // To be implemented as mutation later
+    setAllMenu((m) => m.map((p) => (p.id === id ? { ...p, ...updates } : p)));
   };
 
   const updateProductCustomization = (
@@ -267,11 +231,24 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     ingredients: MenuItem["ingredients"],
     modifierGroups: MenuItem["modifierGroups"],
   ) => {
-    // To be implemented as mutation later
+    setAllMenu((m) =>
+      m.map((p) => (p.id === id ? { ...p, ingredients, modifierGroups } : p)),
+    );
   };
 
   const addMenuItem = (item: Omit<MenuItem, "id" | "restaurantId">) => {
-    // To be implemented as mutation later
+    setAllMenu((m) => {
+      const maxNum = m.reduce((max, p) => {
+        const n = Number.parseInt(p.id.replace("prod-", ""), 10);
+        return Number.isNaN(n) ? max : Math.max(max, n);
+      }, 0);
+      const newItem: MenuItem = {
+        ...item,
+        id: `prod-${String(maxNum + 1).padStart(2, "0")}`,
+        restaurantId: activeRestaurantId ?? "rest-ffcore",
+      };
+      return [...m, newItem];
+    });
   };
 
   const addPromotion = (promotion: Omit<Promotion, "id" | "createdAt">) => {
@@ -299,7 +276,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     <OrderContext.Provider
       value={{
         menu,
-        isLoadingMenu,
+        isLoadingMenu: false,
         orders,
         dispatchHistory,
         promotions,
