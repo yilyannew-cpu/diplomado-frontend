@@ -14,17 +14,28 @@ export const CLIENT_STATUS_FLOW: OrderStatus[] = [
   "Entregado",
 ];
 
+export interface OrderItemCustomizations {
+  removedIngredients: string[];
+  addedModifiers: Record<string, string[]>;
+  extraPrice: number;
+}
+
 export interface OrderItem {
+  lineId?: string;
   productId: string;
   quantity: number;
+  customizations?: OrderItemCustomizations;
 }
 
 export interface Order {
   id: string;
+  /** UUID interno para operaciones PATCH en la API. */
+  orderId?: string;
   customerName: string;
   address: string;
   notes?: string;
   phone: string;
+  zone?: string;
   items: OrderItem[];
   total: number;
   /** Costo de domicilio cobrado al cliente en la factura. */
@@ -61,8 +72,20 @@ export const ordersMock: Order[] = [
     address: "Calle 15 #11-45, Apto 302, Centro, Cúcuta",
     notes: "Sin cebolla por favor.",
     phone: "+573155550544",
-    items: [{ productId: "prod-02", quantity: 1 }, { productId: "prod-07", quantity: 2 }],
-    total: 43500,
+    items: [
+      {
+        lineId: "ped-102-line-1",
+        productId: "prod-02",
+        quantity: 1,
+        customizations: {
+          removedIngredients: ["Cebolla grillé"],
+          addedModifiers: { Adiciones: ["Tocino crujiente"] },
+          extraPrice: 4200,
+        },
+      },
+      { productId: "prod-07", quantity: 2 },
+    ],
+    total: 52700,
     deliveryFee: 5000,
     status: "En Cocina",
     createdAt: "12:18 PM",

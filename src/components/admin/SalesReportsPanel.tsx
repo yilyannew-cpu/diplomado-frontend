@@ -1,5 +1,5 @@
 import { TrendingUp, Wallet } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { CourierPayoutList } from "@/components/admin/reports/CourierPayoutList";
 import { FinancialDetailTable } from "@/components/admin/reports/FinancialDetailTable";
@@ -11,12 +11,12 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { formatCOP, useOrders } from "@/context/OrderContext";
-import {
-  formatReportAmount,
-  PAYMENT_GATEWAY_FEE_RATE,
-} from "@/lib/salesReportFormat";
-import { buildSalesReports, type ReportDateRange } from "@/lib/salesReports";
+import { useAdmin } from "@/context/AdminContext";
+import { formatCOP } from "@/context/OrderContext";
+import { formatReportAmount } from "@/lib/salesReportFormat";
+import type { MonthlySalesReport, ReportDateRange } from "@/lib/salesReports";
+import type { CourierPayoutRow } from "@/lib/salesReports";
+import type { ApiSalesReport } from "@/lib/api/types/admin";
 
 const chartConfig = {
   netProfit: { label: "Ganancia neta", color: "var(--color-chart-2)" },
@@ -30,55 +30,91 @@ export function SalesReportsPanel({
   dateRange?: ReportDateRange;
   onDateRangeChange?: (range: ReportDateRange) => void;
 } = {}) {
-  const { orders } = useOrders();
+  const { fetchSalesReport } = useAdmin();
   const [internalRange, setInternalRange] = useState<ReportDateRange>({ preset: "month" });
   const dateRange = controlledRange ?? internalRange;
-  const setDateRange = onDateRangeChange ?? setInternalRange;
+  const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState<ApiSalesReport | null>(null);
+  const [months, setMonths] = useState<MonthlySalesReport[]>([]);
+  const [courierPayouts, setCourierPayouts] = useState<CourierPayoutRow[]>([]);
+  const [rangeLabel, setRangeLabel] = useState("Este mes");
+  const [ytdRealNetProfit, setYtdRealNetProfit] = useState(0);
+  const [ytdCourierPayout, setYtdCourierPayout] = useState(0);
+  const [ytdNetProfit, setYtdNetProfit] = useState(0);
 
-  const report = useMemo(
-    () => buildSalesReports(orders, dateRange),
-    [orders, dateRange],
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    void fetchSalesReport(dateRange)
+      .then((report) => {
+        if (cancelled) return;
+        setPeriod(report.period);
+        setMonths(report.months);
+        setCourierPayouts(report.courierPayouts);
+        setRangeLabel(report.rangeLabel);
+        setYtdRealNetProfit(report.ytdRealNetProfit);
+        setYtdCourierPayout(report.ytdCourierPayout);
+        setYtdNetProfit(report.ytdNetProfit);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [dateRange, fetchSalesReport]);
+
+  const chartData = useMemo(
+    () =>
+      months.map((month) => ({
+        label: month.label.replace(/\s\d{4}$/, ""),
+        netProfit: month.netProfit,
+        courierPayout: month.courierPayout,
+      })),
+    [months],
   );
 
-  const chartData = report.months.map((month) => ({
-    label: month.label.replace(" 2025", ""),
-    netProfit: month.netProfit,
-    courierPayout: month.courierPayout,
-  }));
+  const periodLabel = rangeLabel.toLowerCase();
 
-  const periodLabel = report.rangeLabel.toLowerCase();
+  if (loading || !period) {
+    return (
+      <div className="rounded-2xl border border-border bg-card p-12 text-center text-sm text-muted-foreground">
+        Cargando reportes de ventas…
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <ReportMetricCard
           label={`Ganancia neta — ${periodLabel}`}
-          value={report.period.netProfit}
-          hint={`${report.period.deliveredOrders} entregas · margen ${report.period.marginPercent}%`}
+          value={period.net_profit}
+          hint={`${period.delivered_orders} entregas · margen ${period.margin_percent}%`}
           accent="primary"
           footer={
             <p className="text-[10px] leading-relaxed text-muted-foreground">
-              Pasarela ({(PAYMENT_GATEWAY_FEE_RATE * 100).toFixed(1)}%):{" "}
+              Comisiones app (5%):{" "}
               <span className="font-mono text-amber-brand">
-                -{formatReportAmount(report.period.appCommissions)}
+                -{formatReportAmount(period.app_commissions)}
               </span>
               {" · "}
               Neto real:{" "}
               <span className="font-semibold text-foreground">
-                {formatReportAmount(report.period.realNetProfit)}
+                {formatReportAmount(period.real_net_profit)}
               </span>
             </p>
           }
         />
         <ReportMetricCard
           label={`Pago domiciliarios — ${periodLabel}`}
-          value={report.period.courierPayout}
+          value={period.courier_payout}
           hint="Tarifas de domicilio del periodo"
           accent="ink"
         />
         <ReportMetricCard
           label={`Facturación bruta — ${periodLabel}`}
-          value={report.period.grossSales}
+          value={period.gross_sales}
           hint="Ventas totales incl. domicilio"
           accent="muted"
         />
@@ -88,13 +124,13 @@ export function SalesReportsPanel({
           </p>
           <div className="mt-3 flex items-end justify-between gap-3">
             <p className="font-display text-2xl font-semibold tabular-nums text-primary sm:text-3xl">
-              {formatReportAmount(report.ytdRealNetProfit)}
+              {formatReportAmount(ytdRealNetProfit)}
             </p>
             <TrendingUp className="size-5 text-emerald-600" />
           </div>
           <p className="mt-2 text-[11px] text-muted-foreground">
-            Domiciliarios: {formatReportAmount(report.ytdCourierPayout)} · Neto operativo:{" "}
-            {formatReportAmount(report.ytdNetProfit)}
+            Domiciliarios: {formatReportAmount(ytdCourierPayout)} · Neto operativo:{" "}
+            {formatReportAmount(ytdNetProfit)}
           </p>
         </div>
       </div>
@@ -139,14 +175,11 @@ export function SalesReportsPanel({
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <FinancialDetailTable months={report.months} />
+          <FinancialDetailTable months={months} />
         </section>
 
         <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <CourierPayoutList
-            couriers={report.courierPayouts}
-            periodLabel={report.rangeLabel}
-          />
+          <CourierPayoutList couriers={courierPayouts} periodLabel={rangeLabel} />
         </section>
       </div>
 
@@ -157,7 +190,7 @@ export function SalesReportsPanel({
             <span className="font-medium text-foreground">Ganancia neta</span> = facturación bruta
             menos domiciliarios. El{" "}
             <span className="font-medium text-foreground">neto real</span> descuenta además la
-            comisión de la pasarela de pagos ({(PAYMENT_GATEWAY_FEE_RATE * 100).toFixed(1)}%).
+            comisión de la app (5%).
           </p>
         </div>
       </section>

@@ -10,6 +10,7 @@ import { useOrders } from "@/context/OrderContext";
 import { CATEGORIES, type Category } from "@/mocks/menuMock";
 import { restaurantsMock } from "@/mocks/restaurantsMock";
 import { getProductPricing } from "@/lib/promotions";
+import { isCustomizableMainDish } from "@/lib/orderCustomizations";
 import { DiscountBadge, ProductPriceDisplay } from "@/components/shared/ProductPriceDisplay";
 import { ProductDetailModal } from "@/components/cliente/ProductDetailModal";
 import type { MenuItem } from "@/mocks/menuMock";
@@ -50,6 +51,15 @@ function ClienteView() {
     [restaurants],
   );
 
+  const handleAddProduct = (product: MenuItem) => {
+    if (isCustomizableMainDish(product)) {
+      const pricing = getProductPricing(product, promotions);
+      setSelectedProduct({ product, basePrice: pricing.salePrice });
+      return;
+    }
+    addToCart(product);
+  };
+
   if (isLoadingMenu) {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center">
@@ -72,7 +82,7 @@ function ClienteView() {
         {clientTab === "tracking" ? (
           <OrderTrackingPanel />
         ) : clientModule === "promociones" ? (
-          <PromocionesPanel menu={menu} onAdd={addToCart} />
+          <PromocionesPanel menu={menu} onAdd={handleAddProduct} />
         ) : clientModule === "rankin" ? (
           <RankinPanel />
         ) : (
@@ -214,16 +224,14 @@ function ClienteView() {
                   <button
                     type="button"
                     disabled={!p.available}
-                    onClick={() => {
-                      if (p.ingredients?.length || p.modifierGroups?.length) {
-                        setSelectedProduct({ product: p, basePrice: pricing.salePrice });
-                      } else {
-                        addToCart(p);
-                      }
-                    }}
+                    onClick={() => handleAddProduct(p)}
                     className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-ink py-2.5 text-xs font-semibold uppercase tracking-wider text-cream transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:bg-secondary disabled:text-muted-foreground"
                   >
-                    {p.available ? (p.ingredients?.length || p.modifierGroups?.length ? "Personalizar" : "+ Añadir a la orden") : "No disponible"}
+                    {p.available
+                      ? isCustomizableMainDish(p)
+                        ? "Personalizar"
+                        : "+ Añadir a la orden"
+                      : "No disponible"}
                   </button>
                 </div>
               </article>

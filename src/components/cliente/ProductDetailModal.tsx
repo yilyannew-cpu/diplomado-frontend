@@ -115,7 +115,12 @@ export function ProductDetailModal({ product, onClose, basePrice }: ProductDetai
 
             {product.ingredients && product.ingredients.length > 0 && (
               <div className="mt-6 md:mt-8">
-                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Ingredientes</h3>
+                <h3 className="mb-1 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                  Ingredientes
+                </h3>
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Toca un ingrediente para quitarlo de tu plato.
+                </p>
                 <div className="grid gap-2 grid-cols-1 sm:grid-cols-2">
                   {product.ingredients.map((ing) => {
                     const isRemoved = removedIngredients.has(ing.id);
@@ -125,8 +130,8 @@ export function ProductDetailModal({ product, onClose, basePrice }: ProductDetai
                         onClick={() => handleToggleIngredient(ing.id)}
                         className="flex w-full items-center justify-between rounded-xl border border-border p-3 text-left transition-colors hover:bg-secondary/50"
                       >
-                        <span className={`text-sm ${isRemoved ? 'text-muted-foreground line-through' : 'font-medium'}`}>
-                          {ing.name}
+                        <span className={`text-sm ${isRemoved ? "text-muted-foreground line-through" : "font-medium"}`}>
+                          {isRemoved ? `Sin ${ing.name.toLowerCase()}` : ing.name}
                         </span>
                         <div className={`grid size-5 shrink-0 place-items-center rounded-full border ${isRemoved ? 'border-border' : 'border-primary bg-primary text-primary-foreground'}`}>
                           {isRemoved ? <Minus className="size-3 text-muted-foreground" /> : <Check className="size-3" />}
@@ -151,7 +156,10 @@ export function ProductDetailModal({ product, onClose, basePrice }: ProductDetai
                         <h3 className="text-sm md:text-base font-semibold uppercase tracking-wider">{group.name}</h3>
                         <span className="text-xs text-muted-foreground bg-background px-2 py-1 rounded-md border border-border">
                           {isRequired && !isFulfilled ? <span className="text-destructive font-medium">Requerido ({group.minSelections})</span> : ''}
-                          {!isRequired && group.maxSelections > 1 ? `Máx ${group.maxSelections}` : ''}
+                          {!isRequired && group.maxSelections > 1 ? `Máx ${group.maxSelections}` : ""}
+                          {!isRequired && group.maxSelections > 0 && /adici/i.test(group.name)
+                            ? " · Precio adicional"
+                            : ""}
                           {isFulfilled && isRequired ? <span className="text-primary font-medium">Completado</span> : ''}
                         </span>
                       </div>

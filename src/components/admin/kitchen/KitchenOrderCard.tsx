@@ -1,6 +1,7 @@
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { OrderSpecialInstructions } from "@/components/shared/OrderSpecialInstructions";
+import { OrderItemLines } from "@/components/shared/OrderItemLines";
 import { formatCOP, useOrders } from "@/context/OrderContext";
 import { useKitchenOrderSla } from "@/hooks/useKitchenOrderSla";
 import { slaCardBorderClass } from "@/lib/kitchenSla";
@@ -51,22 +52,12 @@ export function KitchenOrderCard({
         <KitchenSlaTimer order={order} now={now} />
       </header>
 
-      <ul
-        className={cn(
-          "mb-2 space-y-1 sm:mb-3 sm:space-y-1.5",
-          compact ? "text-sm" : "text-sm sm:text-base",
-        )}
-      >
-        {order.items.map((item) => {
-          const product = menu.find((m) => m.id === item.productId);
-          return (
-            <li key={item.productId} className="font-bold leading-snug text-foreground">
-              <span className="font-mono text-primary">{item.quantity}×</span>{" "}
-              {product?.name ?? item.productId}
-            </li>
-          );
-        })}
-      </ul>
+      <OrderItemLines
+        items={order.items}
+        menu={menu}
+        compact={compact}
+        className={cn("mb-2 sm:mb-3", compact ? "text-sm" : "text-sm sm:text-base")}
+      />
 
       {order.notes ? (
         <OrderSpecialInstructions notes={order.notes} compact={compact} />

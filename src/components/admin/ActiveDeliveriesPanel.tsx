@@ -1,20 +1,21 @@
 import { useMemo } from "react";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { CourierRatingBadge } from "@/components/shared/CourierRatingBadge";
+import { useAdmin } from "@/context/AdminContext";
 import { formatCOP } from "@/context/OrderContext";
-import {
-  buildActiveDeliveryRows,
-  statusBadgeClass,
-} from "@/lib/activeDeliveries";
-import { getOrderDeliveryFee } from "@/lib/deliveryFees";
-import type { Order } from "@/mocks/ordersMock";
+import { mapApiStatusToFrontend } from "@/lib/api/admin/mappers";
+import type { OrderStatus } from "@/mocks/ordersMock";
 
-interface ActiveDeliveriesPanelProps {
-  orders: Order[];
+function statusBadgeClass(status: OrderStatus): string {
+  if (status === "En Camino") return "bg-primary/15 text-primary";
+  if (status === "Recogido") return "bg-amber-brand/15 text-amber-brand";
+  return "bg-secondary text-muted-foreground";
 }
 
-export function ActiveDeliveriesPanel({ orders }: ActiveDeliveriesPanelProps) {
-  const rows = useMemo(() => buildActiveDeliveryRows(orders), [orders]);
+export function ActiveDeliveriesPanel() {
+  const { activeDeliveries } = useAdmin();
+
+  const rows = useMemo(() => activeDeliveries, [activeDeliveries]);
 
   if (rows.length === 0) {
     return (
@@ -46,114 +47,96 @@ export function ActiveDeliveriesPanel({ orders }: ActiveDeliveriesPanelProps) {
         </div>
 
         {rows.map((row) => (
-          <div key={row.courierId} className="border-b border-border last:border-b-0">
-            {/* Mobile */}
+          <div key={row.courier_id} className="border-b border-border last:border-b-0">
             <div className="space-y-3 p-4 lg:hidden">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-3">
-                  <UserAvatar
-                    name={row.courierName}
-                    src={row.courierAvatar}
-                    className="size-11"
+              <div className="flex items-center gap-3">
+                <UserAvatar name={row.courier_name} className="size-10" />
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold">{row.courier_name}</p>
+                  <p className="text-[11px] text-muted-foreground">{row.vehicle ?? "Sin vehículo"}</p>
+                  <CourierRatingBadge
+                    averageRating={row.average_rating}
+                    reviewCount={0}
+                    className="mt-1"
                   />
-                  <div className="min-w-0">
-                    <p className="font-medium">{row.courierName}</p>
-                    {row.vehicle && (
-                      <p className="text-[11px] text-muted-foreground">{row.vehicle}</p>
-                    )}
-                    <CourierRatingBadge
-                      averageRating={row.averageRating}
-                      reviewCount={row.reviewCount}
-                      className="mt-1"
-                    />
-                  </div>
                 </div>
-                <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${statusBadgeClass(row.statusKey)}`}
-                >
-                  {row.statusLabel}
-                </span>
+                <p className="font-mono text-sm font-semibold text-primary tabular-nums">
+                  {formatCOP(row.total_delivery_pay)}
+                </p>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {row.orderIds.map((id) => (
-                  <span
-                    key={id}
-                    className="rounded-md bg-secondary px-2 py-0.5 font-mono text-[11px] font-medium"
-                  >
-                    {id}
-                  </span>
-                ))}
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">{row.zones.join(" · ")}</span>
-                <div className="text-right">
-                  <p className="font-mono font-semibold text-primary tabular-nums">
-                    {formatCOP(row.deliveryPay)}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {row.orders.map((o) => formatCOP(getOrderDeliveryFee(o))).join(" + ")}
-                  </p>
-                </div>
-              </div>
+              <ul className="space-y-2">
+                {row.orders.map((order) => {
+                  const status = mapApiStatusToFrontend(order.status);
+                  return (
+                    <li
+                      key={order.order_id}
+                      className="rounded-xl border border-border/60 bg-background/50 px-3 py-2.5 text-xs"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-mono font-semibold">{order.order_id}</p>
+                          <p className="mt-0.5">{order.customer_name}</p>
+                          <p className="mt-1 text-muted-foreground">{order.address}</p>
+                        </div>
+                        <span
+                          className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusBadgeClass(status)}`}
+                        >
+                          {status}
+                        </span>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
 
-            {/* Desktop */}
-            <div className="hidden items-center px-5 py-4 lg:grid lg:grid-cols-12 lg:gap-3">
-              <div className="col-span-2 flex min-w-0 items-center gap-3">
-                <UserAvatar
-                  name={row.courierName}
-                  src={row.courierAvatar}
-                  className="size-10"
-                />
+            <div className="hidden items-start gap-3 px-5 py-4 lg:grid lg:grid-cols-12">
+              <div className="col-span-2 flex items-center gap-3">
+                <UserAvatar name={row.courier_name} className="size-10 shrink-0" />
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{row.courierName}</p>
-                  {row.vehicle && (
-                    <p className="truncate text-[11px] text-muted-foreground">{row.vehicle}</p>
-                  )}
+                  <p className="truncate font-semibold">{row.courier_name}</p>
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    {row.vehicle ?? "Sin vehículo"}
+                  </p>
                 </div>
               </div>
-              <div className="col-span-3 flex flex-wrap gap-1.5">
-                {row.orderIds.map((id) => (
-                  <span
-                    key={id}
-                    className="rounded-md bg-secondary px-2 py-0.5 font-mono text-[11px] font-medium"
-                  >
-                    {id}
-                  </span>
+
+              <ul className="col-span-3 space-y-1.5 text-xs">
+                {row.orders.map((order) => (
+                  <li key={order.order_id}>
+                    <span className="font-mono font-medium">{order.order_id}</span>
+                    <span className="text-muted-foreground"> · {order.customer_name}</span>
+                  </li>
                 ))}
-              </div>
-              <div className="col-span-1 flex items-center">
+              </ul>
+
+              <div className="col-span-1">
                 <CourierRatingBadge
-                  averageRating={row.averageRating}
-                  reviewCount={row.reviewCount}
+                  averageRating={row.average_rating}
+                  reviewCount={0}
                 />
               </div>
-              <p className="col-span-2 truncate text-xs text-muted-foreground">
-                {row.zones.join(", ")}
+
+              <p className="col-span-2 text-xs text-muted-foreground">
+                {row.zones.join(" · ")}
               </p>
-              <div className="col-span-2 text-right">
-                <p className="font-mono text-sm font-semibold text-primary tabular-nums">
-                  {formatCOP(row.deliveryPay)}
-                </p>
-                <p className="mt-0.5 text-[10px] text-muted-foreground">
-                  {row.orders
-                    .map((o) => `${o.id}: ${formatCOP(getOrderDeliveryFee(o))}`)
-                    .join(" · ")}
-                </p>
-              </div>
-              <div className="col-span-2 flex flex-col items-center gap-1">
-                <span
-                  className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wider ${statusBadgeClass(row.statusKey)}`}
-                >
-                  {row.statusLabel}
-                </span>
-                <ul className="text-center text-[10px] text-muted-foreground">
-                  {row.orders.map((o) => (
-                    <li key={o.id}>
-                      {o.id}: {o.status}
-                    </li>
-                  ))}
-                </ul>
+
+              <p className="col-span-2 text-right font-mono text-sm font-semibold tabular-nums text-primary">
+                {formatCOP(row.total_delivery_pay)}
+              </p>
+
+              <div className="col-span-2 flex flex-wrap justify-center gap-1">
+                {row.orders.map((order) => {
+                  const status = mapApiStatusToFrontend(order.status);
+                  return (
+                    <span
+                      key={order.order_id}
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusBadgeClass(status)}`}
+                    >
+                      {order.order_id}: {status}
+                    </span>
+                  );
+                })}
               </div>
             </div>
           </div>

@@ -1,16 +1,14 @@
-import { MapPin, Truck } from "lucide-react";
+import { MapPin, Truck, User } from "lucide-react";
 import { useMemo } from "react";
 import { KitchenOrderCard } from "@/components/admin/kitchen/KitchenOrderCard";
-import { UserAvatar } from "@/components/shared/UserAvatar";
 import { chunkOrders, MAX_ORDERS_PER_COURIER } from "@/lib/deliveryLimits";
 import { groupOrdersByZone } from "@/lib/orderZones";
 import type { Order } from "@/mocks/ordersMock";
-import { usersMock } from "@/mocks/usersMock";
 
 interface ReadyDispatchColumnProps {
   orders: Order[];
   onAssignZone: (orders: Order[]) => void;
-  onDispatchBatch: (orderIds: string[]) => void;
+  onDispatchBatch: (orders: Order[]) => void;
 }
 
 export function ReadyDispatchColumn({
@@ -64,7 +62,7 @@ export function ReadyDispatchColumn({
                 batchIndex={index}
                 zoneOrderCount={zoneOrders.length}
                 onAssign={() => onAssignZone(batch)}
-                onDispatch={() => onDispatchBatch(batch.map((o) => o.id))}
+                onDispatch={() => onDispatchBatch(batch)}
               />
             ))}
           </div>
@@ -99,21 +97,20 @@ function BatchActions({
   const allAssigned = batch.every(
     (o) => o.deliveryPersonId && o.deliveryPersonId === assignedCourierId,
   );
-  const courier = assignedCourierId
-    ? usersMock.find((u) => u.id === assignedCourierId)
-    : undefined;
   const readyToDispatch = allAssigned && batch.every((o) => o.status === "Listo");
 
   return (
     <div className="space-y-2">
-      {readyToDispatch && courier ? (
+      {readyToDispatch && assignedCourierId ? (
         <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 transition-all duration-300">
-          <UserAvatar name={courier.name} src={courier.avatar} className="size-8" />
+          <div className="grid size-8 place-items-center rounded-full bg-primary/15 text-primary">
+            <User className="size-4" />
+          </div>
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-primary">
               Repartidor asignado
             </p>
-            <p className="truncate text-sm font-semibold">{courier.name}</p>
+            <p className="truncate text-sm font-semibold">Listo para despachar</p>
           </div>
         </div>
       ) : null}

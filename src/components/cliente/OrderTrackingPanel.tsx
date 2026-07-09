@@ -1,5 +1,6 @@
 import { MapPin, Package } from "lucide-react";
 import { StatusStepIcon } from "@/components/cliente/StatusStepIcon";
+import { OrderItemLines } from "@/components/shared/OrderItemLines";
 import { formatCOP, useOrders } from "@/context/OrderContext";
 import { CLIENT_STATUS_FLOW } from "@/mocks/ordersMock";
 import { cn } from "@/lib/utils";
@@ -155,24 +156,13 @@ export function OrderTrackingPanel() {
           <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-cream/40">
             Resumen del pedido
           </p>
-          <ul className="space-y-2">
-            {order.items.map((item) => {
-              const product = menu.find((m) => m.id === item.productId);
-              return (
-                <li
-                  key={item.productId}
-                  className="flex justify-between text-sm text-cream/70"
-                >
-                  <span>
-                    {item.quantity}× {product?.name ?? item.productId}
-                  </span>
-                  <span className="font-mono tabular-nums">
-                    {formatCOP((product?.price ?? 0) * item.quantity)}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
+          <OrderItemLines
+            items={order.items}
+            menu={menu}
+            showPrices
+            itemClassName="text-cream/70"
+            customizationClassName="text-amber-300/90"
+          />
         </div>
       </div>
     </div>
