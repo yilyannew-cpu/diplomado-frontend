@@ -10,7 +10,6 @@ import {
 import { authApi } from "@/lib/api/endpoints/auth";
 import { setToken, getToken } from "@/lib/api/client";
 import type { User } from "@/lib/api/types";
-import { usersMock } from "@/mocks/usersMock";
 
 interface AuthState {
   user: User | null;
@@ -26,7 +25,7 @@ const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(!!getToken());
+  const [isLoading, setIsLoading] = useState(true);
 
   const setSession = useCallback((token: string, nextUser: User) => {
     setToken(token);
@@ -36,7 +35,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearSession = useCallback(() => {
     setToken(null);
     setUser(null);
-    localStorage.removeItem("mock_user_data");
   }, []);
 
   const refreshUser = useCallback(async (): Promise<User | null> => {
@@ -47,19 +45,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // Mock Refresh
-      const stored = localStorage.getItem("mock_user_data");
-      if (stored) {
-        const me = JSON.parse(stored) as User;
-        setUser(me);
-        return me;
-      }
-      throw new Error("No mock session");
+      const me = await authApi.me();
+      setUser(me);
+      return me;
     } catch {
       clearSession();
       return null;
     }
   }, [clearSession]);
+
+  useEffect(() => {
+    void authApi.health().catch(() => {
+      /* despertar Render en cold start; no bloquea la UI */
+    });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,14 +71,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        // Mock Hydrate
-        const stored = localStorage.getItem("mock_user_data");
-        if (stored) {
-          const me = JSON.parse(stored) as User;
-          if (!cancelled) setUser(me);
-        } else {
-          throw new Error("No mock session");
-        }
+        const me = await authApi.me();
+        if (!cancelled) setUser(me);
       } catch {
         if (!cancelled) clearSession();
       } finally {
@@ -96,33 +89,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string): Promise<User> => {
-      // MOCK LOGIN BYPASS
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simular retraso de red leve
-      const mockUser = usersMock.find(u => u.email === email && u.password === password);
-      
-      if (!mockUser) {
-        throw new Error("Credenciales inválidas. Intenta de nuevo.");
-      }
-      
-      const fakeToken = `mock-token-${mockUser.id}`;
-      const user = mockUser as unknown as User;
-      
-      localStorage.setItem("mock_user_data", JSON.stringify(user));
-      setSession(fakeToken, user);
-      return user;
+      const response = await authApi.login({ email, password });
+      setSession(response.token, response.user);
+      return response.user;
     },
     [setSession],
   );
 
   const logout = useCallback(async (): Promise<void> => {
-    const token = getToken();
-    if (!token) return;
-    
     try {
-      // Mock logout (no-op en backend)
-      await new Promise(r => setTimeout(r, 200));
+      if (getToken()) await authApi.logout();
     } catch {
-      /* limpiar sesión local aunque falle */
+      /* limpiar sesión local aunque falle el backend */
     } finally {
       clearSession();
     }
