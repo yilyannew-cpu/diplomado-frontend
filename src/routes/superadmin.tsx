@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
-import { RoleGuard } from "@/components/shared/RoleShell";
-import { useOrders } from "@/context/OrderContext";
+import { RoleGuard, TopBar } from "@/components/shared/RoleShell";
 import { toast } from "sonner";
 
 // API
@@ -9,12 +8,19 @@ import { usersApi } from "@/lib/api/endpoints/users";
 import { type User, type PendingUser, type Role } from "@/lib/api/types";
 
 // Componentes modulares
-import { SuperadminSidebar, type SuperadminModule } from "@/components/superadmin/SuperadminSidebar";
+import {
+  SuperadminNavMobile,
+  SuperadminNavSidebar,
+  getSuperadminPageTitle,
+  type SuperadminModule,
+} from "@/components/superadmin/SuperadminNav";
 import { SuperadminMetrics } from "@/components/superadmin/SuperadminMetrics";
-import { ApprovalQueue } from "@/components/superadmin/ApprovalQueue";
+import { ApprovalsModule } from "@/components/superadmin/ApprovalsModule";
 import { UsersTable } from "@/components/superadmin/UsersTable";
 import { NewUserForm } from "@/components/superadmin/NewUserForm";
 import { SystemStatus } from "@/components/superadmin/SystemStatus";
+import { OperationsPanel } from "@/components/superadmin/OperationsPanel";
+import { useSuperadminDashboard } from "@/hooks/useSuperadminDashboard";
 
 // import { usersMock, type MockUser } from "@/mocks/usersMock";
 
@@ -36,8 +42,8 @@ export const Route = createFileRoute("/superadmin")({
 
 
 function SuperadminView() {
-  const { orders } = useOrders();
-  
+  const dashboard = useSuperadminDashboard();
+
   // Estado global de usuarios
   const [users, setUsers] = useState<User[]>([]);
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
@@ -78,15 +84,30 @@ function SuperadminView() {
     loadData();
   }, []);
 
-  const counts = useMemo(
-    () => ({
-      cliente: users.filter((u) => u.role === "cliente").length,
-      admin: users.filter((u) => u.role === "admin").length,
-      domiciliario: users.filter((u) => u.role === "domiciliario").length,
-    }),
+  const clientCount = useMemo(
+    () => users.filter((u) => u.role === "cliente").length,
     [users],
   );
-  const sales = orders.reduce((a, o) => a + o.total, 0);
+
+  const navHints = useMemo(
+    () => ({
+      dashboard: "Métricas y sistema",
+      approvals:
+        pendingUsers.length > 0
+          ? `${pendingUsers.length} pendiente${pendingUsers.length === 1 ? "" : "s"}`
+          : "Cola vacía",
+      users: `${users.length} registrados`,
+      register: "Alta operativa",
+      operations: "Pedidos en curso",
+    }),
+    [pendingUsers.length, users.length],
+  );
+
+  useEffect(() => {
+    if (dashboard.error) {
+      toast.error(dashboard.error);
+    }
+  }, [dashboard.error]);
 
   const toggleStatus = async (id: string) => {
     const user = users.find(u => u.id === id);
@@ -125,52 +146,51 @@ function SuperadminView() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-cream/50">
-      <SuperadminSidebar 
-        activeModule={activeModule} 
-        setActiveModule={setActiveModule} 
-        pendingCount={pendingUsers.length} 
-      />
+    <div className="min-h-screen bg-cream">
+      <TopBar title="Gobernanza" subtitle="Control global de la plataforma" />
 
-      <main className="flex-1 flex flex-col h-full overflow-y-auto">
-        {/* Top Header */}
-        <header className="sticky top-0 z-10 bg-cream/80 backdrop-blur-md border-b border-border/50 px-8 py-5 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
-              Módulo de Gobernanza
-            </p>
-            <h2 className="mt-1 font-display text-2xl font-semibold tracking-tight capitalize">
-              {activeModule === 'dashboard' ? 'Métricas y Visión Global' : 
-               activeModule === 'approvals' ? 'Cola de Aprobaciones' :
-               activeModule === 'users' ? 'Gestión de Personal' : 
-               activeModule === 'register' ? 'Registro Operativo' :
-               'Seguimiento Logístico'}
-            </h2>
+      <div className="page-container flex flex-col gap-6 lg:flex-row lg:gap-8">
+        <SuperadminNavSidebar
+          active={activeModule}
+          onSelect={setActiveModule}
+          hints={navHints}
+        />
+
+        <main className="min-w-0 flex-1">
+          <div className="mb-6 flex min-w-0 items-start gap-3 lg:mb-8">
+            <SuperadminNavMobile
+              active={activeModule}
+              onSelect={setActiveModule}
+              hints={navHints}
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary sm:tracking-[0.25em]">
+                BurgerCore
+              </p>
+              <h1 className="mt-1 font-display text-xl font-semibold leading-tight tracking-tight sm:mt-2 sm:text-2xl lg:text-3xl">
+                {getSuperadminPageTitle(activeModule)}
+              </h1>
+            </div>
           </div>
-        </header>
 
-        <div className="p-8 max-w-6xl w-full mx-auto space-y-8">
+          <div className="space-y-8">
           {activeModule === "dashboard" && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <SuperadminMetrics counts={counts} sales={sales} />
-              {/* Aquí luego añadiremos las pestañas de Resumen e Histórico */}
-              <SystemStatus />
+              <SuperadminMetrics
+                metrics={dashboard.metrics}
+                clientCount={clientCount}
+                loading={dashboard.loading}
+              />
+              <SystemStatus system={dashboard.system} loading={dashboard.loading} />
             </div>
           )}
 
           {activeModule === "approvals" && (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              {/* Pestañas (mock visual por ahora) */}
-              <div className="flex items-center gap-4 border-b border-border mb-6">
-                <button className="border-b-2 border-primary pb-3 px-1 text-sm font-semibold text-foreground">
-                  Restaurantes & Domiciliarios
-                </button>
-                <button className="border-b-2 border-transparent pb-3 px-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-                  Historial de Rechazos
-                </button>
-              </div>
-              <ApprovalQueue pendingUsers={pendingUsers} approveUser={approveUser} rejectUser={rejectUser} />
-            </div>
+            <ApprovalsModule
+              pendingUsers={pendingUsers}
+              approveUser={approveUser}
+              rejectUser={rejectUser}
+            />
           )}
 
           {activeModule === "users" && (
@@ -192,16 +212,10 @@ function SuperadminView() {
             </div>
           )}
 
-          {activeModule === "operations" && (
-            <div className="flex items-center justify-center h-64 border-2 border-dashed border-border rounded-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="text-center">
-                <p className="text-muted-foreground">Módulo operativo en desarrollo</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">Aquí vendrán métricas en tiempo real</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </main>
+          {activeModule === "operations" && <OperationsPanel />}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
