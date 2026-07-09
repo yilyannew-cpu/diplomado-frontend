@@ -10,7 +10,11 @@ export function mapApiErrorToForm(error: unknown): FormErrorResult {
     return { formError: "Error inesperado. Intenta de nuevo." };
   }
 
-  if (error.code === "VALIDATION_ERROR" && error.details?.length) {
+  if (error.code === "PROFILE_UPDATE_FORBIDDEN") {
+    return { formError: "Los administradores solo pueden cambiar su contraseña." };
+  }
+
+  if (error.details?.length) {
     const fieldErrors: Record<string, string> = {};
     for (const detail of error.details) {
       fieldErrors[detail.field] = detail.message;
