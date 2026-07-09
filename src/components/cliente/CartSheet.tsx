@@ -2,6 +2,7 @@ import { useState } from "react";
 import { CreditCard, ShoppingBag } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { formatCOP, useOrders } from "@/context/OrderContext";
+import { formatCustomizationLines } from "@/lib/orderCustomizations";
 import { DEFAULT_DELIVERY_FEE_COP } from "@/lib/deliveryFees";
 import { getProductPricing } from "@/lib/promotions";
 import {
@@ -109,12 +110,9 @@ export function CartSheet() {
                         <span className="shrink-0 font-mono text-xs tabular-nums">{c.quantity}×</span>
                         <div className="flex flex-col min-w-0">
                           <span className="font-medium truncate">{c.product.name}</span>
-                          {c.customizations && (
-                            <span className="text-[10px] text-muted-foreground leading-tight mt-0.5">
-                              {c.customizations.removedIngredients.length > 0 && `Sin ${c.customizations.removedIngredients.join(', ')}`}
-                              {Object.entries(c.customizations.addedModifiers).map(([group, opts]) => 
-                                opts.length > 0 ? ` • +${opts.join(', ')}` : ''
-                              )}
+                          {c.customizations && formatCustomizationLines(c.customizations).length > 0 && (
+                            <span className="mt-0.5 text-[10px] leading-tight text-muted-foreground">
+                              {formatCustomizationLines(c.customizations).join(" · ")}
                             </span>
                           )}
                         </div>

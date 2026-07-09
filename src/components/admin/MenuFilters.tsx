@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CATEGORIES, type Category } from "@/mocks/menuMock";
+import { CATEGORIES, type Category, type MenuItem } from "@/mocks/menuMock";
 import { cn } from "@/lib/utils";
 
 export type MenuAvailabilityFilter = "all" | "available" | "unavailable";
@@ -167,9 +167,9 @@ export function MenuFilters({ value, onChange, resultCount, totalCount }: MenuFi
 }
 
 export function filterMenuItems(
-  items: { category: Category; available: boolean }[],
+  items: MenuItem[],
   filters: MenuFiltersState,
-) {
+): MenuItem[] {
   return items.filter((item) => {
     if (filters.category !== "all" && item.category !== filters.category) return false;
     if (filters.availability === "available" && !item.available) return false;

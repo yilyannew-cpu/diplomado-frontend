@@ -39,6 +39,7 @@ export interface MenuItem {
   name: string;
   price: number;
   category: Category;
+  categoryId?: string;
   description: string;
   image: string;
   available: boolean;
@@ -81,7 +82,7 @@ export const menuMock: MenuItem[] = [
       },
       {
         id: "modg-extras-01",
-        name: "Adiciona Extras",
+        name: "Adiciones",
         productId: "prod-01",
         minSelections: 0,
         maxSelections: 3,
@@ -102,6 +103,29 @@ export const menuMock: MenuItem[] = [
     image: "https://images.unsplash.com/photo-1550317138-10000687a72b?auto=format&fit=crop&w=800&q=80",
     available: true,
     restaurantId: "rest-ffcore",
+    ingredients: [
+      { id: "ing-pan-02", name: "Pan artesanal", available: true },
+      { id: "ing-carne-02", name: "Carne Angus", available: true },
+      { id: "ing-chicharron", name: "Chicharrón", available: true },
+      { id: "ing-plantano", name: "Plátano maduro", available: true },
+      { id: "ing-queso-02", name: "Queso costeño", available: true },
+      { id: "ing-cebolla-02", name: "Cebolla grillé", available: true },
+      { id: "ing-lechuga", name: "Lechuga", available: true },
+    ],
+    modifierGroups: [
+      {
+        id: "modg-adiciones-02",
+        name: "Adiciones",
+        productId: "prod-02",
+        minSelections: 0,
+        maxSelections: 3,
+        options: [
+          { id: "modo-ad-02-0", name: "Tocino crujiente", priceExtra: 4200, available: true, groupId: "modg-adiciones-02" },
+          { id: "modo-ad-02-1", name: "Queso cheddar extra", priceExtra: 3500, available: true, groupId: "modg-adiciones-02" },
+          { id: "modo-ad-02-2", name: "Huevo frito", priceExtra: 2800, available: true, groupId: "modg-adiciones-02" },
+        ],
+      },
+    ],
   },
   {
     id: "prod-03",
@@ -122,6 +146,28 @@ export const menuMock: MenuItem[] = [
     image: "https://images.unsplash.com/photo-1525059696034-4967a729002e?auto=format&fit=crop&w=800&q=80",
     available: true,
     restaurantId: "rest-verdebrasa",
+    ingredients: [
+      { id: "ing-pan-04", name: "Pan integral", available: true },
+      { id: "ing-garbanzo", name: "Medallón de garbanzo", available: true },
+      { id: "ing-aguacate", name: "Aguacate", available: true },
+      { id: "ing-rugula", name: "Rúgula", available: true },
+      { id: "ing-tomate-04", name: "Tomate", available: true },
+      { id: "ing-cebolla-04", name: "Cebolla morada", available: true },
+      { id: "ing-mayo", name: "Mayo chipotle", available: true },
+    ],
+    modifierGroups: [
+      {
+        id: "modg-adiciones-04",
+        name: "Adiciones",
+        productId: "prod-04",
+        minSelections: 0,
+        maxSelections: 2,
+        options: [
+          { id: "modo-ad-04-0", name: "Queso vegano", priceExtra: 3200, available: true, groupId: "modg-adiciones-04" },
+          { id: "modo-ad-04-1", name: "Aguacate extra", priceExtra: 3800, available: true, groupId: "modg-adiciones-04" },
+        ],
+      },
+    ],
   },
   {
     id: "prod-05",

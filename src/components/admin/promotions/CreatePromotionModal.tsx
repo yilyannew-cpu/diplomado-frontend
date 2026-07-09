@@ -8,7 +8,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { formatCOP, useOrders } from "@/context/OrderContext";
+import { useAdmin } from "@/context/AdminContext";
+import { formatCOP } from "@/context/OrderContext";
 import { toDateKey } from "@/lib/promotions";
 import { ADDITION_CATEGORY } from "@/mocks/menuMock";
 
@@ -21,7 +22,7 @@ const inputClass =
   "mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20";
 
 export function CreatePromotionModal({ open, onClose }: CreatePromotionModalProps) {
-  const { menu, addPromotion } = useOrders();
+  const { menu, addPromotion } = useAdmin();
   const [name, setName] = useState("");
   const [discountPercent, setDiscountPercent] = useState("15");
   const [startDate, setStartDate] = useState(toDateKey());
@@ -80,15 +81,14 @@ export function CreatePromotionModal({ open, onClose }: CreatePromotionModalProp
       return;
     }
 
-    addPromotion({
+    void addPromotion({
       name: trimmedName,
       discountPercent: Math.round(discount),
       productIds: [...selectedIds],
       startDate,
       endDate,
       active: true,
-    });
-    handleClose();
+    }).then(() => handleClose());
   };
 
   return (

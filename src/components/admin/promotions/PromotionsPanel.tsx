@@ -2,7 +2,8 @@ import { Tag } from "lucide-react";
 import { useMemo, useState } from "react";
 import { CreatePromotionModal } from "@/components/admin/promotions/CreatePromotionModal";
 import { EditPromotionModal } from "@/components/admin/promotions/EditPromotionModal";
-import { formatCOP, useOrders } from "@/context/OrderContext";
+import { useAdmin } from "@/context/AdminContext";
+import { formatCOP } from "@/context/OrderContext";
 import type { Promotion } from "@/mocks/promotionsMock";
 import {
   getProductPricing,
@@ -13,7 +14,7 @@ import {
 import type { MenuItem } from "@/mocks/menuMock";
 
 export function PromotionsPanel() {
-  const { menu, promotions } = useOrders();
+  const { menu, promotions } = useAdmin();
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Promotion | null>(null);
 

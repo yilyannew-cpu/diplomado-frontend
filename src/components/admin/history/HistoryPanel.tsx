@@ -1,43 +1,42 @@
-import { Bike, Package, TrendingUp, Wallet } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Bike, Package } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { ReportMetricCard } from "@/components/admin/reports/ReportMetricCard";
 import { UserAvatar } from "@/components/shared/UserAvatar";
-import { formatCOP, useOrders } from "@/context/OrderContext";
+import { useAdmin } from "@/context/AdminContext";
+import { formatCOP } from "@/context/OrderContext";
 import {
-  buildDispatchLedger,
-  filterDispatchesByPeriod,
   formatDispatchDate,
   HISTORY_PERIOD_OPTIONS,
-  summarizeDispatchPeriod,
   type HistoryPeriod,
 } from "@/lib/orderHistory";
 import { cn } from "@/lib/utils";
-import { usersMock } from "@/mocks/usersMock";
 
 export function HistoryPanel() {
-  const { orders, dispatchHistory } = useOrders();
+  const { dispatchRecords, dispatchSummary, refreshDispatchHistory } = useAdmin();
   const [period, setPeriod] = useState<HistoryPeriod>("month");
 
-  const ledger = useMemo(
-    () => buildDispatchLedger(orders, dispatchHistory),
-    [orders, dispatchHistory],
-  );
+  useEffect(() => {
+    void refreshDispatchHistory(period);
+  }, [period, refreshDispatchHistory]);
 
-  const summary = useMemo(
-    () => summarizeDispatchPeriod(ledger, period),
-    [ledger, period],
-  );
+  const summary = useMemo(() => {
+    if (!dispatchSummary) {
+      return { dispatchedCount: 0, totalSales: 0, totalDeliveryPay: 0 };
+    }
+    const dispatchedCount =
+      period === "day"
+        ? dispatchSummary.today
+        : period === "year"
+          ? dispatchSummary.year
+          : dispatchSummary.month;
 
-  const periodRows = useMemo(
-    () => filterDispatchesByPeriod(ledger, period),
-    [ledger, period],
-  );
+    const totalSales = dispatchRecords.reduce((sum, row) => sum + row.total, 0);
+    const totalDeliveryPay = dispatchRecords.reduce((sum, row) => sum + row.delivery_fee, 0);
 
-  const courierName = (id: string) =>
-    usersMock.find((u) => u.id === id)?.name ?? "Domiciliario";
+    return { dispatchedCount, totalSales, totalDeliveryPay };
+  }, [dispatchRecords, dispatchSummary, period]);
 
-  const courierAvatar = (id: string) =>
-    usersMock.find((u) => u.id === id)?.avatar;
+  const periodRows = dispatchRecords;
 
   return (
     <div className="space-y-6">
@@ -59,102 +58,69 @@ export function HistoryPanel() {
         ))}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-3">
         <ReportMetricCard
-          label={`Comandas despachadas — ${summary.periodLabel}`}
+          label="Despachos"
           value={summary.dispatchedCount}
-          hint="Listo → en ruta con domiciliario"
-          accent="ink"
+          hint={`Pedidos enviados a ruta — ${HISTORY_PERIOD_OPTIONS.find((o) => o.value === period)?.label.toLowerCase()}`}
+          accent="primary"
           formatAsCount
         />
         <ReportMetricCard
-          label={`Ingresos en ventas — ${summary.periodLabel}`}
-          value={summary.grossSales}
-          hint="Total facturado al cliente"
-          accent="primary"
+          label="Facturación despachada"
+          value={summary.totalSales}
+          hint="Total de pedidos despachados en el periodo"
+          accent="ink"
         />
         <ReportMetricCard
-          label={`Gastos en domicilios — ${summary.periodLabel}`}
-          value={summary.deliveryExpenses}
-          hint="Tarifas pagadas a repartidores"
+          label="Pago domicilios"
+          value={summary.totalDeliveryPay}
+          hint="Suma de tarifas de domicilio"
           accent="muted"
-        />
-        <ReportMetricCard
-          label={`Utilidad neta — ${summary.periodLabel}`}
-          value={summary.netRevenue}
-          hint="Ventas menos costo de domicilio"
-          accent="primary"
         />
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-secondary/30 px-4 py-3 sm:px-5">
-          <div className="flex items-center gap-2">
-            <Package className="size-4 text-primary" />
-            <h3 className="text-sm font-semibold">Detalle de despachos</h3>
-          </div>
-          <p className="text-[11px] text-muted-foreground">
-            {periodRows.length} registro{periodRows.length !== 1 ? "s" : ""}
-          </p>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="hidden border-b border-border bg-secondary/40 px-5 py-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground md:grid md:grid-cols-12">
+          <span className="col-span-2">Pedido</span>
+          <span className="col-span-3">Cliente</span>
+          <span className="col-span-2">Domiciliario</span>
+          <span className="col-span-2 text-right">Total</span>
+          <span className="col-span-1 text-right">Domicilio</span>
+          <span className="col-span-2 text-right">Despachado</span>
         </div>
 
         {periodRows.length === 0 ? (
-          <div className="p-10 text-center">
+          <div className="px-5 py-12 text-center">
             <Bike className="mx-auto size-8 text-muted-foreground/40" />
-            <p className="mt-2 text-sm text-muted-foreground">
-              Sin despachos en el periodo seleccionado
+            <p className="mt-3 text-sm font-medium">Sin despachos en este periodo</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Los pedidos despachados desde cocina aparecerán aquí.
             </p>
           </div>
         ) : (
-          <ul className="divide-y divide-border">
-            {periodRows.map((row) => (
-              <li
-                key={`${row.orderId}-${row.dispatchedAt}`}
-                className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-mono text-xs font-semibold text-primary">{row.orderId}</p>
-                    <span className="text-[10px] text-muted-foreground">
-                      {formatDispatchDate(row.dispatchedAt)}
-                    </span>
-                  </div>
-                  <p className="mt-0.5 text-sm font-medium">{row.customerName}</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <UserAvatar
-                      name={courierName(row.deliveryPersonId)}
-                      src={courierAvatar(row.deliveryPersonId)}
-                      className="size-7"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {courierName(row.deliveryPersonId)}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex shrink-0 flex-wrap items-end gap-4 sm:flex-col sm:items-end sm:gap-1">
-                  <div className="text-right">
-                    <p className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground">
-                      <TrendingUp className="size-3" />
-                      Venta
-                    </p>
-                    <p className="font-mono text-sm font-semibold tabular-nums">
-                      {formatCOP(row.total)}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground">
-                      <Wallet className="size-3" />
-                      Domicilio
-                    </p>
-                    <p className="font-mono text-sm font-semibold tabular-nums text-amber-brand">
-                      -{formatCOP(row.deliveryFee)}
-                    </p>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
+          periodRows.map((row) => (
+            <div
+              key={`${row.order_id}-${row.dispatched_at}`}
+              className="border-b border-border px-5 py-4 last:border-b-0 md:grid md:grid-cols-12 md:items-center md:py-3"
+            >
+              <span className="font-mono text-sm font-semibold md:col-span-2">{row.order_id}</span>
+              <span className="mt-1 block text-sm md:col-span-3 md:mt-0">{row.customer_name}</span>
+              <div className="mt-2 flex items-center gap-2 md:col-span-2 md:mt-0">
+                <UserAvatar name={row.courier_name} className="size-8" />
+                <span className="truncate text-sm">{row.courier_name}</span>
+              </div>
+              <span className="mt-2 block font-mono text-sm font-semibold tabular-nums md:col-span-2 md:mt-0 md:text-right">
+                {formatCOP(row.total)}
+              </span>
+              <span className="mt-1 block font-mono text-xs tabular-nums text-muted-foreground md:col-span-1 md:mt-0 md:text-right">
+                {formatCOP(row.delivery_fee)}
+              </span>
+              <span className="mt-1 block text-xs text-muted-foreground md:col-span-2 md:mt-0 md:text-right">
+                {formatDispatchDate(new Date(row.dispatched_at).getTime())}
+              </span>
+            </div>
+          ))
         )}
       </div>
     </div>
