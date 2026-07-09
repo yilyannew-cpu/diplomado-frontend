@@ -2,7 +2,11 @@ import { ApiError } from "./errors";
 
 export const TOKEN_KEY = "ffcore_token";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000/api/v1";
+const API_URL =
+  import.meta.env.VITE_API_URL ??
+  (import.meta.env.PROD
+    ? "https://ffcore-api.onrender.com/api/v1"
+    : "http://localhost:3000/api/v1");
 
 type ApiErrorBody = {
   error?: string;

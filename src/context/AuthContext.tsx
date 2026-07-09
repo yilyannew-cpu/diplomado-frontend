@@ -55,6 +55,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [clearSession]);
 
   useEffect(() => {
+    void authApi.health().catch(() => {
+      /* despertar Render en cold start; no bloquea la UI */
+    });
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function hydrate() {
