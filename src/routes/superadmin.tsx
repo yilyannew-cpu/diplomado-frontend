@@ -50,15 +50,27 @@ function SuperadminView() {
   const [roleFilter, setRoleFilter] = useState<Role | "todos">("todos");
 
   const loadData = async () => {
-    try {
-      const [allUsers, pending] = await Promise.all([
-        usersApi.list(),
-        usersApi.listPending()
-      ]);
-      setUsers(allUsers);
-      setPendingUsers(pending);
-    } catch (error) {
-      toast.error("Error al cargar los usuarios desde el servidor");
+    const [pendingResult, usersResult] = await Promise.allSettled([
+      usersApi.listPending(),
+      usersApi.list(),
+    ]);
+
+    if (pendingResult.status === "fulfilled") {
+      setPendingUsers(
+        pendingResult.value.filter(
+          (user) =>
+            (user.role === "admin" || user.role === "domiciliario") &&
+            user.status === "Pendiente",
+        ),
+      );
+    } else {
+      toast.error("Error al cargar solicitudes pendientes");
+    }
+
+    if (usersResult.status === "fulfilled") {
+      setUsers(usersResult.value);
+    } else {
+      toast.error("Error al cargar la lista de usuarios");
     }
   };
 
