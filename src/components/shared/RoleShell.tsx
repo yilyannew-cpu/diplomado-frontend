@@ -1,6 +1,8 @@
 import { useNavigate } from "@tanstack/react-router";
-import { LogOut, Settings, ShoppingCart, User } from "lucide-react";
-import { useEffect, type ReactNode } from "react";
+import { LogOut, Settings, ShoppingCart, User, Bike } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { PerfilDrawer } from "@/components/domiciliario/PerfilDrawer";
+import type { DrawerView } from "@/components/domiciliario/PerfilDrawer";
 import { BrandLogo } from "@/components/shared/BrandLogo";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import {
@@ -36,18 +38,19 @@ export function RoleGuard({ role, children }: { role: Role; children: ReactNode 
   useEffect(() => {
     if (isLoading) return;
     if (!user) {
-      navigate({ to: getLoginPathForRole(role) });
+      const path = getLoginPathForRole(role);
+      navigate({ to: path, replace: true });
       return;
     }
     if (user.role !== role) {
-      navigate({ to: roleRoutes[user.role] });
+      navigate({ to: roleRoutes[user.role], replace: true });
     }
   }, [user, isLoading, role, navigate]);
 
   if (isLoading || !user || user.role !== role) {
     return (
       <div className="grid min-h-screen place-items-center text-sm text-muted-foreground">
-        Verificando sesión…
+        Cargando…
       </div>
     );
   }
@@ -131,11 +134,17 @@ export function TopBar({
 }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [perfilDrawer, setPerfilDrawer] = useState<DrawerView>(null);
   if (!user) return null;
+  const isDomi = user.role === "domiciliario";
 
   const handleLogout = () => {
-    const loginPath = getLoginPathForRole(user.role);
-    void logout().then(() => navigate({ to: loginPath }));
+    // Escapar a la ruta raíz de los 4 botones inmediatamente
+    navigate({ to: "/" });
+    // Limpiar la sesión en el siguiente tick de JS para evitar que el RoleGuard intente hacer auto-login en esta misma vista
+    setTimeout(() => {
+      void logout();
+    }, 0);
   };
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur">
@@ -220,10 +229,24 @@ export function TopBar({
                   <p className="mt-0.5 text-xs text-muted-foreground">{user.email}</p>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="cursor-pointer gap-2">
+                <DropdownMenuItem
+                  className="cursor-pointer gap-2"
+                  onSelect={() => {
+                    if (isDomi) setPerfilDrawer("mi-cuenta");
+                  }}
+                >
                   <User className="size-4" />
                   Mi cuenta
                 </DropdownMenuItem>
+                {isDomi && (
+                  <DropdownMenuItem
+                    className="cursor-pointer gap-2"
+                    onSelect={() => setPerfilDrawer("mi-vehiculo")}
+                  >
+                    <Bike className="size-4" />
+                    Mi vehículo
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem className="cursor-pointer gap-2">
                   <Settings className="size-4" />
                   Configuración
@@ -238,6 +261,11 @@ export function TopBar({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Drawer de perfil (solo domiciliario) */}
+            {isDomi && (
+              <PerfilDrawer open={perfilDrawer} onOpenChange={setPerfilDrawer} />
+            )}
           </div>
         </div>
       </div>
