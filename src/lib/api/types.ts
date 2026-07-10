@@ -15,6 +15,7 @@ export interface User {
   avatar?: string | null;
   status: UserStatus;
   restaurant_id?: string | null;
+  restaurant_name?: string | null;
   created_at?: string;
 }
 
