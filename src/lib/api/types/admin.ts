@@ -82,6 +82,12 @@ export interface ApiCourierPayout {
   total_payout: number;
 }
 
+export interface ApiSelectedExtra {
+  product_id: string;
+  name: string;
+  price: number;
+}
+
 export interface ApiOrderItem {
   line_id: string;
   product_id: string;
@@ -89,8 +95,12 @@ export interface ApiOrderItem {
   quantity: number;
   unit_price: number;
   customizations: {
-    removed_ingredients: string[];
-    added_modifiers: Record<string, string[]>;
+    removed_ingredients?: string[];
+    added_modifiers?: Record<string, string[]>;
+    additions?: ApiSelectedExtra[];
+    sides?: ApiSelectedExtra[];
+    drinks?: ApiSelectedExtra[];
+    special_instructions?: string | null;
     extra_price: number;
   } | null;
 }

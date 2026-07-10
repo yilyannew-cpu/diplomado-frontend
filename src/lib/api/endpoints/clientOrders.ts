@@ -1,6 +1,15 @@
 import type { ApiOrder } from "@/lib/api/types/admin";
 import { apiClient } from "@/lib/api/client";
 
+export interface CreateOrderExtraIds {
+  addition_ids?: string[];
+  side_ids?: string[];
+  drink_ids?: string[];
+  special_instructions?: string;
+  /** Informativo; el backend recalcula el precio real. */
+  extra_price?: number;
+}
+
 export interface CreateOrderPayload {
   customer_name: string;
   address: string;
@@ -11,11 +20,7 @@ export interface CreateOrderPayload {
   items: Array<{
     product_id: string;
     quantity: number;
-    customizations?: {
-      removed_ingredients: string[];
-      added_modifiers: Record<string, string[]>;
-      extra_price: number;
-    };
+    customizations?: CreateOrderExtraIds;
   }>;
 }
 

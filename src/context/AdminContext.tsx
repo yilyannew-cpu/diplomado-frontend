@@ -21,7 +21,9 @@ import {
   mapApiPromotions,
   mapFrontendStatusToApi,
   resolveImageUrl,
+  uploadProductDataImage,
 } from "@/lib/api/admin/mappers";
+import { PLACEHOLDER_IMAGE } from "@/lib/mediaUrl";
 import { reportRangeLabel, reportRangeToDates, reportRangeToQuery } from "@/lib/api/admin/reportDates";
 import { mapHistoryPeriodToApi } from "@/lib/api/admin/historyPeriod";
 import { adminOrdersApi } from "@/lib/api/endpoints/adminOrders";
@@ -409,16 +411,27 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       }
       try {
         const categoryId = await ensureCategoryIdByName(data.category);
-        const imageUrl = await resolveImageUrl(data.image);
-        const created = await productsApi.create({
+        const hasNewImage = data.image.startsWith("data:");
+        // Crear primero con URL https válida; la foto nueva se sube por multipart.
+        const imageForCreate = hasNewImage
+          ? PLACEHOLDER_IMAGE
+          : await resolveImageUrl(data.image || PLACEHOLDER_IMAGE);
+
+        let created = await productsApi.create({
           name: data.name,
           description: data.description,
           price: data.price,
           category_id: categoryId,
           restaurant_id: restaurantId,
-          image: imageUrl,
+          image: imageForCreate,
           available: data.available,
         });
+
+        if (hasNewImage) {
+          const withImage = await uploadProductDataImage(created.id, data.image);
+          if (withImage) created = withImage;
+        }
+
         setMenu((current) => [...current, mapApiProduct(created)]);
         toast.success("Producto creado");
       } catch (err) {
@@ -439,13 +452,21 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const updateMenuItem = useCallback(
     async (productId: string, data: EditProductData) => {
       try {
-        const imageUrl = await resolveImageUrl(data.image);
-        const updated = await productsApi.update(productId, {
+        const hasNewImage = data.image.startsWith("data:");
+
+        // Campos de texto/precio sin meter data URL en el JSON (causa 500 en Render).
+        let updated = await productsApi.update(productId, {
           description: data.description,
           price: data.price,
-          image: imageUrl,
           available: data.available,
+          ...(hasNewImage ? {} : { image: await resolveImageUrl(data.image) }),
         });
+
+        if (hasNewImage) {
+          const withImage = await uploadProductDataImage(productId, data.image);
+          if (withImage) updated = withImage;
+        }
+
         setMenu((current) =>
           current.map((item) => (item.id === productId ? mapApiProduct(updated) : item)),
         );

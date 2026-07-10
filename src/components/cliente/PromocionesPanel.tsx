@@ -2,6 +2,7 @@ import { formatCOP, useCliente } from "@/context/ClienteContext";
 import { getActivePromotedProducts } from "@/lib/promotions";
 import type { MenuItem } from "@/mocks/menuMock";
 import { DiscountBadge, ProductPriceDisplay } from "@/components/shared/ProductPriceDisplay";
+import { ProductImage } from "@/components/shared/ProductImage";
 
 export function PromocionesPanel({
   menu,
@@ -34,7 +35,7 @@ export function PromocionesPanel({
             className="flex flex-col overflow-hidden rounded-2xl border border-primary/20 bg-card shadow-sm"
           >
             <div className="relative aspect-[16/10] overflow-hidden bg-secondary">
-              <img src={product.image} alt={product.name} className="size-full object-cover" loading="lazy" />
+              <ProductImage src={product.image} alt={product.name} className="size-full object-cover" />
               <span className="absolute left-3 top-3">
                 <DiscountBadge percent={pricing.discountPercent} />
               </span>

@@ -12,6 +12,7 @@ import { getProductPricing } from "@/lib/promotions";
 import { isCustomizableMainDish } from "@/lib/orderCustomizations";
 import { DiscountBadge, ProductPriceDisplay } from "@/components/shared/ProductPriceDisplay";
 import { ProductDetailModal } from "@/components/cliente/ProductDetailModal";
+import { ProductImage } from "@/components/shared/ProductImage";
 import type { MenuItem } from "@/mocks/menuMock";
 
 export const Route = createFileRoute("/cliente")({
@@ -249,11 +250,10 @@ function ClienteView() {
                 }`}
               >
                 <div className="relative aspect-[4/3] overflow-hidden bg-secondary">
-                  <img
+                  <ProductImage
                     src={p.image}
                     alt={p.name}
                     className="size-full object-cover transition-transform duration-700 group-hover:scale-105"
-                    loading="lazy"
                   />
                   {pricing.hasPromotion ? (
                     <span className="absolute right-3 top-3">
