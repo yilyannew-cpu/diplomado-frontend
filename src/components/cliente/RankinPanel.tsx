@@ -1,7 +1,8 @@
-import { restaurantsMock } from "@/mocks/restaurantsMock";
+import { useCliente } from "@/context/ClienteContext";
 
 export function RankinPanel() {
-  const ranked = [...restaurantsMock].sort((a, b) => b.rating - a.rating);
+  const { restaurants } = useCliente();
+  const ranked = [...restaurants].sort((a, b) => b.rating - a.rating);
 
   return (
     <section>
@@ -57,6 +58,11 @@ export function RankinPanel() {
             )}
           </li>
         ))}
+        {ranked.length === 0 && (
+          <p className="py-12 text-center text-sm text-muted-foreground">
+            No hay restaurantes disponibles en este momento.
+          </p>
+        )}
       </ol>
     </section>
   );

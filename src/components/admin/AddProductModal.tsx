@@ -26,7 +26,7 @@ export interface NewProductData {
 interface AddProductModalProps {
   open: boolean;
   onClose: () => void;
-  onSave: (data: NewProductData) => void;
+  onSave: (data: NewProductData) => Promise<void>;
 }
 
 const inputClass =
@@ -41,6 +41,7 @@ export function AddProductModal({ open, onClose, onSave }: AddProductModalProps)
   const [image, setImage] = useState("");
   const [available, setAvailable] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const reset = () => {
     setName("");
@@ -73,7 +74,7 @@ export function AddProductModal({ open, onClose, onSave }: AddProductModalProps)
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedName = name.trim();
     const trimmedDesc = description.trim();
@@ -92,15 +93,24 @@ export function AddProductModal({ open, onClose, onSave }: AddProductModalProps)
       return;
     }
 
-    onSave({
-      name: trimmedName,
-      description: trimmedDesc,
-      price: parsedPrice,
-      category,
-      image: image || PLACEHOLDER_IMAGE,
-      available,
-    });
-    reset();
+    setSubmitting(true);
+    setError(null);
+    try {
+      await onSave({
+        name: trimmedName,
+        description: trimmedDesc,
+        price: parsedPrice,
+        category,
+        image: image || PLACEHOLDER_IMAGE,
+        available,
+      });
+      reset();
+      onClose();
+    } catch {
+      setError("No se pudo guardar el producto. Revisa los datos e intenta de nuevo.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -236,15 +246,17 @@ export function AddProductModal({ open, onClose, onSave }: AddProductModalProps)
             <button
               type="button"
               onClick={handleClose}
-              className="flex-1 rounded-xl border border-border py-2.5 text-sm font-medium hover:bg-secondary"
+              disabled={submitting}
+              className="flex-1 rounded-xl border border-border py-2.5 text-sm font-medium hover:bg-secondary disabled:opacity-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+              disabled={submitting}
+              className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
             >
-              Guardar producto
+              {submitting ? "Guardando…" : "Guardar producto"}
             </button>
           </div>
         </form>

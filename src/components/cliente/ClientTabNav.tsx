@@ -1,13 +1,11 @@
 import { Menu, Radio } from "lucide-react";
-import { useOrders } from "@/context/OrderContext";
+import { useCliente } from "@/context/ClienteContext";
 import { cn } from "@/lib/utils";
 
 export function ClientTabNav() {
-  const { clientTab, setClientTab, activeClientOrderId, orders } = useOrders();
+  const { clientTab, setClientTab, trackedOrder } = useCliente();
 
-  const activeOrder = activeClientOrderId
-    ? orders.find((o) => o.id === activeClientOrderId)
-    : undefined;
+  const activeOrder = trackedOrder;
 
   const hasTracking = Boolean(activeOrder);
   const isInProgress = activeOrder && activeOrder.status !== "Entregado";

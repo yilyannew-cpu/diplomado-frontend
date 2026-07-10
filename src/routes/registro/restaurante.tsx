@@ -4,6 +4,7 @@ import {
   AuthFormAlert,
   AuthFormField,
   AuthFormSelect,
+  AuthFormSelectGrouped,
   AuthInlineLink,
   AuthLayout,
   AuthLinkRow,
@@ -14,7 +15,7 @@ import { authApi } from "@/lib/api/endpoints/auth";
 import { mapApiErrorToForm } from "@/lib/api/mapApiErrorToForm";
 import {
   formatCityZoneLabel,
-  getCitySelectOptions,
+  getCitySelectGroups,
   getZonesForCity,
 } from "@/lib/data/colombiaLocations";
 
@@ -26,7 +27,7 @@ export const Route = createFileRoute("/registro/restaurante")({
 });
 
 function RegisterRestaurantPage() {
-  const cityOptions = useMemo(() => getCitySelectOptions(), []);
+  const cityGroups = useMemo(() => getCitySelectGroups(), []);
 
   const [form, setForm] = useState({
     owner_name: "",
@@ -206,27 +207,41 @@ function RegisterRestaurantPage() {
           onChange={update("tagline")}
           error={fieldErrors.tagline}
         />
-        <AuthFormSelect
+        <AuthFormSelectGrouped
           label="Ciudad"
           name="city_id"
           value={form.city_id}
           onChange={update("city_id")}
-          optionItems={cityOptions}
+          groups={cityGroups}
           placeholder="Selecciona una ciudad"
           error={fieldErrors.city_id}
           required
+          hint={`${cityGroups.reduce((n, g) => n + g.options.length, 0)} municipios en Colombia`}
         />
-        <AuthFormSelect
-          label="Zona / barrio"
-          name="zone"
-          value={form.zone}
-          onChange={update("zone")}
-          options={zoneOptions}
-          placeholder={form.city_id ? "Selecciona una zona" : "Primero elige una ciudad"}
-          error={fieldErrors.zone}
-          required
-          disabled={!form.city_id || zoneOptions.length === 0}
-        />
+        {zoneOptions.length > 0 ? (
+          <AuthFormSelect
+            label="Zona / barrio"
+            name="zone"
+            value={form.zone}
+            onChange={update("zone")}
+            options={zoneOptions}
+            placeholder={form.city_id ? "Selecciona una zona" : "Primero elige una ciudad"}
+            error={fieldErrors.zone}
+            required
+            disabled={!form.city_id}
+          />
+        ) : (
+          <AuthFormField
+            label="Zona / barrio"
+            name="zone"
+            value={form.zone}
+            onChange={update("zone")}
+            placeholder={form.city_id ? "Ej. Centro, barrio o localidad" : "Primero elige una ciudad"}
+            error={fieldErrors.zone}
+            required
+            disabled={!form.city_id}
+          />
+        )}
         <AuthFormField
           label="Dirección de la sede"
           name="address"

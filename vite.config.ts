@@ -7,7 +7,32 @@
 // Para Vercel: activar nitro con preset "vercel" (ver docs/DEPLOY-VERCEL.md).
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+const API_PROXY_TARGET =
+  process.env.VITE_API_PROXY_TARGET ?? "https://ffcore-api.onrender.com";
+
 export default defineConfig({
+  vite: {
+    server: {
+      proxy: {
+        "/api": {
+          target: API_PROXY_TARGET,
+          changeOrigin: true,
+          secure: true,
+        },
+        "/socket.io": {
+          target: API_PROXY_TARGET,
+          changeOrigin: true,
+          secure: true,
+          ws: true,
+        },
+        "/uploads": {
+          target: API_PROXY_TARGET,
+          changeOrigin: true,
+          secure: true,
+        },
+      },
+    },
+  },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
