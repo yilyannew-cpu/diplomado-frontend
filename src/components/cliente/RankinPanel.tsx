@@ -38,10 +38,14 @@ export function RankinPanel() {
               {idx + 1}
             </span>
             <span
-              className="grid size-12 shrink-0 place-items-center rounded-xl font-display text-sm font-semibold text-white"
+              className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl font-display text-sm font-semibold text-white"
               style={{ backgroundColor: r.accent }}
             >
-              {r.initials}
+              {r.logo ? (
+                <img src={r.logo} alt="" className="size-full object-cover" />
+              ) : (
+                r.initials
+              )}
             </span>
             <div className="min-w-0 flex-1">
               <p className="font-display font-semibold leading-tight">{r.name}</p>

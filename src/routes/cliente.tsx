@@ -198,10 +198,14 @@ function ClienteView() {
                     }`}
                   >
                     <span
-                      className="grid size-10 shrink-0 place-items-center rounded-xl font-display text-sm font-semibold text-white sm:size-11"
-                      style={{ backgroundColor: r.accent || '#4f46e5' }}
+                      className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-xl font-display text-sm font-semibold text-white sm:size-11"
+                      style={{ backgroundColor: r.accent || "#4f46e5" }}
                     >
-                      {r.initials}
+                      {r.logo ? (
+                        <img src={r.logo} alt="" className="size-full object-cover" />
+                      ) : (
+                        r.initials
+                      )}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block font-display text-sm font-semibold leading-snug">
@@ -278,10 +282,14 @@ function ClienteView() {
                       title={`Ver más de ${brand.name}`}
                     >
                       <span
-                        className="grid size-5 place-items-center rounded-full text-[9px] font-bold text-white"
+                        className="grid size-5 place-items-center overflow-hidden rounded-full text-[9px] font-bold text-white"
                         style={{ backgroundColor: brand.accent }}
                       >
-                        {brand.initials}
+                        {brand.logo ? (
+                          <img src={brand.logo} alt="" className="size-full object-cover" />
+                        ) : (
+                          brand.initials
+                        )}
                       </span>
                       <span className="truncate">{brand.name}</span>
                       <span className="text-muted-foreground">·</span>

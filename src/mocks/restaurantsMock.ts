@@ -7,6 +7,7 @@ export interface Restaurant {
   deliveryMinutes: number;
   accent: string; // tailwind utility-ready hex for ring/badge
   initials: string;
+  logo?: string | null;
 }
 
 export const restaurantsMock: Restaurant[] = [

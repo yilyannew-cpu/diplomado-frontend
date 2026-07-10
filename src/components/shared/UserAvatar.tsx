@@ -20,7 +20,7 @@ interface UserAvatarProps {
 export function UserAvatar({ name, src, className }: UserAvatarProps) {
   return (
     <Avatar className={cn("shrink-0", className)}>
-      {src ? <AvatarImage src={src} alt={name} /> : null}
+      {src ? <AvatarImage src={src} alt={name} className="object-cover" /> : null}
       <AvatarFallback className="bg-ink text-xs font-semibold text-cream">
         {getUserInitials(name)}
       </AvatarFallback>

@@ -10,6 +10,7 @@ import {
 } from "react";
 import { io, type Socket } from "socket.io-client";
 import { toast } from "sonner";
+import { RESTAURANT_PROFILE_UPDATED_EVENT } from "@/components/shared/ProfileAccountDialog";
 import { mapApiRestaurantList } from "@/lib/api/cliente/mappers";
 import { clienteApi } from "@/lib/api/endpoints/cliente";
 import { clientOrdersApi } from "@/lib/api/endpoints/clientOrders";
@@ -22,7 +23,9 @@ import {
 } from "@/lib/api/admin/mappers";
 import { getSocketUrl } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
+import type { ApiRestaurantProfile } from "@/lib/api/types/admin";
 import { DEFAULT_DELIVERY_FEE_COP } from "@/lib/deliveryFees";
+import { resolveLogoUrl } from "@/lib/mediaUrl";
 import { getProductPricing } from "@/lib/promotions";
 import type { MenuItem } from "@/mocks/menuMock";
 import type { Order } from "@/mocks/ordersMock";
@@ -224,8 +227,39 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
   }, [activeRestaurantId, loadRestaurantCatalog]);
 
   useEffect(() => {
+    const onProfileUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<ApiRestaurantProfile>).detail;
+      if (!detail?.id) return;
+      setRestaurants((prev) =>
+        prev.map((r) =>
+          r.id === detail.id
+            ? {
+                ...r,
+                name: detail.name || r.name,
+                tagline: detail.tagline ?? r.tagline,
+                city: detail.city || r.city,
+                accent: detail.accent || r.accent,
+                initials: detail.initials || r.initials,
+                logo: resolveLogoUrl(detail.logo),
+                rating: detail.rating ?? r.rating,
+                deliveryMinutes: detail.delivery_minutes ?? r.deliveryMinutes,
+              }
+            : r,
+        ),
+      );
+    };
+    window.addEventListener(RESTAURANT_PROFILE_UPDATED_EVENT, onProfileUpdated);
+    return () => window.removeEventListener(RESTAURANT_PROFILE_UPDATED_EVENT, onProfileUpdated);
+  }, []);
+
+  useEffect(() => {
     const onFocus = () => {
       if (activeRestaurantId) void loadRestaurantCatalog(activeRestaurantId);
+      void clienteApi.listRestaurants().then((list) => {
+        setRestaurants(mapApiRestaurantList(list));
+      }).catch(() => {
+        /* silencioso: el catálogo ya está en memoria */
+      });
     };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
