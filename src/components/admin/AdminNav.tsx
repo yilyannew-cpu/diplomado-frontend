@@ -5,6 +5,7 @@ import {
   History,
   LayoutDashboard,
   Tag,
+  Truck,
   UtensilsCrossed,
 } from "lucide-react";
 import { PanelNavMobile, PanelNavSidebar, type PanelNavItem } from "@/components/shared/PanelNav";
@@ -16,7 +17,8 @@ export type AdminTab =
   | "menu"
   | "promociones"
   | "domicilios"
-  | "historial";
+  | "historial"
+  | "motorizados";
 
 export const ADMIN_NAV_ITEMS: PanelNavItem<AdminTab>[] = [
   { id: "dashboard", label: "Dashboard", shortLabel: "Dashboard", icon: LayoutDashboard },
@@ -25,6 +27,7 @@ export const ADMIN_NAV_ITEMS: PanelNavItem<AdminTab>[] = [
   { id: "menu", label: "Gestor de menú", shortLabel: "Menú", icon: UtensilsCrossed },
   { id: "promociones", label: "Promociones", shortLabel: "Promos", icon: Tag },
   { id: "domicilios", label: "Domicilios activos", shortLabel: "Domicilios", icon: Bike },
+  { id: "motorizados", label: "Gestión de motorizados", shortLabel: "Motorizados", icon: Truck },
   { id: "historial", label: "Historial de despachos", shortLabel: "Historial", icon: History },
 ];
 

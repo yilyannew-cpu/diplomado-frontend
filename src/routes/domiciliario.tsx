@@ -5,6 +5,11 @@ import { OrderSpecialInstructions } from "@/components/shared/OrderSpecialInstru
 import { OrderItemLines } from "@/components/shared/OrderItemLines";
 import { useAuth } from "@/context/AuthContext";
 import { useOrders, formatCOP } from "@/context/OrderContext";
+import { useCourierApplications } from "@/context/CourierApplicationsContext";
+import { JobBoardView } from "@/components/domiciliario/JobBoardView";
+import { CurrentRestaurantsView } from "@/components/domiciliario/CurrentRestaurantsView";
+import { OrderHistoryView } from "@/components/domiciliario/OrderHistoryView";
+import { CourierMainControls } from "@/components/domiciliario/CourierTopBarControls";
 import type { Order, OrderStatus } from "@/mocks/ordersMock";
 import {
   Accordion,
@@ -69,17 +74,19 @@ function HubView({
 }: {
   onSelectOrder: (order: Order) => void;
 }) {
-  const { orders } = useOrders();
+  const { orders, takeOrder } = useOrders();
   const { user } = useAuth();
+  
+  const isAvailable = user?.is_available;
 
-  // Pedidos Actuales: ya están en manos del domiciliario (Recogido / En Camino)
+  // Pedidos Actuales: ya están en manos del domiciliario y no entregados
   const actuales = orders.filter((o) =>
-    o.deliveryPersonId === user?.id && ["Recogido", "En Camino"].includes(o.status)
+    o.deliveryPersonId === user?.id && ["Recibido", "En Cocina", "Listo", "Recogido", "En Camino"].includes(o.status)
   );
 
-  // Pedidos Aceptados: asignados pero aún en cocina/listo/recibido
-  const aceptados = orders.filter((o) =>
-    o.deliveryPersonId === user?.id && ["Recibido", "En Cocina", "Listo"].includes(o.status)
+  // Radar (Pedidos Disponibles): Listo y sin asignación
+  const disponibles = orders.filter((o) =>
+    !o.deliveryPersonId && o.status === "Listo"
   );
 
   return (
@@ -89,7 +96,7 @@ function HubView({
         <div className="flex items-center gap-2 mb-4">
           <div className="size-2.5 rounded-full bg-primary animate-pulse" />
           <h3 className="font-display text-lg font-semibold">
-            Pedidos Actuales
+            Tus Pedidos en Curso
           </h3>
           <span className="ml-auto rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-bold text-primary">
             {actuales.length}
@@ -99,10 +106,7 @@ function HubView({
         {actuales.length === 0 ? (
           <div className="rounded-2xl border-2 border-dashed border-border py-10 text-center">
             <p className="text-sm text-muted-foreground">
-              No tienes pedidos en ruta
-            </p>
-            <p className="text-xs text-muted-foreground/60 mt-1">
-              Aparecerán aquí cuando recojas un pedido
+              No tienes pedidos en curso
             </p>
           </div>
         ) : (
@@ -116,29 +120,58 @@ function HubView({
         )}
       </section>
 
-      {/* ── Pedidos Aceptados ── */}
+      {/* ── Radar de Pedidos ── */}
       <section>
         <div className="flex items-center gap-2 mb-4">
-          <div className="size-2.5 rounded-full bg-amber-400" />
+          <div className="relative flex h-3 w-3">
+            {isAvailable && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
+            <span className={`relative inline-flex rounded-full h-3 w-3 ${isAvailable ? "bg-emerald-500" : "bg-muted-foreground"}`}></span>
+          </div>
           <h3 className="font-display text-lg font-semibold">
-            Pedidos Aceptados
+            Radar de Pedidos
           </h3>
-          <span className="ml-auto rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-700">
-            {aceptados.length}
+          <span className="ml-auto rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700">
+            {isAvailable ? disponibles.length : 0}
           </span>
         </div>
 
-        {aceptados.length === 0 ? (
-          <div className="rounded-2xl border-2 border-dashed border-border py-10 text-center">
-            <p className="text-sm text-muted-foreground">
-              Sin pedidos en espera
+        {!isAvailable ? (
+          <div className="rounded-2xl border-2 border-dashed border-border py-10 text-center bg-cream">
+            <p className="text-sm text-muted-foreground font-semibold">Estás desconectado</p>
+            <p className="text-xs text-muted-foreground/80 mt-1">
+              Conéctate en la parte superior para recibir notificaciones del radar.
+            </p>
+          </div>
+        ) : disponibles.length === 0 ? (
+          <div className="rounded-2xl border-2 border-dashed border-border py-10 text-center bg-cream">
+            <p className="text-sm text-muted-foreground font-semibold">Buscando pedidos...</p>
+            <p className="text-xs text-muted-foreground/60 mt-1">
+              Te avisaremos en cuanto un pedido esté listo.
             </p>
           </div>
         ) : (
-          <ul className="space-y-3">
-            {aceptados.map((o) => (
-              <li key={o.id}>
-                <OrderCard order={o} onSelect={onSelectOrder} />
+          <ul className="space-y-4">
+            {disponibles.map((o) => (
+              <li key={o.id} className="rounded-2xl border-2 border-emerald-500/30 bg-emerald-50/50 p-4 shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+                <div className="relative">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <p className="font-mono text-xs text-emerald-700/70 font-semibold">{o.id}</p>
+                      <p className="font-display font-bold text-lg mt-0.5">{o.customerName}</p>
+                      <p className="text-sm text-muted-foreground">{o.address}</p>
+                    </div>
+                    <span className="font-mono font-bold text-emerald-600 bg-emerald-100 px-3 py-1 rounded-full text-sm">
+                      + {formatCOP(5000)}
+                    </span>
+                  </div>
+                  <button 
+                    onClick={() => takeOrder(o.id, user!.id)}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-md transition-transform active:scale-95"
+                  >
+                    ¡Aceptar Pedido!
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -442,22 +475,34 @@ function OrderDetailView({
    ═════════════════════════════════════════════════ */
 function DomiciliarioView() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const { activeTab } = useCourierApplications();
+
+  let content;
+  let topBarProps = { title: "Ruta activa", subtitle: "Buscar y entregar" };
+
+  if (selectedOrder) {
+    topBarProps = { title: `Pedido ${selectedOrder.id}`, subtitle: selectedOrder.customerName };
+    content = <OrderDetailView order={selectedOrder} onBack={() => setSelectedOrder(null)} />;
+  } else if (activeTab === "radar") {
+    topBarProps = { title: "Ruta activa", subtitle: "Buscar y entregar" };
+    content = <HubView onSelectOrder={setSelectedOrder} />;
+  } else if (activeTab === "bolsa") {
+    topBarProps = { title: "Bolsa de Empleo", subtitle: "Restaurantes" };
+    content = <JobBoardView />;
+  } else if (activeTab === "mis-restaurantes") {
+    topBarProps = { title: "Mis Restaurantes", subtitle: "Donde estás activo" };
+    content = <CurrentRestaurantsView />;
+  } else if (activeTab === "historial") {
+    topBarProps = { title: "Historial", subtitle: "Tus ganancias" };
+    content = <OrderHistoryView />;
+  }
 
   return (
     <div className="min-h-screen bg-cream/50 text-foreground">
-      <TopBar
-        title={selectedOrder ? `Pedido ${selectedOrder.id}` : "Ruta activa"}
-        subtitle={selectedOrder ? selectedOrder.customerName : "Buscar y entregar"}
-      />
+      <TopBar {...topBarProps} />
       <main className="mx-auto max-w-lg px-4 py-6 sm:px-6">
-        {selectedOrder ? (
-          <OrderDetailView
-            order={selectedOrder}
-            onBack={() => setSelectedOrder(null)}
-          />
-        ) : (
-          <HubView onSelectOrder={setSelectedOrder} />
-        )}
+        {!selectedOrder && <CourierMainControls />}
+        {content}
       </main>
     </div>
   );

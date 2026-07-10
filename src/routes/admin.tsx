@@ -14,6 +14,7 @@ import { AssignCourierModal } from "@/components/admin/AssignCourierModal";
 import { OrderCommandMonitor } from "@/components/admin/kitchen/OrderCommandMonitor";
 import { HistoryPanel } from "@/components/admin/history/HistoryPanel";
 import { PromotionsPanel } from "@/components/admin/promotions/PromotionsPanel";
+import { CourierApplicationsAdminView } from "@/components/admin/CourierApplicationsAdminView";
 import {
   DEFAULT_MENU_FILTERS,
   filterMenuItems,
@@ -100,7 +101,9 @@ function AdminView() {
               ? "Promociones"
               : tab === "historial"
                 ? "Historial de despachos"
-                : "Domicilios activos";
+                : tab === "motorizados"
+                  ? "Gestión de motorizados"
+                  : "Domicilios activos";
 
   const navHints: Partial<Record<AdminTab, string>> = {
     dashboard: "Ventas y reseñas",
@@ -110,6 +113,7 @@ function AdminView() {
     promociones: `${activePromotionsCount} activas`,
     domicilios: `${activeDeliveryCount} en ruta`,
     historial: `${historyMonthCount} despachos este mes`,
+    motorizados: "Postulaciones",
   };
 
   const openAssignModal = async (orders: Order[]) => {
@@ -325,6 +329,8 @@ function AdminView() {
             <ActiveDeliveriesPanel />
           ) : tab === "historial" ? (
             <HistoryPanel />
+          ) : tab === "motorizados" ? (
+            <CourierApplicationsAdminView />
           ) : null}
         </main>
       </div>

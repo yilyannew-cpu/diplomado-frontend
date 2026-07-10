@@ -16,6 +16,7 @@ export interface User {
   status: UserStatus;
   restaurant_id?: string | null;
   created_at?: string;
+  is_available?: boolean;
 }
 
 export interface LoginResponse {

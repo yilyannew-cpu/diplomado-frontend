@@ -19,6 +19,7 @@ interface AuthState {
   logout: () => Promise<void>;
   refreshUser: () => Promise<User | null>;
   setSession: (token: string, user: User) => void;
+  toggleAvailability: (isAvailable: boolean) => void;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -106,6 +107,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [clearSession]);
 
+  const toggleAvailability = useCallback((isAvailable: boolean) => {
+    setUser((prev) => (prev ? { ...prev, is_available: isAvailable } : null));
+  }, []);
+
   const value = useMemo<AuthState>(
     () => ({
       user,
@@ -115,8 +120,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       refreshUser,
       setSession,
+      toggleAvailability,
     }),
-    [user, isLoading, login, logout, refreshUser, setSession],
+    [user, isLoading, login, logout, refreshUser, setSession, toggleAvailability],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
