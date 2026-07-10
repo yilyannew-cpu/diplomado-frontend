@@ -21,6 +21,7 @@ import {
   type MenuFiltersState,
 } from "@/components/admin/MenuFilters";
 import { RoleGuard, TopBar } from "@/components/shared/RoleShell";
+import { ProductImage } from "@/components/shared/ProductImage";
 import { AdminProvider, useAdmin } from "@/context/AdminContext";
 import { formatCOP } from "@/context/OrderContext";
 import type { MenuItem } from "@/mocks/menuMock";
@@ -233,9 +234,9 @@ function AdminView() {
                 <div key={p.id}>
                   <div className="border-b border-border p-4 last:border-b-0 md:hidden">
                     <div className="flex gap-3">
-                      <img
+                      <ProductImage
                         src={p.image}
-                        alt=""
+                        alt={p.name}
                         className="size-16 shrink-0 rounded-xl object-cover"
                       />
                       <div className="min-w-0 flex-1">
@@ -286,7 +287,7 @@ function AdminView() {
                   </div>
                   <div className="hidden grid-cols-12 items-center border-b border-border px-5 py-3 text-sm last:border-b-0 md:grid">
                   <div className="col-span-5 flex items-center gap-3">
-                    <img src={p.image} alt="" className="size-10 rounded-lg object-cover" />
+                    <ProductImage src={p.image} alt={p.name} className="size-10 rounded-lg object-cover" />
                     <div>
                       <p className="font-medium">{p.name}</p>
                       <p className="line-clamp-1 text-[11px] text-muted-foreground">{p.description}</p>
