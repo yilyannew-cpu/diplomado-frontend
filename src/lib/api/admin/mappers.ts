@@ -123,6 +123,7 @@ export function mapApiProduct(raw: ApiProduct): MenuItem {
 }
 
 export function mapApiProducts(raw: ApiProduct[]): MenuItem[] {
+  if (!Array.isArray(raw)) return [];
   return raw.map(mapApiProduct);
 }
 
@@ -140,6 +141,7 @@ export function mapApiPromotion(raw: ApiPromotion): Promotion {
 }
 
 export function mapApiPromotions(raw: ApiPromotion[]): Promotion[] {
+  if (!Array.isArray(raw)) return [];
   return raw.map(mapApiPromotion);
 }
 

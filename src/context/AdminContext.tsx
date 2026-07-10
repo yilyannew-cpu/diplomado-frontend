@@ -28,7 +28,7 @@ import { adminOrdersApi } from "@/lib/api/endpoints/adminOrders";
 import { productsApi } from "@/lib/api/endpoints/products";
 import { promotionsApi } from "@/lib/api/endpoints/promotions";
 import { restaurantsApi, type ApiReview } from "@/lib/api/endpoints/restaurants";
-import { getApiUrl } from "@/lib/api/client";
+import { getSocketUrl } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
 import type {
   ApiActiveDeliveryGroup,
@@ -44,7 +44,7 @@ import type {
 import type { NewProductData } from "@/components/admin/AddProductModal";
 import type { EditProductData } from "@/components/admin/EditProductModal";
 import type { Ingredient, MenuItem, ModifierGroup } from "@/mocks/menuMock";
-import { ADDITION_CATEGORY } from "@/mocks/menuMock";
+import { ADDITION_CATEGORY, CATEGORIES } from "@/mocks/menuMock";
 import type { Order, OrderStatus } from "@/mocks/ordersMock";
 import type { Promotion } from "@/mocks/promotionsMock";
 import type { CourierPayoutRow, MonthlySalesReport, ReportDateRange } from "@/lib/salesReports";
@@ -52,10 +52,6 @@ import type { HistoryPeriod } from "@/lib/orderHistory";
 import type { NewAdditionData } from "@/components/admin/AddAdditionModal";
 
 const KITCHEN_STATUSES: OrderStatus[] = ["Recibido", "En Cocina", "Listo"];
-
-function socketBaseUrl(): string {
-  return getApiUrl().replace(/\/api\/v1\/?$/, "");
-}
 
 function isKitchenOrder(order: Order): boolean {
   return KITCHEN_STATUSES.includes(order.status);
@@ -159,6 +155,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const [kitchenOrders, setKitchenOrders] = useState<Order[]>([]);
   const [menu, setMenu] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<ApiCategory[]>([]);
+  const categoriesRef = useRef<ApiCategory[]>([]);
+  categoriesRef.current = categories;
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [dashboard, setDashboard] = useState<ApiDashboard | null>(null);
   const [reviews, setReviews] = useState<ApiReview[]>([]);
@@ -184,10 +182,15 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   const refreshMenu = useCallback(async () => {
     if (!restaurantId) return;
-    const [cats, products] = await Promise.all([
-      restaurantsApi.listCategories(restaurantId),
-      productsApi.list({ restaurantId }),
-    ]);
+    let cats = await restaurantsApi.listCategories(restaurantId);
+    if (cats.length === 0) {
+      cats = await Promise.all(
+        [...CATEGORIES].map((name, position) =>
+          restaurantsApi.createCategory(restaurantId, { name, position }),
+        ),
+      );
+    }
+    const products = await productsApi.list({ restaurantId }, { auth: true });
     setCategories(cats);
     setMenu(mapApiProducts(products));
   }, [restaurantId]);
@@ -269,7 +272,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!restaurantId) return;
 
-    const socket = io(socketBaseUrl(), { transports: ["websocket"] });
+    const socket = io(getSocketUrl(), { transports: ["websocket"] });
     socketRef.current = socket;
 
     socket.emit("join_restaurant", restaurantId);
@@ -365,6 +368,18 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     [restaurantId, refreshActiveDeliveries, refreshDispatchHistory, handleApiError],
   );
 
+  const ensureCategoryIdByName = useCallback(
+    async (name: string): Promise<string> => {
+      const existing = categoriesRef.current.find((c) => c.name === name);
+      if (existing) return existing.id;
+      if (!restaurantId) throw new Error("Restaurante no configurado");
+      const created = await restaurantsApi.createCategory(restaurantId, { name });
+      setCategories((prev) => [...prev, created]);
+      return created.id;
+    },
+    [restaurantId],
+  );
+
   const getCategoryIdByName = useCallback(
     (name: string) => categories.find((c) => c.name === name)?.id,
     [categories],
@@ -387,13 +402,13 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   const addMenuItem = useCallback(
     async (data: NewProductData) => {
-      if (!restaurantId) return;
-      const categoryId = getCategoryIdByName(data.category);
-      if (!categoryId) {
-        toast.error("Categoría no encontrada");
-        return;
+      if (!restaurantId) {
+        const message = "No se encontró el restaurante del administrador.";
+        toast.error(message);
+        throw new Error(message);
       }
       try {
+        const categoryId = await ensureCategoryIdByName(data.category);
         const imageUrl = await resolveImageUrl(data.image);
         const created = await productsApi.create({
           name: data.name,
@@ -411,7 +426,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         throw err;
       }
     },
-    [restaurantId, getCategoryIdByName, handleApiError],
+    [restaurantId, ensureCategoryIdByName, handleApiError],
   );
 
   const addAddition = useCallback(

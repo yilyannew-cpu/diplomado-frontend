@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { X, Plus, Minus, Check } from "lucide-react";
 import type { MenuItem } from "@/mocks/menuMock";
-import { type Customizations, useOrders, formatCOP } from "@/context/OrderContext";
+import { type Customizations, useCliente, formatCOP } from "@/context/ClienteContext";
 
 interface ProductDetailModalProps {
   product: MenuItem;
@@ -10,7 +10,7 @@ interface ProductDetailModalProps {
 }
 
 export function ProductDetailModal({ product, onClose, basePrice }: ProductDetailModalProps) {
-  const { addToCart } = useOrders();
+  const { addToCart } = useCliente();
   
   const [removedIngredients, setRemovedIngredients] = useState<Set<string>>(new Set());
   const [addedModifiers, setAddedModifiers] = useState<Record<string, string[]>>({});

@@ -9,7 +9,7 @@ import {
 import { CartSheet } from "@/components/cliente/CartSheet";
 import { BrandLogo } from "@/components/shared/BrandLogo";
 import { useAuth } from "@/context/AuthContext";
-import { useOrders } from "@/context/OrderContext";
+import { useCliente } from "@/context/ClienteContext";
 import { roleRoutes, getLoginPathForRole } from "@/lib/auth/roleRoutes";
 import type { Role } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
@@ -41,7 +41,7 @@ export function RoleGuard({ role, children }: { role: Role; children: ReactNode 
 }
 
 function ClientCartButton() {
-  const { cartItemCount, setCartOpen } = useOrders();
+  const { cartItemCount, setCartOpen } = useCliente();
 
   return (
     <>
