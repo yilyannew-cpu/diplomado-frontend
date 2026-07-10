@@ -27,7 +27,12 @@ export function UsersTable({
   
   const filtered = users.filter((u) => {
     if (roleFilter !== "todos" && u.role !== roleFilter) return false;
-    if (query && !`${u.name} ${u.email}`.toLowerCase().includes(query.toLowerCase())) return false;
+    if (
+      query &&
+      !`${u.name} ${u.email} ${u.restaurant_name ?? ""}`.toLowerCase().includes(query.toLowerCase())
+    ) {
+      return false;
+    }
     return true;
   });
 
@@ -44,7 +49,7 @@ export function UsersTable({
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar por nombre o email…"
+            placeholder="Buscar por nombre, email o restaurante…"
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 sm:w-56"
           />
           <select
@@ -66,6 +71,7 @@ export function UsersTable({
             <tr>
               <th className="px-5 py-3">Usuario</th>
               <th className="px-5 py-3">Rol</th>
+              <th className="px-5 py-3">Restaurante</th>
               <th className="px-5 py-3">Contacto</th>
               <th className="px-5 py-3">Estado</th>
               <th className="px-5 py-3 text-right">Acciones</th>
@@ -87,6 +93,11 @@ export function UsersTable({
                 </td>
                 <td className="px-5 py-3 text-xs">
                   <span className="rounded-full bg-secondary px-2.5 py-1 font-medium">{roleLabel[u.role]}</span>
+                </td>
+                <td className="px-5 py-3 text-xs text-muted-foreground">
+                  {u.role === "admin"
+                    ? (u.restaurant_name?.trim() || "Sin restaurante")
+                    : "—"}
                 </td>
                 <td className="px-5 py-3 text-xs text-muted-foreground">
                   {u.phone ?? "—"}
