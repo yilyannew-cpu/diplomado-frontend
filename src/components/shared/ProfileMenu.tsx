@@ -1,9 +1,12 @@
 import { useNavigate } from "@tanstack/react-router";
 import { LogOut, Settings, User, Bike } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PerfilDrawer } from "@/components/domiciliario/PerfilDrawer";
 import type { DrawerView } from "@/components/domiciliario/PerfilDrawer";
-import { ProfileAccountDialog } from "@/components/shared/ProfileAccountDialog";
+import {
+  ProfileAccountDialog,
+  RESTAURANT_PROFILE_UPDATED_EVENT,
+} from "@/components/shared/ProfileAccountDialog";
 import { ProfileSettingsDialog } from "@/components/shared/ProfileSettingsDialog";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import {
@@ -15,7 +18,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/context/AuthContext";
+import { restaurantsApi } from "@/lib/api/endpoints/restaurants";
 import type { Role } from "@/lib/api/types";
+import type { ApiRestaurantProfile } from "@/lib/api/types/admin";
+import { resolveLogoUrl } from "@/lib/mediaUrl";
 import { cn } from "@/lib/utils";
 
 const roleLabels: Record<Role, string> = {
@@ -31,10 +37,43 @@ export function ProfileMenu() {
   const [accountOpen, setAccountOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [perfilDrawer, setPerfilDrawer] = useState<DrawerView>(null);
+  const [restaurantLogoUrl, setRestaurantLogoUrl] = useState<string | null>(null);
+
+  const restaurantId = user?.role === "admin" ? user.restaurant_id ?? null : null;
+
+  useEffect(() => {
+    if (!restaurantId) {
+      setRestaurantLogoUrl(null);
+      return;
+    }
+
+    let cancelled = false;
+    void restaurantsApi
+      .getProfile(restaurantId)
+      .then((profile) => {
+        if (!cancelled) setRestaurantLogoUrl(resolveLogoUrl(profile.logo));
+      })
+      .catch(() => {
+        if (!cancelled) setRestaurantLogoUrl(null);
+      });
+
+    const onProfileUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<ApiRestaurantProfile>).detail;
+      if (!detail?.id || detail.id !== restaurantId) return;
+      setRestaurantLogoUrl(resolveLogoUrl(detail.logo));
+    };
+    window.addEventListener(RESTAURANT_PROFILE_UPDATED_EVENT, onProfileUpdated);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener(RESTAURANT_PROFILE_UPDATED_EVENT, onProfileUpdated);
+    };
+  }, [restaurantId]);
 
   if (!user) return null;
 
   const isDomi = user.role === "domiciliario";
+  const avatarSrc = restaurantLogoUrl ?? user.avatar ?? undefined;
 
   const handleLogout = () => {
     navigate({ to: "/" });
@@ -58,7 +97,7 @@ export function ProfileMenu() {
                 {roleLabels[user.role]}
               </p>
             </div>
-            <UserAvatar name={user.name} src={user.avatar ?? undefined} className="size-9 sm:size-10" />
+            <UserAvatar name={user.name} src={avatarSrc} className="size-9 sm:size-10" />
           </button>
         </DropdownMenuTrigger>
 

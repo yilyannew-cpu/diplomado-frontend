@@ -1,6 +1,6 @@
 import { getSocketUrl } from "@/lib/api/client";
 
-const PLACEHOLDER_IMAGE =
+export const PLACEHOLDER_IMAGE =
   "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80";
 
 const UPLOAD_HOST_RE = /^https?:\/\/(?:ffcore-api\.onrender\.com|localhost:\d+)(\/uploads\/.+)$/i;
@@ -68,7 +68,13 @@ function toUploadsUrl(pathname: string): string {
   return path;
 }
 
-export { PLACEHOLDER_IMAGE };
+/** Normaliza logo de restaurante; null si no hay imagen (no usa placeholder de comida). */
+export function resolveLogoUrl(image: string | null | undefined): string | null {
+  if (!image) return null;
+  if (image.startsWith("data:")) return image;
+  const resolved = resolveMediaUrl(image);
+  return resolved === PLACEHOLDER_IMAGE && !image.startsWith("http") ? null : resolved;
+}
 
 export async function compressDataUrl(
   dataUrl: string,

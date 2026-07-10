@@ -32,6 +32,7 @@ import { promotionsApi } from "@/lib/api/endpoints/promotions";
 import { restaurantsApi, type ApiReview } from "@/lib/api/endpoints/restaurants";
 import { getSocketUrl } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
+import { RESTAURANT_PROFILE_UPDATED_EVENT } from "@/components/shared/ProfileAccountDialog";
 import type {
   ApiActiveDeliveryGroup,
   ApiAvailableCourier,
@@ -270,6 +271,16 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void bootstrap();
   }, [bootstrap]);
+
+  useEffect(() => {
+    const onProfileUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<ApiRestaurantProfile>).detail;
+      if (!detail?.id || detail.id !== restaurantId) return;
+      setRestaurant(detail);
+    };
+    window.addEventListener(RESTAURANT_PROFILE_UPDATED_EVENT, onProfileUpdated);
+    return () => window.removeEventListener(RESTAURANT_PROFILE_UPDATED_EVENT, onProfileUpdated);
+  }, [restaurantId]);
 
   useEffect(() => {
     if (!restaurantId) return;
