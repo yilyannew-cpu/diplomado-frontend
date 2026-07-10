@@ -374,8 +374,9 @@ function AdminView() {
       <AddProductModal
         open={addingProduct}
         onClose={() => setAddingProduct(false)}
-        onSave={(data) => {
-          void addMenuItem(data).then(() => setAddingProduct(false));
+        onSave={async (data) => {
+          await addMenuItem(data);
+          setAddingProduct(false);
         }}
       />
 

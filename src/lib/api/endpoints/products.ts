@@ -19,20 +19,23 @@ export const categoriesApi = {
 };
 
 export const productsApi = {
-  list(params: {
-    restaurantId: string;
-    categoryId?: string;
-    available?: boolean;
-  }): Promise<ApiProduct[]> {
+  list(
+    params: {
+      restaurantId: string;
+      categoryId?: string;
+      available?: boolean;
+    },
+    options?: { auth?: boolean },
+  ): Promise<ApiProduct[]> {
     const search = new URLSearchParams();
     search.set("restaurantId", params.restaurantId);
     if (params.categoryId) search.set("categoryId", params.categoryId);
     if (params.available !== undefined) search.set("available", String(params.available));
-    return apiClient(`/products?${search.toString()}`, { auth: true });
+    return apiClient(`/products?${search.toString()}`, { auth: options?.auth ?? false });
   },
 
   get(productId: string): Promise<ApiProduct> {
-    return apiClient(`/products/${productId}`, { auth: true });
+    return apiClient(`/products/${productId}`);
   },
 
   create(body: {

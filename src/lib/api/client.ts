@@ -60,6 +60,18 @@ export function getApiUrl(): string {
   return API_URL;
 }
 
+/** URL base para Socket.IO (mismo origen en dev con proxy de Vite). */
+export function getSocketUrl(): string {
+  const api = getApiUrl();
+  if (api.startsWith("http://") || api.startsWith("https://")) {
+    return api.replace(/\/api\/v1\/?$/, "");
+  }
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+  return "https://ffcore-api.onrender.com";
+}
+
 export async function apiClient<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = "GET", body, auth = false } = options;
 
@@ -80,6 +92,7 @@ export async function apiClient<T>(path: string, options: RequestOptions = {}): 
     method,
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
+    cache: "no-store",
   });
 
   if (!response.ok) {

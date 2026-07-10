@@ -1,16 +1,14 @@
-import { MapPin, Package } from "lucide-react";
+import { MapPin, Package, RefreshCw } from "lucide-react";
 import { StatusStepIcon } from "@/components/cliente/StatusStepIcon";
 import { OrderItemLines } from "@/components/shared/OrderItemLines";
-import { formatCOP, useOrders } from "@/context/OrderContext";
+import { formatCOP, useCliente } from "@/context/ClienteContext";
 import { CLIENT_STATUS_FLOW } from "@/mocks/ordersMock";
 import { cn } from "@/lib/utils";
 
 export function OrderTrackingPanel() {
-  const { orders, activeClientOrderId, menu } = useOrders();
+  const { trackedOrder, isTrackingLoading, refreshTracking, menu } = useCliente();
 
-  const order = activeClientOrderId
-    ? orders.find((o) => o.id === activeClientOrderId)
-    : undefined;
+  const order = trackedOrder;
 
   if (!order) {
     return (
@@ -34,9 +32,20 @@ export function OrderTrackingPanel() {
       <div className="mx-auto max-w-2xl">
       <div className="overflow-hidden rounded-2xl bg-ink text-cream shadow-2xl shadow-ink/20 sm:rounded-3xl">
         <div className="border-b border-white/10 bg-gradient-to-br from-ink via-ink to-primary/30 px-4 py-6 sm:px-8 sm:py-8">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-amber-brand sm:text-[11px] sm:tracking-[0.3em]">
-            Esperando pedido
-          </p>
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-amber-brand sm:text-[11px] sm:tracking-[0.3em]">
+              Seguimiento en tiempo real
+            </p>
+            <button
+              type="button"
+              onClick={() => void refreshTracking()}
+              disabled={isTrackingLoading}
+              className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-2 py-1 text-[10px] text-cream/70 hover:bg-white/10 disabled:opacity-50"
+            >
+              <RefreshCw className={cn("size-3", isTrackingLoading && "animate-spin")} />
+              Actualizar
+            </button>
+          </div>
           <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
             <div>
               <p className="text-xs text-cream/60 sm:text-sm">Código de seguimiento</p>

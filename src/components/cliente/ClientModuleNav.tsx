@@ -12,7 +12,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { useOrders, type ClientModule } from "@/context/OrderContext";
+import { useCliente, type ClientModule } from "@/context/ClienteContext";
 import { cn } from "@/lib/utils";
 
 export const CLIENT_MODULES: Array<{
@@ -78,7 +78,7 @@ function ModuleNavGrid({
 
 /** Web: flecha bajo el logo → popover con módulos */
 export function ClientModuleNavDesktop() {
-  const { clientModule, setClientModule, setClientTab } = useOrders();
+  const { clientModule, setClientModule, setClientTab } = useCliente();
   const [open, setOpen] = useState(false);
 
   const handleSelect = (id: ClientModule) => {
@@ -125,7 +125,7 @@ export function ClientModuleNavMobile({
   slogan?: boolean;
   subtitle?: string;
 }) {
-  const { clientModule, setClientModule, setClientTab } = useOrders();
+  const { clientModule, setClientModule, setClientTab } = useCliente();
   const [open, setOpen] = useState(false);
 
   const handleSelect = (id: ClientModule) => {

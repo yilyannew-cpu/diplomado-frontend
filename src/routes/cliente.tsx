@@ -1,14 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { ClientTabNav } from "@/components/cliente/ClientTabNav";
 import { PromocionesPanel } from "@/components/cliente/PromocionesPanel";
 import { RankinPanel } from "@/components/cliente/RankinPanel";
 import { OrderTrackingPanel } from "@/components/cliente/OrderTrackingPanel";
 import { BRAND_SLOGAN } from "@/components/shared/BrandLogo";
 import { RoleGuard, TopBar } from "@/components/shared/RoleShell";
-import { useOrders } from "@/context/OrderContext";
-import { CATEGORIES, type Category } from "@/mocks/menuMock";
-import { restaurantsMock } from "@/mocks/restaurantsMock";
+import { ClienteProvider, useCliente } from "@/context/ClienteContext";
 import { getProductPricing } from "@/lib/promotions";
 import { isCustomizableMainDish } from "@/lib/orderCustomizations";
 import { DiscountBadge, ProductPriceDisplay } from "@/components/shared/ProductPriceDisplay";
@@ -24,17 +23,36 @@ export const Route = createFileRoute("/cliente")({
   }),
   component: () => (
     <RoleGuard role="cliente">
-      <ClienteView />
+      <ClienteProvider>
+        <ClienteView />
+      </ClienteProvider>
     </RoleGuard>
   ),
 });
 
-const categories: Array<Category | "Todo"> = ["Todo", ...CATEGORIES];
-
 function ClienteView() {
-  const { menu, isLoadingMenu, addToCart, clientTab, clientModule, promotions, restaurants, activeRestaurantId, setActiveRestaurantId } = useOrders();
-  const [activeCat, setActiveCat] = useState<(typeof categories)[number]>("Todo");
+  const {
+    menu,
+    isLoadingMenu,
+    bootstrapError,
+    addToCart,
+    fetchProductDetail,
+    clientTab,
+    clientModule,
+    promotions,
+    restaurants,
+    activeRestaurantId,
+    setActiveRestaurantId,
+    refreshCatalog,
+  } = useCliente();
+  const [activeCat, setActiveCat] = useState<string>("Todo");
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<{ product: MenuItem; basePrice: number } | null>(null);
+
+  const categories = useMemo(() => {
+    const cats = new Set(menu.map((m) => m.category));
+    return ["Todo", ...Array.from(cats).sort()];
+  }, [menu]);
 
   const filtered = useMemo(
     () =>
@@ -51,19 +69,66 @@ function ClienteView() {
     [restaurants],
   );
 
-  const handleAddProduct = (product: MenuItem) => {
+  useEffect(() => {
+    setActiveCat("Todo");
+  }, [activeRestaurantId]);
+
+  const handleRefreshCatalog = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshCatalog();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleAddProduct = async (product: MenuItem) => {
     if (isCustomizableMainDish(product)) {
-      const pricing = getProductPricing(product, promotions);
-      setSelectedProduct({ product, basePrice: pricing.salePrice });
+      try {
+        const full = await fetchProductDetail(product.id);
+        const pricing = getProductPricing(full, promotions);
+        setSelectedProduct({ product: full, basePrice: pricing.salePrice });
+      } catch {
+        const pricing = getProductPricing(product, promotions);
+        setSelectedProduct({ product, basePrice: pricing.salePrice });
+      }
       return;
     }
     addToCart(product);
   };
 
-  if (isLoadingMenu) {
+  if (isLoadingMenu && menu.length === 0) {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center">
         <div className="text-primary font-semibold text-xl">Cargando menú delicioso...</div>
+      </div>
+    );
+  }
+
+  if (bootstrapError && restaurants.length === 0) {
+    return (
+      <div className="min-h-screen bg-cream flex items-center justify-center px-6 text-center">
+        <p className="text-sm text-destructive">{bootstrapError}</p>
+      </div>
+    );
+  }
+
+  if (!isLoadingMenu && restaurants.length === 0) {
+    return (
+      <div className="min-h-screen bg-cream">
+        <TopBar
+          title={BRAND_SLOGAN.headline}
+          subtitle={BRAND_SLOGAN.tagline}
+          slogan
+        />
+        <main className="page-container">
+          <div className="mx-auto max-w-lg rounded-2xl border border-dashed border-border bg-card/50 px-6 py-16 text-center">
+            <p className="font-display text-lg font-semibold">Aún no hay restaurantes</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Cuando un restaurante se registre y quede activo en la plataforma, aparecerá aquí con su menú.
+            </p>
+          </div>
+        </main>
       </div>
     );
   }
@@ -96,9 +161,20 @@ function ClienteView() {
                 ¿Qué se te antoja hoy?
               </h1>
             </div>
-            <span className="text-xs text-muted-foreground sm:text-right">
-              {filtered.length} productos
-            </span>
+            <div className="flex items-center gap-2 sm:flex-col sm:items-end">
+              <span className="text-xs text-muted-foreground">
+                {filtered.length} productos
+              </span>
+              <button
+                type="button"
+                onClick={() => void handleRefreshCatalog()}
+                disabled={isRefreshing || isLoadingMenu}
+                className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2 py-1 text-[10px] font-medium text-muted-foreground hover:bg-secondary disabled:opacity-50"
+              >
+                <RefreshCw className={`size-3 ${isRefreshing ? "animate-spin" : ""}`} />
+                Actualizar menú
+              </button>
+            </div>
           </div>
 
           {/* Restaurants quick access */}

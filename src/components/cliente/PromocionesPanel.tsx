@@ -1,4 +1,4 @@
-import { formatCOP, useOrders } from "@/context/OrderContext";
+import { formatCOP, useCliente } from "@/context/ClienteContext";
 import { getActivePromotedProducts } from "@/lib/promotions";
 import type { MenuItem } from "@/mocks/menuMock";
 import { DiscountBadge, ProductPriceDisplay } from "@/components/shared/ProductPriceDisplay";
@@ -10,7 +10,7 @@ export function PromocionesPanel({
   menu: MenuItem[];
   onAdd: (item: MenuItem) => void;
 }) {
-  const { promotions } = useOrders();
+  const { promotions } = useCliente();
   const promos = getActivePromotedProducts(menu, promotions);
 
   return (

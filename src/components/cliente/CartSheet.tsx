@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CreditCard, ShoppingBag } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { formatCOP, useOrders } from "@/context/OrderContext";
+import { formatCOP, useCliente } from "@/context/ClienteContext";
 import { formatCustomizationLines } from "@/lib/orderCustomizations";
 import { DEFAULT_DELIVERY_FEE_COP } from "@/lib/deliveryFees";
 import { getProductPricing } from "@/lib/promotions";
@@ -26,11 +26,18 @@ export function CartSheet() {
     removeFromCart,
     confirmCart,
     promotions,
-  } = useOrders();
+  } = useCliente();
 
   const [step, setStep] = useState<CheckoutStep>("cart");
+  const [customerName, setCustomerName] = useState(user?.name ?? "");
+  const [phone, setPhone] = useState(user?.phone ?? "");
   const [address, setAddress] = useState("Av. 0 #12-34, Caobos, Cúcuta");
   const [isPaying, setIsPaying] = useState(false);
+
+  useEffect(() => {
+    if (user?.name) setCustomerName(user.name);
+    if (user?.phone) setPhone(user.phone);
+  }, [user?.name, user?.phone]);
 
   const deliveryFee = cart.length > 0 ? DEFAULT_DELIVERY_FEE_COP : 0;
   const total = cartTotal + deliveryFee;
@@ -44,14 +51,15 @@ export function CartSheet() {
   };
 
   const handlePay = async () => {
-    if (!user || cart.length === 0) return;
+    if (cart.length === 0) return;
+    if (!customerName.trim() || !phone.trim()) return;
     setIsPaying(true);
     await new Promise((r) => setTimeout(r, 900));
     try {
       await confirmCart({
-        name: user.name,
+        name: customerName.trim(),
         address,
-        phone: user.phone ?? "",
+        phone: phone.trim(),
       });
     } catch (e) {
       console.error("Error creating order:", e);
@@ -154,6 +162,32 @@ export function CartSheet() {
           <div className="flex flex-1 flex-col">
             <div className="space-y-4">
               <div>
+                <label htmlFor="checkout-name" className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Nombre
+                </label>
+                <input
+                  id="checkout-name"
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/20 focus:ring-2"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="checkout-phone" className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Teléfono
+                </label>
+                <input
+                  id="checkout-phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/20 focus:ring-2"
+                />
+              </div>
+
+              <div>
                 <label htmlFor="checkout-address" className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Dirección de entrega
                 </label>
@@ -192,7 +226,7 @@ export function CartSheet() {
               <button
                 type="button"
                 onClick={handlePay}
-                disabled={isPaying || !address.trim()}
+                disabled={isPaying || !address.trim() || !customerName.trim() || !phone.trim()}
                 className="flex-1 rounded-xl bg-ink py-3 text-sm font-semibold text-cream transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isPaying ? "Procesando…" : "Pagar ahora"}
