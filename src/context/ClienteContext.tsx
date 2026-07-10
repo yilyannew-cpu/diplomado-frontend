@@ -54,6 +54,8 @@ interface ClienteState {
   activeRestaurantId: string | null;
   setActiveRestaurantId: (id: string) => void;
   menu: MenuItem[];
+  /** Productos disponibles de todos los restaurantes (para búsqueda global). */
+  allMenus: MenuItem[];
   promotions: Promotion[];
   isLoadingMenu: boolean;
   bootstrapError: string | null;
@@ -72,7 +74,12 @@ interface ClienteState {
   removeFromCart: (cartItemId: string) => void;
   clearCart: () => void;
   cartTotal: number;
-  confirmCart: (customer: { name: string; address: string; phone: string }) => Promise<Order>;
+  confirmCart: (customer: {
+    name: string;
+    address: string;
+    phone: string;
+    notes?: string;
+  }) => Promise<Order>;
   fetchProductDetail: (productId: string) => Promise<MenuItem>;
   refreshTracking: (code?: string) => Promise<void>;
   refreshCatalog: () => Promise<void>;
@@ -84,6 +91,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [activeRestaurantId, setActiveRestaurantId] = useState<string | null>(null);
   const [menu, setMenu] = useState<MenuItem[]>([]);
+  const [allMenus, setAllMenus] = useState<MenuItem[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [isLoadingMenu, setIsLoadingMenu] = useState(true);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
@@ -96,6 +104,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
   const [clientModule, setClientModule] = useState<ClientModule>("inicio");
   const trackingSocketRef = useRef<Socket | null>(null);
   const catalogRequestRef = useRef(0);
+  const skipNextCartClearRef = useRef(false);
 
   const loadRestaurantCatalog = useCallback(async (restaurantId: string) => {
     const requestId = ++catalogRequestRef.current;
@@ -113,8 +122,13 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
 
       if (requestId !== catalogRequestRef.current) return;
 
-      setMenu(mapApiProducts(productsRaw));
+      const mapped = mapApiProducts(productsRaw);
+      setMenu(mapped);
       setPromotions(mapApiPromotions(promotionsRaw));
+      setAllMenus((current) => {
+        const others = current.filter((p) => p.restaurantId !== restaurantId);
+        return [...others, ...mapped];
+      });
     } catch (err) {
       if (requestId !== catalogRequestRef.current) return;
       const message =
@@ -129,10 +143,29 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const loadAllMenus = useCallback(async (restaurantIds: string[]) => {
+    if (restaurantIds.length === 0) {
+      setAllMenus([]);
+      return;
+    }
+    const chunks = await Promise.all(
+      restaurantIds.map((id) =>
+        productsApi
+          .list({ restaurantId: id, available: true })
+          .then(mapApiProducts)
+          .catch(() => [] as MenuItem[]),
+      ),
+    );
+    setAllMenus(chunks.flat());
+  }, []);
+
   const refreshCatalog = useCallback(async () => {
-    if (!activeRestaurantId) return;
-    await loadRestaurantCatalog(activeRestaurantId);
-  }, [activeRestaurantId, loadRestaurantCatalog]);
+    const ids = restaurants.map((r) => r.id);
+    await Promise.all([
+      activeRestaurantId ? loadRestaurantCatalog(activeRestaurantId) : Promise.resolve(),
+      loadAllMenus(ids),
+    ]);
+  }, [activeRestaurantId, loadRestaurantCatalog, loadAllMenus, restaurants]);
 
   const cartItemCount = useMemo(
     () => cart.reduce((acc, i) => acc + i.quantity, 0),
@@ -198,8 +231,11 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
         });
         if (mapped.length === 0) {
           setMenu([]);
+          setAllMenus([]);
           setPromotions([]);
           setIsLoadingMenu(false);
+        } else {
+          void loadAllMenus(mapped.map((r) => r.id));
         }
       } catch (err) {
         if (cancelled) return;
@@ -215,14 +251,18 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadAllMenus]);
 
   useEffect(() => {
     if (!activeRestaurantId) return;
     if (typeof window !== "undefined") {
       window.localStorage.setItem(ACTIVE_RESTAURANT_KEY, activeRestaurantId);
     }
-    setCart([]);
+    if (skipNextCartClearRef.current) {
+      skipNextCartClearRef.current = false;
+    } else {
+      setCart([]);
+    }
     void loadRestaurantCatalog(activeRestaurantId);
   }, [activeRestaurantId, loadRestaurantCatalog]);
 
@@ -256,14 +296,16 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
     const onFocus = () => {
       if (activeRestaurantId) void loadRestaurantCatalog(activeRestaurantId);
       void clienteApi.listRestaurants().then((list) => {
-        setRestaurants(mapApiRestaurantList(list));
+        const mapped = mapApiRestaurantList(list);
+        setRestaurants(mapped);
+        void loadAllMenus(mapped.map((r) => r.id));
       }).catch(() => {
         /* silencioso: el catálogo ya está en memoria */
       });
     };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
-  }, [activeRestaurantId, loadRestaurantCatalog]);
+  }, [activeRestaurantId, loadRestaurantCatalog, loadAllMenus]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -321,12 +363,22 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
         })}`
       : product.id;
 
+    const nextItem: CartItem = { id: hash, product, quantity: 1, customizations };
+
+    if (product.restaurantId !== activeRestaurantId) {
+      skipNextCartClearRef.current = true;
+      setActiveRestaurantId(product.restaurantId);
+      setCart([nextItem]);
+      setCartOpen(true);
+      return;
+    }
+
     setCart((c) => {
       const existing = c.find((i) => i.id === hash);
       if (existing) {
         return c.map((i) => (i.id === hash ? { ...i, quantity: i.quantity + 1 } : i));
       }
-      return [...c, { id: hash, product, quantity: 1, customizations }];
+      return [...c, nextItem];
     });
   };
 
@@ -361,10 +413,12 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
       throw new Error("El carrito está vacío.");
     }
 
+    const notes = customer.notes?.trim();
     const payload = {
       customer_name: customer.name.trim(),
       address: customer.address.trim(),
       phone: customer.phone.trim(),
+      ...(notes ? { notes } : {}),
       restaurant_id: activeRestaurantId,
       items: cart.map((c) => ({
         product_id: c.product.id,
@@ -407,6 +461,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
         activeRestaurantId,
         setActiveRestaurantId,
         menu,
+        allMenus,
         promotions,
         isLoadingMenu,
         bootstrapError,

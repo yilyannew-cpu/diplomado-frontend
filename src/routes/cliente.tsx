@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Search, X } from "lucide-react";
 import { ClientTabNav } from "@/components/cliente/ClientTabNav";
 import { PromocionesPanel } from "@/components/cliente/PromocionesPanel";
 import { RankinPanel } from "@/components/cliente/RankinPanel";
@@ -14,6 +14,22 @@ import { DiscountBadge, ProductPriceDisplay } from "@/components/shared/ProductP
 import { ProductDetailModal } from "@/components/cliente/ProductDetailModal";
 import { ProductImage } from "@/components/shared/ProductImage";
 import type { MenuItem } from "@/mocks/menuMock";
+
+function normalizeSearch(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .trim();
+}
+
+function productMatchesQuery(product: MenuItem, query: string): boolean {
+  if (!query) return true;
+  const haystack = normalizeSearch(
+    [product.name, product.description, product.category].filter(Boolean).join(" "),
+  );
+  return query.split(/\s+/).every((token) => haystack.includes(token));
+}
 
 export const Route = createFileRoute("/cliente")({
   head: () => ({
@@ -34,6 +50,7 @@ export const Route = createFileRoute("/cliente")({
 function ClienteView() {
   const {
     menu,
+    allMenus,
     isLoadingMenu,
     bootstrapError,
     addToCart,
@@ -47,23 +64,35 @@ function ClienteView() {
     refreshCatalog,
   } = useCliente();
   const [activeCat, setActiveCat] = useState<string>("Todo");
+  const [searchQuery, setSearchQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<{ product: MenuItem; basePrice: number } | null>(null);
 
-  const categories = useMemo(() => {
-    const cats = new Set(menu.map((m) => m.category));
-    return ["Todo", ...Array.from(cats).sort()];
-  }, [menu]);
+  const normalizedQuery = useMemo(() => normalizeSearch(searchQuery), [searchQuery]);
+  const isGlobalSearch = normalizedQuery.length > 0;
 
-  const filtered = useMemo(
-    () =>
-      menu.filter(
-        (m) =>
-          m.available &&
-          (activeCat === "Todo" || m.category === activeCat)
-      ),
-    [menu, activeCat],
-  );
+  const catalogSource = isGlobalSearch ? allMenus : menu;
+
+  const categories = useMemo(() => {
+    const cats = new Set(catalogSource.map((m) => m.category));
+    return ["Todo", ...Array.from(cats).sort()];
+  }, [catalogSource]);
+
+  const filtered = useMemo(() => {
+    const matches = catalogSource.filter(
+      (m) =>
+        m.available &&
+        (activeCat === "Todo" || m.category === activeCat) &&
+        productMatchesQuery(m, normalizedQuery),
+    );
+
+    if (!isGlobalSearch) return matches;
+
+    return [...matches].sort((a, b) => {
+      if (a.price !== b.price) return a.price - b.price;
+      return a.name.localeCompare(b.name, "es");
+    });
+  }, [catalogSource, activeCat, normalizedQuery, isGlobalSearch]);
 
   const restaurantById = useMemo(
     () => Object.fromEntries(restaurants.map((r) => [r.id, r])),
@@ -73,6 +102,10 @@ function ClienteView() {
   useEffect(() => {
     setActiveCat("Todo");
   }, [activeRestaurantId]);
+
+  useEffect(() => {
+    if (isGlobalSearch) setActiveCat("Todo");
+  }, [isGlobalSearch]);
 
   const handleRefreshCatalog = async () => {
     setIsRefreshing(true);
@@ -177,6 +210,37 @@ function ClienteView() {
               </button>
             </div>
           </div>
+
+          <div className="relative mb-6 sm:mb-8">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar en todos los menús (ej. papas, hamburguesa…)"
+              aria-label="Buscar productos en todos los restaurantes"
+              className="w-full rounded-xl border border-border bg-card py-2.5 pl-10 pr-10 text-sm outline-none ring-primary/20 placeholder:text-muted-foreground/70 focus:ring-2"
+            />
+            {searchQuery ? (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+                aria-label="Limpiar búsqueda"
+              >
+                <X className="size-4" />
+              </button>
+            ) : null}
+          </div>
+
+          {isGlobalSearch ? (
+            <p className="mb-4 text-xs text-muted-foreground">
+              Resultados de todos los restaurantes · ordenados de menor a mayor precio
+            </p>
+          ) : null}
 
           {/* Restaurants quick access */}
           <div className="mb-6">
@@ -324,7 +388,9 @@ function ClienteView() {
             ))}
             {filtered.length === 0 && (
               <p className="col-span-full rounded-2xl border border-dashed border-border bg-card/50 py-12 text-center text-sm text-muted-foreground">
-                No hay productos con estos filtros.
+                {normalizedQuery
+                  ? `No hay productos que coincidan con “${searchQuery.trim()}”.`
+                  : "No hay productos con estos filtros."}
               </p>
             )}
           </div>
