@@ -279,7 +279,12 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
 
   const addToCart = (product: MenuItem, customizations?: Customizations) => {
     const hash = customizations
-      ? `${product.id}-${JSON.stringify(customizations.removedIngredients)}-${JSON.stringify(customizations.addedModifiers)}`
+      ? `${product.id}-${JSON.stringify({
+          additions: customizations.additions?.map((e) => e.productId) ?? [],
+          sides: customizations.sides?.map((e) => e.productId) ?? [],
+          drinks: customizations.drinks?.map((e) => e.productId) ?? [],
+          specialInstructions: customizations.specialInstructions ?? "",
+        })}`
       : product.id;
 
     setCart((c) => {
@@ -333,8 +338,12 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
         ...(c.customizations
           ? {
               customizations: {
-                removed_ingredients: c.customizations.removedIngredients,
-                added_modifiers: c.customizations.addedModifiers,
+                addition_ids: c.customizations.additions?.map((e) => e.productId) ?? [],
+                side_ids: c.customizations.sides?.map((e) => e.productId) ?? [],
+                drink_ids: c.customizations.drinks?.map((e) => e.productId) ?? [],
+                ...(c.customizations.specialInstructions
+                  ? { special_instructions: c.customizations.specialInstructions }
+                  : {}),
                 extra_price: c.customizations.extraPrice,
               },
             }

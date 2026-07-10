@@ -14,9 +14,21 @@ export const CLIENT_STATUS_FLOW: OrderStatus[] = [
   "Entregado",
 ];
 
+export interface SelectedMenuExtra {
+  productId: string;
+  name: string;
+  price: number;
+}
+
 export interface OrderItemCustomizations {
-  removedIngredients: string[];
-  addedModifiers: Record<string, string[]>;
+  /** @deprecated pedidos antiguos */
+  removedIngredients?: string[];
+  /** @deprecated pedidos antiguos */
+  addedModifiers?: Record<string, string[]>;
+  additions?: SelectedMenuExtra[];
+  sides?: SelectedMenuExtra[];
+  drinks?: SelectedMenuExtra[];
+  specialInstructions?: string;
   extraPrice: number;
 }
 

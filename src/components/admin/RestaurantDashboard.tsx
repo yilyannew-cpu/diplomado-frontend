@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/chart";
 import { useAdmin } from "@/context/AdminContext";
 import { formatCOP } from "@/context/OrderContext";
+import { ProductImage } from "@/components/shared/ProductImage";
 
 const CHART_COLORS = [
   "var(--color-chart-1)",
@@ -320,9 +321,9 @@ function TopProductsRanking({
               </div>
 
               {product.image ? (
-                <img
+                <ProductImage
                   src={product.image}
-                  alt=""
+                  alt={product.name}
                   className="size-12 shrink-0 rounded-lg object-cover ring-1 ring-border/60 transition-transform duration-300 group-hover:scale-105"
                 />
               ) : (
