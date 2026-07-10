@@ -13,7 +13,8 @@ import type {
   ApiAvailableCourier,
   ApiCourierPayout,
 } from "@/lib/api/types/admin";
-import { apiClient, apiDownload, buildQuery } from "@/lib/api/client";
+import { apiClient, apiDownload, apiUpload, buildQuery } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/errors";
 
 export const restaurantsApi = {
   getProfile(restaurantId: string): Promise<ApiRestaurantProfile> {
@@ -30,9 +31,30 @@ export const restaurantsApi = {
       delivery_minutes: number;
       monthly_goal: number;
       accent: string;
+      logo: string | null;
     }>,
   ): Promise<ApiRestaurantProfile> {
     return apiClient(`/restaurants/${restaurantId}`, { method: "PATCH", body, auth: true });
+  },
+
+  uploadLogo(restaurantId: string, file: File): Promise<ApiRestaurantProfile> {
+    return apiUpload(`/restaurants/${restaurantId}/logo`, file, { auth: true });
+  },
+
+  /**
+   * Guarda el logo vía PATCH (data URL durable en Neon).
+   * Requiere backend desplegado con columna `logo` y schema actualizado.
+   */
+  async saveLogo(restaurantId: string, dataUrl: string): Promise<ApiRestaurantProfile> {
+    const updated = await this.updateProfile(restaurantId, { logo: dataUrl });
+    if (updated.logo) return updated;
+
+    // API antigua: acepta el PATCH pero descarta `logo` → no llamar POST /logo (404 en Render viejo).
+    throw new ApiError(
+      501,
+      "LOGO_NOT_SUPPORTED",
+      "El backend en producción aún no guarda logos. Sube y redespliega diplomado-backend (migración logo) y vuelve a intentar.",
+    );
   },
 
   getDashboard(restaurantId: string): Promise<ApiDashboard> {

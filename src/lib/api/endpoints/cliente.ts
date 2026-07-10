@@ -12,6 +12,7 @@ export interface ApiRestaurantListItem {
   deliveryMinutes: number;
   accent: string;
   initials: string;
+  logo?: string | null;
   status?: string;
 }
 

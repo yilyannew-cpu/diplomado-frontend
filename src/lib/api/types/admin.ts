@@ -10,6 +10,7 @@ export interface ApiRestaurantProfile {
   monthly_goal: number;
   accent: string;
   initials: string;
+  logo?: string | null;
   rating: number;
   status: string;
 }

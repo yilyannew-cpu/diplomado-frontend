@@ -24,6 +24,7 @@ import { RoleGuard, TopBar } from "@/components/shared/RoleShell";
 import { ProductImage } from "@/components/shared/ProductImage";
 import { AdminProvider, useAdmin } from "@/context/AdminContext";
 import { formatCOP } from "@/context/OrderContext";
+import { resolveLogoUrl } from "@/lib/mediaUrl";
 import type { MenuItem } from "@/mocks/menuMock";
 import { ADDITION_CATEGORY } from "@/mocks/menuMock";
 import type { Order } from "@/mocks/ordersMock";
@@ -123,6 +124,8 @@ function AdminView() {
     }
   };
 
+  const restaurantLogoUrl = resolveLogoUrl(restaurant?.logo);
+
   if (loading && !restaurant) {
     return (
       <div className="min-h-screen bg-cream">
@@ -145,13 +148,30 @@ function AdminView() {
           <div className="mb-6 space-y-4 lg:flex lg:flex-wrap lg:items-end lg:justify-between lg:gap-4 lg:space-y-0">
             <div className="flex min-w-0 items-start gap-3 lg:flex-1">
               <AdminNavMobile active={tab} onSelect={setTab} hints={navHints} />
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary sm:tracking-[0.25em]">
-                  {restaurant?.name ?? "Sede"}
-                </p>
-                <h1 className="mt-1 font-display text-xl font-semibold leading-tight tracking-tight sm:mt-2 sm:text-2xl lg:text-3xl">
-                  {pageTitle}
-                </h1>
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <div
+                  className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-xl text-xs font-semibold text-white sm:size-12 sm:text-sm"
+                  style={{ backgroundColor: restaurant?.accent || "#4f46e5" }}
+                  aria-hidden
+                >
+                  {restaurantLogoUrl ? (
+                    <img
+                      src={restaurantLogoUrl}
+                      alt=""
+                      className="size-full object-cover"
+                    />
+                  ) : (
+                    restaurant?.initials ?? "—"
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[11px] font-semibold uppercase tracking-[0.2em] text-primary sm:tracking-[0.25em]">
+                    {restaurant?.name ?? "Sede"}
+                  </p>
+                  <h1 className="mt-1 font-display text-xl font-semibold leading-tight tracking-tight sm:mt-2 sm:text-2xl lg:text-3xl">
+                    {pageTitle}
+                  </h1>
+                </div>
               </div>
             </div>
             {(tab === "reportes" || tab === "menu") && (
