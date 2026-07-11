@@ -10,6 +10,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { MenuItem, Ingredient, ModifierGroup, ModifierOption } from "@/mocks/menuMock";
+import { formatThousands, parseThousandsInput } from "@/lib/formatThousandsInput";
 
 interface ProductCustomizationModalProps {
   product: MenuItem;
@@ -102,77 +103,93 @@ export function ProductCustomizationModal({ product, open, onClose, onSave }: Pr
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-hidden flex flex-col rounded-3xl p-0">
-        <DialogHeader className="p-6 pb-2 border-b border-border shrink-0">
-          <DialogTitle className="font-display text-xl">Configurar Receta</DialogTitle>
-          <DialogDescription>
-            Configura los ingredientes base y las reglas extras de <span className="font-medium text-foreground">{product.name}</span>
+      <DialogContent className="flex max-h-[100dvh] w-[calc(100%-1rem)] max-w-2xl flex-col overflow-hidden rounded-2xl p-0 sm:max-h-[90vh] sm:rounded-3xl">
+        <DialogHeader className="shrink-0 border-b border-border p-4 pb-2 sm:p-6 sm:pb-2">
+          <DialogTitle className="font-display text-lg sm:text-xl">Configurar Receta</DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm">
+            Configura los ingredientes base y las reglas extras de{" "}
+            <span className="font-medium text-foreground">{product.name}</span>
           </DialogDescription>
           
-          <div className="flex gap-4 pt-4">
+          <div className="flex gap-1 pt-3 sm:gap-4 sm:pt-4">
             <button
               onClick={() => setActiveTab("ingredients")}
-              className={`pb-2 text-sm font-medium transition-colors border-b-2 ${activeTab === "ingredients" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+              className={`min-h-10 flex-1 pb-2 text-xs font-medium transition-colors border-b-2 sm:flex-none sm:text-sm ${activeTab === "ingredients" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
             >
-              Ingredientes Base
+              Ingredientes
             </button>
             <button
               onClick={() => setActiveTab("modifiers")}
-              className={`pb-2 text-sm font-medium transition-colors border-b-2 ${activeTab === "modifiers" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+              className={`min-h-10 flex-1 pb-2 text-xs font-medium transition-colors border-b-2 sm:flex-none sm:text-sm ${activeTab === "modifiers" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
             >
-              Reglas y Extras
+              Reglas y extras
             </button>
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-6 bg-secondary/10">
+        <div className="flex-1 overflow-y-auto bg-secondary/10 p-4 sm:p-6">
           {activeTab === "ingredients" ? (
             <div className="space-y-4">
-              <div className="flex justify-between items-center mb-4">
-                <p className="text-sm text-muted-foreground">El cliente podrá desmarcar estos ingredientes libremente (Ej: "Sin tomate").</p>
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs text-muted-foreground sm:text-sm">
+                  El cliente podrá desmarcar estos ingredientes libremente (Ej: &quot;Sin tomate&quot;).
+                </p>
                 <button
                   onClick={addIngredient}
-                  className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20"
+                  className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-primary/10 px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/20 sm:w-auto"
                 >
                   <Plus className="size-3" /> Añadir ingrediente
                 </button>
               </div>
 
               {ingredients.map((ing, i) => (
-                <div key={ing.id} className="flex items-center gap-3 bg-card border border-border p-3 rounded-xl">
+                <div
+                  key={ing.id}
+                  className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3 sm:flex-row sm:items-center sm:gap-3"
+                >
                   <input
                     value={ing.name}
                     onChange={(e) => updateIngredient(i, { name: e.target.value })}
-                    className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                    className="w-full flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
                     placeholder="Nombre del ingrediente"
                   />
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      checked={ing.available}
-                      onCheckedChange={(c) => updateIngredient(i, { available: c === true })}
-                      id={`ing-av-${ing.id}`}
-                    />
-                    <Label htmlFor={`ing-av-${ing.id}`} className="text-xs cursor-pointer">Disponible</Label>
+                  <div className="flex items-center justify-between gap-2 sm:justify-start">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        checked={ing.available}
+                        onCheckedChange={(c) => updateIngredient(i, { available: c === true })}
+                        id={`ing-av-${ing.id}`}
+                      />
+                      <Label htmlFor={`ing-av-${ing.id}`} className="cursor-pointer text-xs">
+                        Disponible
+                      </Label>
+                    </div>
+                    <button
+                      onClick={() => removeIngredient(i)}
+                      className="grid size-9 place-items-center text-muted-foreground hover:text-destructive"
+                      aria-label="Eliminar ingrediente"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
                   </div>
-                  <button onClick={() => removeIngredient(i)} className="p-1.5 text-muted-foreground hover:text-destructive">
-                    <Trash2 className="size-4" />
-                  </button>
                 </div>
               ))}
               
               {ingredients.length === 0 && (
-                <div className="text-center py-10 text-muted-foreground border border-dashed rounded-xl border-border bg-background">
+                <div className="rounded-xl border border-dashed border-border bg-background py-10 text-center text-muted-foreground">
                   <p className="text-sm">No hay ingredientes configurados.</p>
                 </div>
               )}
             </div>
           ) : (
             <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <p className="text-sm text-muted-foreground">Grupos de modificadores (Ej: "Término de carne", "Adiciones").</p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs text-muted-foreground sm:text-sm">
+                  Grupos de modificadores (Ej: &quot;Término de carne&quot;, &quot;Adiciones&quot;).
+                </p>
                 <button
                   onClick={addModifierGroup}
-                  className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20"
+                  className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-primary/10 px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/20 sm:w-auto"
                 >
                   <Plus className="size-3" /> Nuevo grupo
                 </button>
@@ -216,35 +233,50 @@ export function ProductCustomizationModal({ product, open, onClose, onSave }: Pr
                     </button>
                   </div>
 
-                  <div className="pl-4 border-l-2 border-border/50 space-y-2">
+                  <div className="space-y-2 border-l-2 border-border/50 pl-3 sm:pl-4">
                     <Label className="text-xs font-medium">Opciones:</Label>
                     {group.options.map((opt, oi) => (
-                      <div key={opt.id} className="flex items-center gap-2">
+                      <div
+                        key={opt.id}
+                        className="flex flex-col gap-2 sm:flex-row sm:items-center"
+                      >
                         <input
                           value={opt.name}
                           onChange={(e) => updateOption(gi, oi, { name: e.target.value })}
-                          className="flex-1 rounded-lg border border-border bg-background px-3 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                          className="w-full flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
                           placeholder="Nombre de opción"
                         />
-                        <div className="relative">
-                          <span className="absolute left-2.5 top-1.5 text-xs text-muted-foreground">$</span>
-                          <input
-                            type="number"
-                            min="0"
-                            value={opt.priceExtra}
-                            onChange={(e) => updateOption(gi, oi, { priceExtra: Number(e.target.value) })}
-                            className="w-24 pl-6 rounded-lg border border-border bg-background px-2 py-1 text-sm outline-none"
-                            placeholder="Precio"
-                          />
+                        <div className="flex items-center gap-2">
+                          <div className="relative min-w-0 flex-1 sm:flex-none">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                              $
+                            </span>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={formatThousands(opt.priceExtra)}
+                              onChange={(e) =>
+                                updateOption(gi, oi, {
+                                  priceExtra: parseThousandsInput(e.target.value) ?? 0,
+                                })
+                              }
+                              className="w-full rounded-lg border border-border bg-background py-2 pl-6 pr-2 font-mono text-sm tabular-nums outline-none sm:w-28"
+                              placeholder="0"
+                            />
+                          </div>
+                          <button
+                            onClick={() => removeOption(gi, oi)}
+                            className="grid size-9 shrink-0 place-items-center text-muted-foreground hover:text-destructive"
+                            aria-label="Eliminar opción"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
                         </div>
-                        <button onClick={() => removeOption(gi, oi)} className="p-1 text-muted-foreground hover:text-destructive">
-                          <Trash2 className="size-3" />
-                        </button>
                       </div>
                     ))}
                     <button
                       onClick={() => addOption(gi)}
-                      className="text-xs font-medium text-primary hover:underline mt-2 inline-block"
+                      className="mt-2 inline-flex min-h-9 items-center text-xs font-medium text-primary hover:underline"
                     >
                       + Añadir opción
                     </button>
@@ -261,10 +293,10 @@ export function ProductCustomizationModal({ product, open, onClose, onSave }: Pr
           )}
         </div>
 
-        <div className="p-4 border-t border-border bg-card flex gap-2 shrink-0">
+        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-border bg-card p-4 sm:flex-row">
           <button
             onClick={onClose}
-            className="flex-1 rounded-xl border border-border py-2.5 text-sm font-medium hover:bg-secondary"
+            className="min-h-11 flex-1 rounded-xl border border-border py-2.5 text-sm font-medium hover:bg-secondary"
           >
             Cancelar
           </button>

@@ -8,8 +8,14 @@ import { OrderTrackingPanel } from "@/components/cliente/OrderTrackingPanel";
 import { BRAND_SLOGAN } from "@/components/shared/BrandLogo";
 import { RoleGuard, TopBar } from "@/components/shared/RoleShell";
 import { ClienteProvider, useCliente } from "@/context/ClienteContext";
+import { useAuth } from "@/context/AuthContext";
+import { resolveClientComuna } from "@/lib/clientComunaStorage";
 import { getProductPricing } from "@/lib/promotions";
 import { isCustomizableMainDish } from "@/lib/orderCustomizations";
+import {
+  getRestaurantProximity,
+  sortRestaurantsByProximity,
+} from "@/lib/restaurantProximity";
 import { DiscountBadge, ProductPriceDisplay } from "@/components/shared/ProductPriceDisplay";
 import { ProductDetailModal } from "@/components/cliente/ProductDetailModal";
 import { ProductImage } from "@/components/shared/ProductImage";
@@ -62,14 +68,28 @@ function ClienteView() {
     activeRestaurantId,
     setActiveRestaurantId,
     refreshCatalog,
+    ensureAllMenus,
+    isLoadingAllMenus,
   } = useCliente();
+  const { user } = useAuth();
+  const clientComuna = resolveClientComuna(user);
   const [activeCat, setActiveCat] = useState<string>("Todo");
   const [searchQuery, setSearchQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<{ product: MenuItem; basePrice: number } | null>(null);
 
+  const sortedRestaurants = useMemo(
+    () => sortRestaurantsByProximity(restaurants, clientComuna),
+    [restaurants, clientComuna],
+  );
+
   const normalizedQuery = useMemo(() => normalizeSearch(searchQuery), [searchQuery]);
   const isGlobalSearch = normalizedQuery.length > 0;
+
+  useEffect(() => {
+    if (!isGlobalSearch) return;
+    void ensureAllMenus();
+  }, [isGlobalSearch, ensureAllMenus]);
 
   const catalogSource = isGlobalSearch ? allMenus : menu;
 
@@ -238,7 +258,9 @@ function ClienteView() {
 
           {isGlobalSearch ? (
             <p className="mb-4 text-xs text-muted-foreground">
-              Resultados de todos los restaurantes · ordenados de menor a mayor precio
+              {isLoadingAllMenus
+                ? "Buscando en todos los restaurantes…"
+                : "Resultados de todos los restaurantes · ordenados de menor a mayor precio"}
             </p>
           ) : null}
 
@@ -246,13 +268,14 @@ function ClienteView() {
           <div className="mb-6">
             <div className="mb-3 flex items-center justify-between gap-3">
               <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground sm:text-[11px] sm:tracking-[0.2em]">
-                Restaurantes en tu zona
+                {clientComuna ? `Restaurantes · ${clientComuna}` : "Restaurantes"}
               </p>
             </div>
+
             <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 md:grid-cols-4">
-              {restaurants.map((r) => {
+              {sortedRestaurants.map((r) => {
                 const isActive = activeRestaurantId === r.id;
-                // We no longer count locally because menu only has active restaurant items
+                const proximity = getRestaurantProximity(r, clientComuna);
                 return (
                   <button
                     key={r.id}
@@ -277,11 +300,20 @@ function ClienteView() {
                       </span>
                       <span className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-muted-foreground">
                         <span className="inline-flex items-center gap-0.5 font-medium text-amber-brand">
-                          ★ {r.rating?.toFixed(1) || '0.0'}
+                          ★ {r.rating?.toFixed(1) || "0.0"}
                         </span>
                         <span aria-hidden>·</span>
                         <span>{r.deliveryMinutes || 30} min</span>
                       </span>
+                      {proximity === "recomendado" ? (
+                        <span className="mt-1.5 inline-flex rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                          Recomendado
+                        </span>
+                      ) : proximity === "lejos" ? (
+                        <span className="mt-1.5 inline-flex rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                          Lejos de ti
+                        </span>
+                      ) : null}
                     </span>
                   </button>
                 );

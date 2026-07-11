@@ -3,11 +3,10 @@ import { useCliente } from "@/context/ClienteContext";
 import { cn } from "@/lib/utils";
 
 export function ClientTabNav() {
-  const { clientTab, setClientTab, trackedOrder } = useCliente();
+  const { clientTab, setClientTab, trackedOrder, activeClientOrderId } = useCliente();
 
   const activeOrder = trackedOrder;
-
-  const hasTracking = Boolean(activeOrder);
+  const hasTracking = Boolean(activeOrder || activeClientOrderId);
   const isInProgress = activeOrder && activeOrder.status !== "Entregado";
 
   return (

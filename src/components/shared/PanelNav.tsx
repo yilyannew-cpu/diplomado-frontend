@@ -146,7 +146,7 @@ export function PanelNavMobile<T extends string>({
         type="button"
         onClick={() => setOpen(true)}
         className={cn(
-          "relative grid size-10 shrink-0 place-items-center rounded-xl border border-border bg-card shadow-sm transition-all duration-300 lg:hidden",
+          "relative grid size-11 shrink-0 place-items-center rounded-xl border border-border bg-card shadow-sm transition-all duration-300 lg:hidden",
           "hover:border-primary/30 hover:bg-secondary active:scale-95",
           open && "border-primary/40 bg-primary/5",
         )}
@@ -165,8 +165,11 @@ export function PanelNavMobile<T extends string>({
       </button>
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="left" className="w-[min(100%,300px)] border-r p-0 sm:max-w-[300px]">
-          <SheetHeader className="border-b border-border bg-secondary/30 px-5 py-5 text-left">
+        <SheetContent
+          side="left"
+          className="flex h-full w-[min(100%,300px)] flex-col gap-0 overflow-hidden border-r p-0 sm:max-w-[300px]"
+        >
+          <SheetHeader className="shrink-0 border-b border-border bg-secondary/30 px-5 py-5 text-left">
             <SheetTitle className="font-display text-lg">{sheetTitle}</SheetTitle>
             {sheetSubtitle && <p className="text-xs text-muted-foreground">{sheetSubtitle}</p>}
             {activeItem && (
@@ -176,22 +179,24 @@ export function PanelNavMobile<T extends string>({
             )}
           </SheetHeader>
 
-          <div className="flex flex-col gap-2 p-4">
-            <p className="admin-nav-item-stagger px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              Módulos
-            </p>
-            {items.map((item, index) => (
-              <NavButton
-                key={item.id}
-                item={item}
-                active={active === item.id}
-                hint={hints[item.id]}
-                onClick={() => handleSelect(item.id)}
-                staggerIndex={index + 1}
-                layout="sheet"
-              />
-            ))}
-          </div>
+          <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <div className="flex flex-col gap-2">
+              <p className="admin-nav-item-stagger px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                Módulos
+              </p>
+              {items.map((item, index) => (
+                <NavButton
+                  key={item.id}
+                  item={item}
+                  active={active === item.id}
+                  hint={hints[item.id]}
+                  onClick={() => handleSelect(item.id)}
+                  staggerIndex={index + 1}
+                  layout="sheet"
+                />
+              ))}
+            </div>
+          </nav>
         </SheetContent>
       </Sheet>
     </>

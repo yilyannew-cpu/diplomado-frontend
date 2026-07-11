@@ -160,7 +160,7 @@ export function OrderCommandMonitor({ onAssignZone, onDispatchBatch }: OrderComm
               aria-selected={isActive}
               onClick={() => setMobileTab(col.key)}
               className={cn(
-                "relative flex flex-col items-center gap-1 rounded-xl px-2 py-2.5 transition-all duration-300",
+                "relative flex min-h-14 flex-col items-center gap-1 rounded-xl px-1.5 py-2.5 transition-all duration-300 sm:px-2",
                 isActive
                   ? "bg-card text-foreground shadow-sm"
                   : "text-muted-foreground hover:bg-card/60",

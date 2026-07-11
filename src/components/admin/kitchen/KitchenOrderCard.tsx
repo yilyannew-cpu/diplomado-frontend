@@ -1,7 +1,7 @@
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
-import { OrderSpecialInstructions } from "@/components/shared/OrderSpecialInstructions";
 import { OrderItemLines } from "@/components/shared/OrderItemLines";
+import { useAdmin } from "@/context/AdminContext";
 import { formatCOP, useOrders } from "@/context/OrderContext";
 import { useKitchenOrderSla } from "@/hooks/useKitchenOrderSla";
 import { slaCardBorderClass } from "@/lib/kitchenSla";
@@ -22,7 +22,9 @@ export function KitchenOrderCard({
   onAdvance,
   compact = false,
 }: KitchenOrderCardProps) {
-  const { menu } = useOrders();
+  const { menu: adminMenu } = useAdmin();
+  const { menu: clientMenu } = useOrders();
+  const menu = adminMenu.length > 0 ? adminMenu : clientMenu;
   const { now, level, isDelayed } = useKitchenOrderSla(order);
   const [metaOpen, setMetaOpen] = useState(false);
   const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
@@ -59,14 +61,10 @@ export function KitchenOrderCard({
         className={cn("mb-2 sm:mb-3", compact ? "text-sm" : "text-sm sm:text-base")}
       />
 
-      {order.notes ? (
-        <OrderSpecialInstructions notes={order.notes} compact={compact} />
-      ) : null}
-
       <button
         type="button"
         onClick={() => setMetaOpen((open) => !open)}
-        className="flex w-full items-center gap-1 py-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
+        className="flex min-h-9 w-full items-center gap-1 py-2 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
         aria-expanded={metaOpen}
       >
         <ChevronDown

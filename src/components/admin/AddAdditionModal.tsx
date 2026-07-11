@@ -10,6 +10,10 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { ADDITION_CATEGORY } from "@/mocks/menuMock";
+import {
+  formatThousandsInput,
+  parseThousandsInput,
+} from "@/lib/formatThousandsInput";
 
 const PLACEHOLDER_IMAGE =
   "https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?auto=format&fit=crop&w=800&q=80";
@@ -74,7 +78,7 @@ export function AddAdditionModal({ open, onClose, onSave }: AddAdditionModalProp
     e.preventDefault();
     const trimmedName = name.trim();
     const trimmedDesc = description.trim();
-    const parsedValue = Number(additionalValue);
+    const parsedValue = parseThousandsInput(additionalValue);
 
     if (!trimmedName) {
       setError("El nombre es obligatorio.");
@@ -84,7 +88,7 @@ export function AddAdditionModal({ open, onClose, onSave }: AddAdditionModalProp
       setError("La descripción es obligatoria.");
       return;
     }
-    if (!additionalValue || parsedValue <= 0) {
+    if (parsedValue == null || parsedValue <= 0) {
       setError("Ingresa un valor adicional válido mayor a cero.");
       return;
     }
@@ -101,7 +105,7 @@ export function AddAdditionModal({ open, onClose, onSave }: AddAdditionModalProp
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
-      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto rounded-3xl sm:max-w-lg">
+      <DialogContent className="max-h-[100dvh] w-[calc(100%-1rem)] max-w-lg overflow-y-auto rounded-2xl p-4 sm:max-h-[90vh] sm:rounded-3xl sm:p-6">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">Nueva adición</DialogTitle>
           <DialogDescription>
@@ -185,13 +189,12 @@ export function AddAdditionModal({ open, onClose, onSave }: AddAdditionModalProp
             </Label>
             <input
               id="addition-value"
-              type="number"
-              min={1}
-              step={1}
+              type="text"
+              inputMode="numeric"
               value={additionalValue}
-              onChange={(e) => setAdditionalValue(e.target.value)}
-              placeholder="3500"
-              className={inputClass}
+              onChange={(e) => setAdditionalValue(formatThousandsInput(e.target.value))}
+              placeholder="3.500"
+              className={`${inputClass} font-mono tabular-nums`}
             />
             <p className="mt-1.5 text-[11px] text-muted-foreground">
               Precio que se suma al pedido cuando el cliente la elige.

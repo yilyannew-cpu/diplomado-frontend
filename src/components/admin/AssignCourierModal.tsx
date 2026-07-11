@@ -38,7 +38,7 @@ export function AssignCourierModal({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto rounded-3xl sm:max-w-md">
+      <DialogContent className="max-h-[100dvh] w-[calc(100%-1rem)] max-w-md overflow-y-auto rounded-2xl p-4 sm:max-h-[90vh] sm:rounded-3xl sm:p-6">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">Asignar domiciliario</DialogTitle>
           <DialogDescription>

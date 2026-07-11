@@ -108,14 +108,14 @@ export function summarizeDispatchPeriod(
   reference = new Date(),
 ): DispatchPeriodSummary {
   const filtered = filterDispatchesByPeriod(records, period, reference);
-  const grossSales = filtered.reduce((sum, r) => sum + r.total, 0);
+  const grossSales = filtered.reduce((sum, r) => sum + Math.max(0, r.total - r.deliveryFee), 0);
   const deliveryExpenses = filtered.reduce((sum, r) => sum + r.deliveryFee, 0);
 
   return {
     dispatchedCount: filtered.length,
     grossSales,
     deliveryExpenses,
-    netRevenue: grossSales - deliveryExpenses,
+    netRevenue: grossSales,
     periodLabel: getPeriodRange(period, reference).label,
   };
 }

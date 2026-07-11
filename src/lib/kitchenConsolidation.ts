@@ -29,7 +29,7 @@ export function buildKitchenConsolidation(
   for (const order of kitchenOrders) {
     for (const item of order.items) {
       const product = menu.find((m) => m.id === item.productId);
-      const name = product?.name ?? item.productId;
+      const name = item.productName?.trim() || product?.name || item.productId;
       const current = totals.get(item.productId);
       totals.set(item.productId, {
         productId: item.productId,

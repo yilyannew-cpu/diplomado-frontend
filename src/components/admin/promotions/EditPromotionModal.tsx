@@ -98,7 +98,7 @@ export function EditPromotionModal({ promotion, open, onClose }: EditPromotionMo
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
-      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto rounded-3xl">
+      <DialogContent className="max-h-[100dvh] w-[calc(100%-1rem)] max-w-lg overflow-y-auto rounded-2xl p-4 sm:max-h-[90vh] sm:rounded-3xl sm:p-6">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">Editar promoción</DialogTitle>
           <DialogDescription>
@@ -240,17 +240,17 @@ export function EditPromotionModal({ promotion, open, onClose }: EditPromotionMo
 
           {error ? <p className="text-xs text-destructive">{error}</p> : null}
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
             <button
               type="button"
               onClick={handleClose}
-              className="rounded-xl border border-border px-4 py-2 text-xs font-semibold hover:bg-secondary"
+              className="min-h-11 rounded-xl border border-border px-4 py-2.5 text-xs font-semibold hover:bg-secondary sm:min-h-0 sm:py-2"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+              className="min-h-11 rounded-xl bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 sm:min-h-0 sm:py-2"
             >
               Guardar cambios
             </button>
