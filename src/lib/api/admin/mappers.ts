@@ -46,6 +46,7 @@ export function mapApiOrderItem(item: ApiOrder["items"][number]): OrderItem {
   return {
     lineId: item.line_id,
     productId: item.product_id,
+    productName: item.product_name?.trim() || undefined,
     quantity: item.quantity,
     customizations: item.customizations
       ? {

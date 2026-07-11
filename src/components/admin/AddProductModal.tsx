@@ -10,6 +10,10 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { CATEGORIES, type Category } from "@/mocks/menuMock";
+import {
+  formatThousandsInput,
+  parseThousandsInput,
+} from "@/lib/formatThousandsInput";
 
 const PLACEHOLDER_IMAGE =
   "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80";
@@ -78,7 +82,7 @@ export function AddProductModal({ open, onClose, onSave }: AddProductModalProps)
     e.preventDefault();
     const trimmedName = name.trim();
     const trimmedDesc = description.trim();
-    const parsedPrice = Number(price);
+    const parsedPrice = parseThousandsInput(price);
 
     if (!trimmedName) {
       setError("El nombre es obligatorio.");
@@ -88,7 +92,7 @@ export function AddProductModal({ open, onClose, onSave }: AddProductModalProps)
       setError("La descripción es obligatoria.");
       return;
     }
-    if (!price || parsedPrice <= 0) {
+    if (parsedPrice == null || parsedPrice <= 0) {
       setError("Ingresa un precio válido mayor a cero.");
       return;
     }
@@ -115,7 +119,7 @@ export function AddProductModal({ open, onClose, onSave }: AddProductModalProps)
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
-      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto rounded-3xl sm:max-w-lg">
+      <DialogContent className="max-h-[100dvh] w-[calc(100%-1rem)] max-w-lg overflow-y-auto rounded-2xl p-4 sm:max-h-[90vh] sm:rounded-3xl sm:p-6">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">Nuevo producto</DialogTitle>
           <DialogDescription>
@@ -192,13 +196,12 @@ export function AddProductModal({ open, onClose, onSave }: AddProductModalProps)
               </Label>
               <input
                 id="product-price"
-                type="number"
-                min={1}
-                step={1}
+                type="text"
+                inputMode="numeric"
                 value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                placeholder="24900"
-                className={inputClass}
+                onChange={(e) => setPrice(formatThousandsInput(e.target.value))}
+                placeholder="24.900"
+                className={`${inputClass} font-mono tabular-nums`}
               />
             </div>
             <div>

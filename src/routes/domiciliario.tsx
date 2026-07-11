@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { RoleGuard, TopBar } from "@/components/shared/RoleShell";
-import { OrderSpecialInstructions } from "@/components/shared/OrderSpecialInstructions";
 import { OrderItemLines } from "@/components/shared/OrderItemLines";
 import { useAuth } from "@/context/AuthContext";
 import { useOrders, formatCOP } from "@/context/OrderContext";

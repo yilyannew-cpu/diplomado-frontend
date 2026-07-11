@@ -4,6 +4,7 @@ import {
   ChefHat,
   History,
   LayoutDashboard,
+  Settings,
   Tag,
   UtensilsCrossed,
 } from "lucide-react";
@@ -16,7 +17,8 @@ export type AdminTab =
   | "menu"
   | "promociones"
   | "domicilios"
-  | "historial";
+  | "historial"
+  | "configuracion";
 
 export const ADMIN_NAV_ITEMS: PanelNavItem<AdminTab>[] = [
   { id: "dashboard", label: "Dashboard", shortLabel: "Dashboard", icon: LayoutDashboard },
@@ -26,6 +28,7 @@ export const ADMIN_NAV_ITEMS: PanelNavItem<AdminTab>[] = [
   { id: "promociones", label: "Promociones", shortLabel: "Promos", icon: Tag },
   { id: "domicilios", label: "Domicilios activos", shortLabel: "Domicilios", icon: Bike },
   { id: "historial", label: "Historial de despachos", shortLabel: "Historial", icon: History },
+  { id: "configuracion", label: "Configuración", shortLabel: "Config", icon: Settings },
 ];
 
 interface AdminNavProps {

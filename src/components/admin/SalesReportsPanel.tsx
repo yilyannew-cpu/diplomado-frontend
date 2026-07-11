@@ -62,7 +62,9 @@ export function SalesReportsPanel({
     return () => {
       cancelled = true;
     };
-  }, [dateRange, fetchSalesReport]);
+    // dateRange es un objeto controlado; serializamos para no refetch por identidad.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(dateRange)]);
 
   const chartData = useMemo(
     () =>
@@ -78,22 +80,22 @@ export function SalesReportsPanel({
 
   if (loading || !period) {
     return (
-      <div className="rounded-2xl border border-border bg-card p-12 text-center text-sm text-muted-foreground">
+      <div className="rounded-2xl border border-border bg-card px-4 py-10 text-center text-sm text-muted-foreground sm:p-12">
         Cargando reportes de ventas…
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
         <ReportMetricCard
           label={`Ganancia neta — ${periodLabel}`}
           value={period.net_profit}
           hint={`${period.delivered_orders} entregas · margen ${period.margin_percent}%`}
           accent="primary"
           footer={
-            <p className="text-[10px] leading-relaxed text-muted-foreground">
+            <p className="text-[10px] leading-relaxed text-muted-foreground text-pretty">
               Comisiones app (5%):{" "}
               <span className="font-mono text-amber-brand">
                 -{formatReportAmount(period.app_commissions)}
@@ -118,48 +120,51 @@ export function SalesReportsPanel({
           hint="Ventas totales incl. domicilio"
           accent="muted"
         />
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+        <div className="rounded-2xl border border-border bg-card p-3.5 shadow-sm sm:p-5">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground sm:text-[11px]">
             Acumulado año
           </p>
-          <div className="mt-3 flex items-end justify-between gap-3">
-            <p className="font-display text-2xl font-semibold tabular-nums text-primary sm:text-3xl">
+          <div className="mt-2 flex items-end justify-between gap-3 sm:mt-3">
+            <p className="font-display text-xl font-semibold tabular-nums text-primary sm:text-3xl">
               {formatReportAmount(ytdRealNetProfit)}
             </p>
-            <TrendingUp className="size-5 text-emerald-600" />
+            <TrendingUp className="size-4 text-emerald-600 sm:size-5" />
           </div>
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            Domiciliarios: {formatReportAmount(ytdCourierPayout)} · Neto operativo:{" "}
-            {formatReportAmount(ytdNetProfit)}
+          <p className="mt-2 text-[10px] leading-snug text-muted-foreground text-pretty sm:text-[11px]">
+            Domiciliarios: {formatReportAmount(ytdCourierPayout)}
+            <span className="mx-1 hidden sm:inline">·</span>
+            <span className="mt-0.5 block sm:mt-0 sm:inline">
+              Neto operativo: {formatReportAmount(ytdNetProfit)}
+            </span>
           </p>
         </div>
       </div>
 
-      <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-        <div className="mb-5">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-primary">
+      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+        <div className="mb-4 sm:mb-5">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-primary sm:text-[11px]">
             Evolución mensual
           </p>
-          <h2 className="mt-1 font-display text-lg font-semibold">
+          <h2 className="mt-1 font-display text-base font-semibold sm:text-lg">
             Ganancias vs. pago a domiciliarios
           </h2>
         </div>
-        <ChartContainer config={chartConfig} className="aspect-auto h-[320px] w-full">
-          <BarChart data={chartData} margin={{ left: 4, right: 8, top: 8, bottom: 4 }}>
+        <ChartContainer config={chartConfig} className="aspect-auto h-[220px] w-full sm:h-[320px]">
+          <BarChart data={chartData} margin={{ left: 0, right: 4, top: 8, bottom: 4 }}>
             <CartesianGrid vertical={false} strokeDasharray="3 3" />
             <XAxis
               dataKey="label"
               tickLine={false}
               axisLine={false}
-              tickMargin={10}
-              fontSize={11}
+              tickMargin={8}
+              fontSize={10}
             />
             <YAxis
               tickLine={false}
               axisLine={false}
               tickFormatter={(v) => `${Math.round(Number(v) / 1_000_000)}M`}
-              fontSize={11}
-              width={44}
+              fontSize={10}
+              width={36}
             />
             <ChartTooltip
               content={
@@ -173,20 +178,20 @@ export function SalesReportsPanel({
         </ChartContainer>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
           <FinancialDetailTable months={months} />
         </section>
 
-        <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
           <CourierPayoutList couriers={courierPayouts} periodLabel={rangeLabel} />
         </section>
       </div>
 
-      <section className="rounded-2xl border border-dashed border-primary/25 bg-primary/5 p-4">
-        <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+      <section className="rounded-2xl border border-dashed border-primary/25 bg-primary/5 p-3.5 sm:p-4">
+        <div className="flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
           <Wallet className="size-4 shrink-0 text-primary" />
-          <p>
+          <p className="text-xs leading-relaxed text-pretty sm:text-sm">
             <span className="font-medium text-foreground">Ganancia neta</span> = facturación bruta
             menos domiciliarios. El{" "}
             <span className="font-medium text-foreground">neto real</span> descuenta además la

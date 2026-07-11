@@ -107,7 +107,18 @@ const CITY_ZONES_BY_NAME: Record<string, string[]> = {
   Manizales: ["Centro", "Milán", "Palogrande", "Sultana", "Versalles", "Chipre"],
   Armenia: ["Centro", "Quindío", "Norte", "Sur", "La Castellana"],
   "Santa Marta": ["Centro Histórico", "Rodadero", "Gaira", "Mamatoco", "Taganga", "Bastidas"],
-  Cúcuta: ["Centro", "Los Patios", "El Zulia", "Caobos", "Atalaya", "San Luis"],
+  Cúcuta: [
+    "Centro",
+    "Centro Oriental",
+    "Oriental Oriental",
+    "Oriental Occidental",
+    "Occidental",
+    "Sur Occidental",
+    "Sur Oriental",
+    "Norte",
+    "Atalaya",
+    "La Libertad",
+  ],
   Ibagué: ["Centro", "Belén", "La Pola", "Picaleña", "Calle 60", "San Fernando"],
   Villavicencio: ["Centro", "Barzal", "Villavicencio Norte", "Villavicencio Sur", "Porfia"],
   Pasto: ["Centro", "San Juan de Pasto", "Guillermo León Valencia", "Obrero", "Granada"],
@@ -157,6 +168,15 @@ const ALL_CITIES: ColombiaCityEntry[] = (citiesData.data as RawCity[])
   }))
   .sort((a, b) => a.name.localeCompare(b.name, "es"));
 
+/** Solo ciudades principales (no municipios menores). */
+const MAJOR_CITY_NAMES = new Set(
+  Object.keys(CITY_ZONES_BY_NAME).map((name) => normalizeCityName(name)),
+);
+
+const MAJOR_CITIES: ColombiaCityEntry[] = ALL_CITIES.filter((city) =>
+  MAJOR_CITY_NAMES.has(normalizeCityName(city.name)),
+);
+
 const cityById = new Map(ALL_CITIES.map((city) => [city.id, city]));
 
 const departmentNameById = new Map(
@@ -164,17 +184,16 @@ const departmentNameById = new Map(
 );
 
 export function getCitySelectOptions(): SelectOption[] {
-  return ALL_CITIES.map((city) => ({
+  return MAJOR_CITIES.map((city) => ({
     value: city.id,
     label: city.name,
-  }));
+  })).sort((a, b) => a.label.localeCompare(b.label, "es"));
 }
 
-/** Ciudades y municipios de Colombia agrupados por departamento (DANE). */
-export function getCitySelectGroups(): CitySelectGroup[] {
+function groupCitiesByDepartment(cities: ColombiaCityEntry[]): CitySelectGroup[] {
   const byDepartment = new Map<number, SelectOption[]>();
 
-  for (const city of ALL_CITIES) {
+  for (const city of cities) {
     const list = byDepartment.get(city.departmentId) ?? [];
     list.push({ value: city.id, label: city.name });
     byDepartment.set(city.departmentId, list);
@@ -188,6 +207,16 @@ export function getCitySelectGroups(): CitySelectGroup[] {
       ),
     }))
     .filter((group) => group.options.length > 0);
+}
+
+/** Ciudades principales de Colombia agrupadas por departamento. */
+export function getCitySelectGroups(): CitySelectGroup[] {
+  return groupCitiesByDepartment(MAJOR_CITIES);
+}
+
+/** @deprecated Preferir getCitySelectGroups (solo ciudades). */
+export function getAllMunicipalitySelectGroups(): CitySelectGroup[] {
+  return groupCitiesByDepartment(ALL_CITIES);
 }
 
 export function getCityById(cityId: string): ColombiaCityEntry | undefined {
@@ -211,5 +240,5 @@ export function getDepartmentNameForCity(cityId: string): string | undefined {
   return departmentNameById.get(city.departmentId);
 }
 
-/** Total de municipios en el catálogo (verificación / tests). */
-export const COLOMBIA_CITY_COUNT = ALL_CITIES.length;
+/** Total de ciudades principales en el catálogo de registro. */
+export const COLOMBIA_CITY_COUNT = MAJOR_CITIES.length;

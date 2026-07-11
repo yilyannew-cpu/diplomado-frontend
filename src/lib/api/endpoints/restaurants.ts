@@ -29,7 +29,8 @@ export const restaurantsApi = {
       city: string;
       address: string;
       delivery_minutes: number;
-      monthly_goal: number;
+      monthly_goal: number | null;
+      daily_goal: number | null;
       accent: string;
       logo: string | null;
     }>,

@@ -1,6 +1,7 @@
 import type { Category, MenuItem } from "@/mocks/menuMock";
 import { CATEGORIES } from "@/mocks/menuMock";
 import type { Order } from "@/mocks/ordersMock";
+import { getOrderProductSales } from "@/lib/deliveryFees";
 import { restaurantReviewsMock } from "@/mocks/restaurantReviewsMock";
 
 const COUNTED_STATUSES = new Set<Order["status"]>([
@@ -59,8 +60,8 @@ export function buildDashboardStats(orders: Order[], menu: MenuItem[]): Dashboar
   const countedOrders = orders.filter((o) => COUNTED_STATUSES.has(o.status));
   const todayOrders = countedOrders.filter((o) => isTodayOrder(o.createdAt));
 
-  const salesToday = todayOrders.reduce((sum, o) => sum + o.total, 0);
-  const liveMonthly = countedOrders.reduce((sum, o) => sum + o.total, 0);
+  const salesToday = todayOrders.reduce((sum, o) => sum + getOrderProductSales(o), 0);
+  const liveMonthly = countedOrders.reduce((sum, o) => sum + getOrderProductSales(o), 0);
   const monthlySales = BASE_MONTHLY_SALES_COP + liveMonthly;
   const goalProgress = Math.min(100, Math.round((monthlySales / MONTHLY_SALES_GOAL_COP) * 100));
 

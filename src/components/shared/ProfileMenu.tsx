@@ -18,7 +18,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/context/AuthContext";
+import { useOptionalAdmin } from "@/context/AdminContext";
 import { restaurantsApi } from "@/lib/api/endpoints/restaurants";
+import { dedupeAsync } from "@/lib/api/admin/dedupeAsync";
 import type { Role } from "@/lib/api/types";
 import type { ApiRestaurantProfile } from "@/lib/api/types/admin";
 import { resolveLogoUrl } from "@/lib/mediaUrl";
@@ -33,6 +35,7 @@ const roleLabels: Record<Role, string> = {
 
 export function ProfileMenu() {
   const { user, logout } = useAuth();
+  const admin = useOptionalAdmin();
   const navigate = useNavigate();
   const [accountOpen, setAccountOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -40,16 +43,20 @@ export function ProfileMenu() {
   const [restaurantLogoUrl, setRestaurantLogoUrl] = useState<string | null>(null);
 
   const restaurantId = user?.role === "admin" ? user.restaurant_id ?? null : null;
+  const adminLogo = admin?.restaurant ? resolveLogoUrl(admin.restaurant.logo) : null;
 
   useEffect(() => {
+    if (adminLogo) {
+      setRestaurantLogoUrl(adminLogo);
+      return;
+    }
     if (!restaurantId) {
       setRestaurantLogoUrl(null);
       return;
     }
 
     let cancelled = false;
-    void restaurantsApi
-      .getProfile(restaurantId)
+    void dedupeAsync(`admin:profile:${restaurantId}`, () => restaurantsApi.getProfile(restaurantId))
       .then((profile) => {
         if (!cancelled) setRestaurantLogoUrl(resolveLogoUrl(profile.logo));
       })
@@ -68,12 +75,12 @@ export function ProfileMenu() {
       cancelled = true;
       window.removeEventListener(RESTAURANT_PROFILE_UPDATED_EVENT, onProfileUpdated);
     };
-  }, [restaurantId]);
+  }, [restaurantId, adminLogo]);
 
   if (!user) return null;
 
   const isDomi = user.role === "domiciliario";
-  const avatarSrc = restaurantLogoUrl ?? user.avatar ?? undefined;
+  const avatarSrc = restaurantLogoUrl ?? adminLogo ?? user.avatar ?? undefined;
 
   const handleLogout = () => {
     navigate({ to: "/" });

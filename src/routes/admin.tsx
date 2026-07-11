@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SalesReportsPanel } from "@/components/admin/SalesReportsPanel";
 import { ReportDateRangeSelector } from "@/components/admin/reports/ReportDateRangeSelector";
 import type { ReportDateRange } from "@/lib/salesReports";
 import { RestaurantDashboard } from "@/components/admin/RestaurantDashboard";
+import { RestaurantSettingsPanel } from "@/components/admin/RestaurantSettingsPanel";
 import { ActiveDeliveriesPanel } from "@/components/admin/ActiveDeliveriesPanel";
 import { AdminNavMobile, AdminNavSidebar, type AdminTab } from "@/components/admin/AdminNav";
 import { AddAdditionModal } from "@/components/admin/AddAdditionModal";
@@ -64,6 +65,7 @@ function AdminView() {
     addMenuItem,
     addAddition,
     fetchAvailableCouriers,
+    ensureTabData,
   } = useAdmin();
 
   const [tab, setTab] = useState<AdminTab>("dashboard");
@@ -75,6 +77,10 @@ function AdminView() {
   const [addingAddition, setAddingAddition] = useState(false);
   const [reportDateRange, setReportDateRange] = useState<ReportDateRange>({ preset: "month" });
   const [menuFilters, setMenuFilters] = useState<MenuFiltersState>(DEFAULT_MENU_FILTERS);
+
+  useEffect(() => {
+    void ensureTabData(tab);
+  }, [tab, ensureTabData]);
 
   const filteredMenu = useMemo(
     () => filterMenuItems(menu, menuFilters),
@@ -102,7 +108,9 @@ function AdminView() {
               ? "Promociones"
               : tab === "historial"
                 ? "Historial de despachos"
-                : "Domicilios activos";
+                : tab === "configuracion"
+                  ? "Configuración"
+                  : "Domicilios activos";
 
   const navHints: Partial<Record<AdminTab, string>> = {
     dashboard: "Ventas y reseñas",
@@ -112,6 +120,7 @@ function AdminView() {
     promociones: `${activePromotionsCount} activas`,
     domicilios: `${activeDeliveryCount} en ruta`,
     historial: `${historyMonthCount} despachos este mes`,
+    configuracion: "Metas de ventas",
   };
 
   const openAssignModal = async (orders: Order[]) => {
@@ -141,16 +150,16 @@ function AdminView() {
     <div className="min-h-screen bg-cream">
       <TopBar title="Centro de cocina" subtitle="Monitor de comandas en tiempo real" />
 
-      <div className="page-container flex flex-col gap-6 lg:flex-row lg:gap-8">
+      <div className="page-container flex flex-col gap-4 sm:gap-6 lg:flex-row lg:gap-8">
         <AdminNavSidebar active={tab} onSelect={setTab} hints={navHints} />
 
         <main className="min-w-0 flex-1">
-          <div className="mb-6 space-y-4 lg:flex lg:flex-wrap lg:items-end lg:justify-between lg:gap-4 lg:space-y-0">
-            <div className="flex min-w-0 items-start gap-3 lg:flex-1">
+          <div className="mb-4 space-y-3 sm:mb-6 sm:space-y-4 lg:flex lg:flex-wrap lg:items-end lg:justify-between lg:gap-4 lg:space-y-0">
+            <div className="flex min-w-0 items-center gap-2.5 sm:items-start sm:gap-3 lg:flex-1">
               <AdminNavMobile active={tab} onSelect={setTab} hints={navHints} />
-              <div className="flex min-w-0 flex-1 items-center gap-3">
+              <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
                 <div
-                  className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-xl text-xs font-semibold text-white sm:size-12 sm:text-sm"
+                  className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-xl text-[10px] font-semibold text-white sm:size-12 sm:text-sm"
                   style={{ backgroundColor: restaurant?.accent || "#4f46e5" }}
                   aria-hidden
                 >
@@ -165,10 +174,10 @@ function AdminView() {
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[11px] font-semibold uppercase tracking-[0.2em] text-primary sm:tracking-[0.25em]">
+                  <p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-primary sm:text-[11px] sm:tracking-[0.25em]">
                     {restaurant?.name ?? "Sede"}
                   </p>
-                  <h1 className="mt-1 font-display text-xl font-semibold leading-tight tracking-tight sm:mt-2 sm:text-2xl lg:text-3xl">
+                  <h1 className="mt-0.5 font-display text-lg font-semibold leading-tight tracking-tight sm:mt-2 sm:text-2xl lg:text-3xl">
                     {pageTitle}
                   </h1>
                 </div>
@@ -267,8 +276,8 @@ function AdminView() {
                         </p>
                       </div>
                     </div>
-                    <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-secondary/50 px-3 py-2.5">
-                      <label className="flex min-h-9 items-center gap-2.5">
+                    <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-secondary/50 p-2.5 sm:flex sm:items-center sm:justify-between sm:gap-3 sm:px-3 sm:py-2.5">
+                      <label className="col-span-2 flex min-h-10 items-center justify-between gap-2.5 sm:col-auto sm:justify-start">
                         <span className="text-xs font-medium text-foreground">Disponible</span>
                         <button
                           type="button"
@@ -287,22 +296,20 @@ function AdminView() {
                           />
                         </button>
                       </label>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setCustomizing(p)}
-                          className="shrink-0 rounded-lg bg-secondary px-3.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary/80 active:scale-[0.98]"
-                        >
-                          Receta
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditing(p)}
-                          className="shrink-0 rounded-lg bg-primary/10 px-3.5 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/15 active:scale-[0.98]"
-                        >
-                          Editar
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setCustomizing(p)}
+                        className="min-h-10 rounded-lg bg-secondary px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary/80 active:scale-[0.98]"
+                      >
+                        Receta
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditing(p)}
+                        className="min-h-10 rounded-lg bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/15 active:scale-[0.98]"
+                      >
+                        Editar
+                      </button>
                     </div>
                   </div>
                   <div className="hidden grid-cols-12 items-center border-b border-border px-5 py-3 text-sm last:border-b-0 md:grid">
@@ -346,6 +353,8 @@ function AdminView() {
             <ActiveDeliveriesPanel />
           ) : tab === "historial" ? (
             <HistoryPanel />
+          ) : tab === "configuracion" ? (
+            <RestaurantSettingsPanel />
           ) : null}
         </main>
       </div>
