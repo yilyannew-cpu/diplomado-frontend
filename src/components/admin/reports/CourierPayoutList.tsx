@@ -12,21 +12,23 @@ interface CourierPayoutListProps {
 export function CourierPayoutList({ couriers, periodLabel }: CourierPayoutListProps) {
   return (
     <>
-      <div className="mb-4 flex items-start justify-between gap-3">
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-primary">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-primary sm:text-[11px]">
             {periodLabel}
           </p>
-          <h2 className="mt-1 font-display text-lg font-semibold">Pago por domiciliario</h2>
+          <h2 className="mt-1 font-display text-base font-semibold sm:text-lg">
+            Pago por domiciliario
+          </h2>
         </div>
-        <div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-primary">
+        <div className="flex w-fit items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-primary">
           <Bike className="size-3.5" />
           <span className="text-[11px] font-semibold">{couriers.length} repartidores</span>
         </div>
       </div>
 
       {couriers.length === 0 ? (
-        <p className="py-12 text-center text-sm text-muted-foreground">
+        <p className="py-10 text-center text-sm text-muted-foreground sm:py-12">
           Sin liquidaciones de domicilio en este periodo.
         </p>
       ) : (
@@ -34,28 +36,30 @@ export function CourierPayoutList({ couriers, periodLabel }: CourierPayoutListPr
           {couriers.map((row) => (
             <li
               key={row.courierId}
-              className="flex items-center gap-3 rounded-xl border border-border/60 bg-background/50 px-3 py-3"
+              className="flex flex-col gap-3 rounded-xl border border-border/60 bg-background/50 px-3 py-3 sm:flex-row sm:items-center"
             >
-              <UserAvatar
-                name={row.courierName}
-                src={row.courierAvatar}
-                className="size-10 shrink-0"
-              />
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="truncate font-medium">{row.courierName}</p>
-                  <SettlementBadge status={row.status} />
-                </div>
-                <p className="truncate text-[11px] text-muted-foreground">
-                  {row.vehicle ?? "Sin vehículo"} · {row.deliveries} entregas
-                </p>
-                <CourierRatingBadge
-                  averageRating={row.averageRating}
-                  reviewCount={row.reviewCount}
-                  className="mt-1"
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <UserAvatar
+                  name={row.courierName}
+                  src={row.courierAvatar}
+                  className="size-10 shrink-0"
                 />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="truncate font-medium">{row.courierName}</p>
+                    <SettlementBadge status={row.status} />
+                  </div>
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    {row.vehicle ?? "Sin vehículo"} · {row.deliveries} entregas
+                  </p>
+                  <CourierRatingBadge
+                    averageRating={row.averageRating}
+                    reviewCount={row.reviewCount}
+                    className="mt-1"
+                  />
+                </div>
               </div>
-              <div className="shrink-0 text-right">
+              <div className="shrink-0 border-t border-border/50 pt-2 text-right sm:border-0 sm:pt-0">
                 {row.status === "liquidado" ? (
                   <>
                     <p className="font-mono text-sm font-semibold tabular-nums text-primary">

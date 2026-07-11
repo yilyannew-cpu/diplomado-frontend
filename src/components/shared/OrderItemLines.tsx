@@ -27,7 +27,13 @@ export function OrderItemLines({
     <ul className={cn("space-y-1.5", className)}>
       {items.map((item, index) => {
         const product = menu.find((m) => m.id === item.productId);
-        const customizationLines = formatCustomizationLines(item.customizations);
+        const productName = item.productName?.trim() || product?.name || item.productId;
+        const specialInstructions = item.customizations?.specialInstructions?.trim();
+        const customizationLines = formatCustomizationLines({
+          ...item.customizations,
+          specialInstructions: undefined,
+          extraPrice: item.customizations?.extraPrice ?? 0,
+        });
         const unitPrice = getOrderItemUnitPrice(product?.price ?? 0, item.customizations);
 
         return (
@@ -40,7 +46,7 @@ export function OrderItemLines({
               )}
             >
               <span className="font-mono text-primary">{item.quantity}×</span>{" "}
-              {product?.name ?? item.productId}
+              {productName}
               {showPrices && (
                 <span className="ml-2 font-mono text-xs font-medium text-muted-foreground tabular-nums">
                   {formatCOP(unitPrice * item.quantity)}
@@ -63,6 +69,17 @@ export function OrderItemLines({
                 ))}
               </ul>
             )}
+            {specialInstructions ? (
+              <p
+                className={cn(
+                  "mt-1 border-l-2 border-amber-500/70 pl-2 leading-snug text-amber-900",
+                  compact ? "text-[11px]" : "text-xs",
+                )}
+                role="note"
+              >
+                <span className="font-semibold">Instrucción:</span> {specialInstructions}
+              </p>
+            ) : null}
           </li>
         );
       })}

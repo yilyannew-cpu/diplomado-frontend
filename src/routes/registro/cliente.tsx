@@ -3,6 +3,7 @@ import { useState } from "react";
 import {
   AuthFormAlert,
   AuthFormField,
+  AuthFormSelect,
   AuthInlineLink,
   AuthLayout,
   AuthLinkRow,
@@ -13,6 +14,8 @@ import { useAuth } from "@/context/AuthContext";
 import { authApi } from "@/lib/api/endpoints/auth";
 import { mapApiErrorToForm } from "@/lib/api/mapApiErrorToForm";
 import { getRoleHomePath } from "@/lib/auth/roleRoutes";
+import { persistClientComuna } from "@/lib/clientComunaStorage";
+import { CUCUTA_COMUNAS } from "@/lib/cucutaComunas";
 
 export const Route = createFileRoute("/registro/cliente")({
   head: () => ({
@@ -30,6 +33,7 @@ function RegisterClientPage() {
     password: "",
     password_confirmation: "",
     phone: "",
+    comuna: "",
   });
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -57,6 +61,9 @@ function RegisterClientPage() {
     }
     const phoneError = validatePhone(form.phone);
     if (phoneError) clientErrors.phone = phoneError;
+    if (!form.comuna) {
+      clientErrors.comuna = "Selecciona tu comuna";
+    }
 
     if (Object.keys(clientErrors).length > 0) {
       setFieldErrors(clientErrors);
@@ -71,8 +78,14 @@ function RegisterClientPage() {
         password: form.password,
         password_confirmation: form.password_confirmation,
         phone: form.phone.trim(),
+        comuna: form.comuna,
       });
-      setSession(response.token, response.user);
+      const sessionUser = {
+        ...response.user,
+        comuna: response.user.comuna ?? form.comuna,
+      };
+      persistClientComuna(sessionUser.id, sessionUser.comuna ?? form.comuna);
+      setSession(response.token, sessionUser);
       navigate({ to: getRoleHomePath(response.user.role) });
     } catch (err) {
       const mapped = mapApiErrorToForm(err);
@@ -119,6 +132,16 @@ function RegisterClientPage() {
           onChange={update("phone")}
           placeholder="+57 300 000 0000"
           error={fieldErrors.phone}
+          required
+        />
+        <AuthFormSelect
+          label="Comuna"
+          name="comuna"
+          value={form.comuna}
+          onChange={update("comuna")}
+          optionItems={[...CUCUTA_COMUNAS]}
+          placeholder="Selecciona tu comuna"
+          error={fieldErrors.comuna}
           required
         />
         <AuthFormField

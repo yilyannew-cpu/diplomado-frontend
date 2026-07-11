@@ -32,6 +32,7 @@ export function CartSheet() {
   const [customerName, setCustomerName] = useState(user?.name ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
   const [address, setAddress] = useState("Av. 0 #12-34, Caobos, Cúcuta");
+  const [courierNote, setCourierNote] = useState("");
   const [isPaying, setIsPaying] = useState(false);
 
   useEffect(() => {
@@ -47,6 +48,7 @@ export function CartSheet() {
     if (!open) {
       setStep("cart");
       setIsPaying(false);
+      setCourierNote("");
     }
   };
 
@@ -60,6 +62,7 @@ export function CartSheet() {
         name: customerName.trim(),
         address,
         phone: phone.trim(),
+        notes: courierNote.trim() || undefined,
       });
     } catch (e) {
       console.error("Error creating order:", e);
@@ -69,6 +72,7 @@ export function CartSheet() {
     }
     setIsPaying(false);
     setStep("cart");
+    setCourierNote("");
     setCartOpen(false);
   };
 
@@ -159,7 +163,7 @@ export function CartSheet() {
             )}
           </div>
         ) : (
-          <div className="flex flex-1 flex-col">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
             <div className="space-y-4">
               <div>
                 <label htmlFor="checkout-name" className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -197,6 +201,21 @@ export function CartSheet() {
                   onChange={(e) => setAddress(e.target.value)}
                   rows={3}
                   className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/20 focus:ring-2"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="checkout-courier-note" className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Nota al repartidor
+                </label>
+                <input
+                  id="checkout-courier-note"
+                  type="text"
+                  value={courierNote}
+                  onChange={(e) => setCourierNote(e.target.value)}
+                  maxLength={500}
+                  placeholder="Casa de dos pisos / Apartamento 201"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/20 placeholder:text-muted-foreground/70 focus:ring-2"
                 />
               </div>
 

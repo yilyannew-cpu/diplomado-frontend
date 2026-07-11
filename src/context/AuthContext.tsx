@@ -9,6 +9,7 @@ import {
 } from "react";
 import { authApi } from "@/lib/api/endpoints/auth";
 import { setToken, getToken } from "@/lib/api/client";
+import { persistClientComuna, resolveClientComuna } from "@/lib/clientComunaStorage";
 import type { User } from "@/lib/api/types";
 
 interface AuthState {
@@ -23,18 +24,39 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null);
 
+let meInflight: Promise<User> | null = null;
+
+async function fetchMeCached(): Promise<User> {
+  if (meInflight) return meInflight;
+  meInflight = authApi.me().finally(() => {
+    meInflight = null;
+  });
+  return meInflight;
+}
+
+function withResolvedComuna(nextUser: User): User {
+  const comuna = resolveClientComuna(nextUser);
+  if (comuna && nextUser.comuna !== comuna) {
+    return { ...nextUser, comuna };
+  }
+  if (comuna) persistClientComuna(nextUser.id, comuna);
+  return nextUser;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const setSession = useCallback((token: string, nextUser: User) => {
     setToken(token);
-    setUser(nextUser);
+    setUser(withResolvedComuna(nextUser));
   }, []);
 
   const clearSession = useCallback(() => {
     setToken(null);
     setUser(null);
+    // No borramos la comuna local: el API en producción aún puede no
+    // devolverla, y al volver a iniciar sesión hace falta para los avisos.
   }, []);
 
   const refreshUser = useCallback(async (): Promise<User | null> => {
@@ -45,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const me = await authApi.me();
+      const me = withResolvedComuna(await fetchMeCached());
       setUser(me);
       return me;
     } catch {
@@ -71,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        const me = await authApi.me();
+        const me = withResolvedComuna(await fetchMeCached());
         if (!cancelled) setUser(me);
       } catch {
         if (!cancelled) clearSession();

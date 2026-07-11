@@ -6,6 +6,7 @@ export interface UserProfile {
   email: string;
   role: Role;
   phone: string | null;
+  comuna?: string | null;
   status: UserStatus;
   restaurant_id?: string;
   vehicle?: string;
@@ -16,6 +17,7 @@ export interface UserProfile {
 export interface UpdateProfileBody {
   email?: string;
   phone?: string;
+  comuna?: string;
 }
 
 export interface ChangePasswordBody {

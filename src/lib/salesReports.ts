@@ -1,5 +1,5 @@
 import { calcGatewayFee } from "@/lib/salesReportFormat";
-import { getOrderDeliveryFee } from "@/lib/deliveryFees";
+import { getOrderDeliveryFee, getOrderProductSales } from "@/lib/deliveryFees";
 import { ACTIVE_DELIVERY_STATUSES } from "@/lib/deliveryLimits";
 import {
   currentMonthCourierPayoutsMock,
@@ -79,10 +79,11 @@ function currentMonthKey(reference = new Date()): string {
 
 function enrichMonth(row: MonthlySalesSnapshot): MonthlySalesReport {
   const appCommissions = calcGatewayFee(row.grossSales);
-  const netProfit = row.grossSales - row.courierPayout;
+  // grossSales del restaurante ya excluye domicilio
+  const netProfit = row.grossSales;
   const realNetProfit = netProfit - appCommissions;
   const marginPercent =
-    row.grossSales > 0 ? Math.round((netProfit / row.grossSales) * 100) : 0;
+    row.grossSales > 0 ? Math.round((realNetProfit / row.grossSales) * 100) : 0;
   return { ...row, netProfit, appCommissions, realNetProfit, marginPercent };
 }
 
@@ -91,7 +92,7 @@ function liveDeliveredContribution(orders: Order[]): MonthlySalesSnapshot {
   return {
     monthKey: currentMonthKey(),
     label: "Hoy",
-    grossSales: delivered.reduce((sum, o) => sum + o.total, 0),
+    grossSales: delivered.reduce((sum, o) => sum + getOrderProductSales(o), 0),
     courierPayout: delivered.reduce(
       (sum, o) => sum + (o.deliveryPersonId ? getOrderDeliveryFee(o) : 0),
       0,

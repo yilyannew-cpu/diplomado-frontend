@@ -4,7 +4,6 @@ import {
   AuthFormAlert,
   AuthFormField,
   AuthFormSelect,
-  AuthFormSelectGrouped,
   AuthInlineLink,
   AuthLayout,
   AuthLinkRow,
@@ -15,9 +14,9 @@ import { authApi } from "@/lib/api/endpoints/auth";
 import { mapApiErrorToForm } from "@/lib/api/mapApiErrorToForm";
 import {
   formatCityZoneLabel,
-  getCitySelectGroups,
-  getZonesForCity,
+  getCitySelectOptions,
 } from "@/lib/data/colombiaLocations";
+import { CUCUTA_COMUNAS } from "@/lib/cucutaComunas";
 
 export const Route = createFileRoute("/registro/restaurante")({
   head: () => ({
@@ -27,7 +26,7 @@ export const Route = createFileRoute("/registro/restaurante")({
 });
 
 function RegisterRestaurantPage() {
-  const cityGroups = useMemo(() => getCitySelectGroups(), []);
+  const cityOptions = useMemo(() => getCitySelectOptions(), []);
 
   const [form, setForm] = useState({
     owner_name: "",
@@ -38,7 +37,7 @@ function RegisterRestaurantPage() {
     restaurant_name: "",
     tagline: "",
     city_id: "",
-    zone: "",
+    comuna: "",
     address: "",
     delivery_minutes: "30",
   });
@@ -47,21 +46,11 @@ function RegisterRestaurantPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const zoneOptions = useMemo(
-    () => (form.city_id ? getZonesForCity(form.city_id) : []),
-    [form.city_id],
-  );
-
   const update = (field: keyof typeof form) => (value: string) => {
-    setForm((prev) => {
-      const next = { ...prev, [field]: value };
-      if (field === "city_id") next.zone = "";
-      return next;
-    });
+    setForm((prev) => ({ ...prev, [field]: value }));
     setFieldErrors((prev) => {
       const next = { ...prev };
       delete next[field];
-      if (field === "city_id") delete next.zone;
       return next;
     });
     setSuccessMessage(null);
@@ -82,7 +71,7 @@ function RegisterRestaurantPage() {
     const phoneError = validatePhone(form.phone);
     if (phoneError) clientErrors.phone = phoneError;
     if (!form.city_id) clientErrors.city_id = "Selecciona una ciudad";
-    if (!form.zone) clientErrors.zone = "Selecciona una zona";
+    if (!form.comuna) clientErrors.comuna = "Selecciona una comuna";
 
     if (Object.keys(clientErrors).length > 0) {
       setFieldErrors(clientErrors);
@@ -99,7 +88,7 @@ function RegisterRestaurantPage() {
         phone: form.phone.trim(),
         restaurant_name: form.restaurant_name.trim(),
         tagline: form.tagline.trim() || undefined,
-        city: formatCityZoneLabel(form.city_id, form.zone),
+        city: formatCityZoneLabel(form.city_id, form.comuna),
         address: form.address.trim(),
         delivery_minutes: Number(form.delivery_minutes) || 30,
       });
@@ -116,7 +105,7 @@ function RegisterRestaurantPage() {
         restaurant_name: "",
         tagline: "",
         city_id: "",
-        zone: "",
+        comuna: "",
         address: "",
         delivery_minutes: "30",
       });
@@ -207,41 +196,26 @@ function RegisterRestaurantPage() {
           onChange={update("tagline")}
           error={fieldErrors.tagline}
         />
-        <AuthFormSelectGrouped
+        <AuthFormSelect
           label="Ciudad"
           name="city_id"
           value={form.city_id}
           onChange={update("city_id")}
-          groups={cityGroups}
+          optionItems={cityOptions}
           placeholder="Selecciona una ciudad"
           error={fieldErrors.city_id}
           required
-          hint={`${cityGroups.reduce((n, g) => n + g.options.length, 0)} municipios en Colombia`}
         />
-        {zoneOptions.length > 0 ? (
-          <AuthFormSelect
-            label="Zona / barrio"
-            name="zone"
-            value={form.zone}
-            onChange={update("zone")}
-            options={zoneOptions}
-            placeholder={form.city_id ? "Selecciona una zona" : "Primero elige una ciudad"}
-            error={fieldErrors.zone}
-            required
-            disabled={!form.city_id}
-          />
-        ) : (
-          <AuthFormField
-            label="Zona / barrio"
-            name="zone"
-            value={form.zone}
-            onChange={update("zone")}
-            placeholder={form.city_id ? "Ej. Centro, barrio o localidad" : "Primero elige una ciudad"}
-            error={fieldErrors.zone}
-            required
-            disabled={!form.city_id}
-          />
-        )}
+        <AuthFormSelect
+          label="Comuna"
+          name="comuna"
+          value={form.comuna}
+          onChange={update("comuna")}
+          optionItems={[...CUCUTA_COMUNAS]}
+          placeholder="Selecciona una comuna"
+          error={fieldErrors.comuna}
+          required
+        />
         <AuthFormField
           label="Dirección de la sede"
           name="address"

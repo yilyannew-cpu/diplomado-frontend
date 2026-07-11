@@ -59,23 +59,23 @@ export function DashboardPromotionsCard() {
           : "border-border bg-card"
       }`}
     >
-      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border/60 px-5 py-4">
-        <div className="flex items-start gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/60 px-4 py-3.5 sm:gap-4 sm:px-5 sm:py-4">
+        <div className="flex min-w-0 items-start gap-2.5 sm:gap-3">
           <div
-            className={`grid size-10 shrink-0 place-items-center rounded-xl ${
+            className={`grid size-9 shrink-0 place-items-center rounded-xl sm:size-10 ${
               hasActive ? "bg-primary/15 text-primary" : "bg-secondary text-muted-foreground"
             }`}
           >
-            {hasActive ? <Sparkles className="size-5" /> : <Tag className="size-5" />}
+            {hasActive ? <Sparkles className="size-4 sm:size-5" /> : <Tag className="size-4 sm:size-5" />}
           </div>
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-primary">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-primary sm:text-[11px]">
               Marketing
             </p>
-            <h2 className="mt-0.5 font-display text-lg font-semibold">
+            <h2 className="mt-0.5 font-display text-base font-semibold sm:text-lg">
               {hasActive ? "Promociones activas" : "Sin promociones activas"}
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
               {hasActive
                 ? `${promotedProducts.length} producto${promotedProducts.length !== 1 ? "s" : ""} con descuento visible para clientes hoy`
                 : "No hay campañas vigentes en la fecha actual"}
@@ -85,20 +85,20 @@ export function DashboardPromotionsCard() {
 
         <div className="flex flex-wrap items-center gap-2">
           {hasActive ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-[11px] font-semibold text-emerald-700">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] font-semibold text-emerald-700 sm:px-3 sm:text-[11px]">
               <span className="size-1.5 rounded-full bg-emerald-500" />
               {activePromotions.length} campaña{activePromotions.length !== 1 ? "s" : ""} en curso
             </span>
           ) : null}
           {scheduledCount > 0 ? (
-            <span className="rounded-full bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary">
+            <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-medium text-primary sm:px-3 sm:text-[11px]">
               {scheduledCount} programada{scheduledCount !== 1 ? "s" : ""}
             </span>
           ) : null}
         </div>
       </div>
 
-      <div className="p-5">
+      <div className="p-4 sm:p-5">
         {!hasActive ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-background/50 py-10 text-center">
             <CalendarRange className="size-8 text-muted-foreground/40" />

@@ -7,7 +7,8 @@ export interface ApiRestaurantProfile {
   city: string;
   address: string;
   delivery_minutes: number;
-  monthly_goal: number;
+  monthly_goal: number | null;
+  daily_goal: number | null;
   accent: string;
   initials: string;
   logo?: string | null;
@@ -19,8 +20,10 @@ export interface ApiDashboard {
   sales_today: number;
   orders_today: number;
   monthly_sales: number;
-  monthly_goal: number;
-  goal_progress_percent: number;
+  monthly_goal: number | null;
+  daily_goal: number | null;
+  goal_progress_percent: number | null;
+  daily_goal_progress_percent: number | null;
   sales_by_category: Array<{
     category_id: string;
     category_name: string;

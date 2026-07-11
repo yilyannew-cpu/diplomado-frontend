@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Search, X } from "lucide-react";
 import { ClientTabNav } from "@/components/cliente/ClientTabNav";
 import { PromocionesPanel } from "@/components/cliente/PromocionesPanel";
 import { RankinPanel } from "@/components/cliente/RankinPanel";
@@ -8,12 +8,34 @@ import { OrderTrackingPanel } from "@/components/cliente/OrderTrackingPanel";
 import { BRAND_SLOGAN } from "@/components/shared/BrandLogo";
 import { RoleGuard, TopBar } from "@/components/shared/RoleShell";
 import { ClienteProvider, useCliente } from "@/context/ClienteContext";
+import { useAuth } from "@/context/AuthContext";
+import { resolveClientComuna } from "@/lib/clientComunaStorage";
 import { getProductPricing } from "@/lib/promotions";
 import { isCustomizableMainDish } from "@/lib/orderCustomizations";
+import {
+  getRestaurantProximity,
+  sortRestaurantsByProximity,
+} from "@/lib/restaurantProximity";
 import { DiscountBadge, ProductPriceDisplay } from "@/components/shared/ProductPriceDisplay";
 import { ProductDetailModal } from "@/components/cliente/ProductDetailModal";
 import { ProductImage } from "@/components/shared/ProductImage";
 import type { MenuItem } from "@/mocks/menuMock";
+
+function normalizeSearch(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .trim();
+}
+
+function productMatchesQuery(product: MenuItem, query: string): boolean {
+  if (!query) return true;
+  const haystack = normalizeSearch(
+    [product.name, product.description, product.category].filter(Boolean).join(" "),
+  );
+  return query.split(/\s+/).every((token) => haystack.includes(token));
+}
 
 export const Route = createFileRoute("/cliente")({
   head: () => ({
@@ -34,6 +56,7 @@ export const Route = createFileRoute("/cliente")({
 function ClienteView() {
   const {
     menu,
+    allMenus,
     isLoadingMenu,
     bootstrapError,
     addToCart,
@@ -45,25 +68,51 @@ function ClienteView() {
     activeRestaurantId,
     setActiveRestaurantId,
     refreshCatalog,
+    ensureAllMenus,
+    isLoadingAllMenus,
   } = useCliente();
+  const { user } = useAuth();
+  const clientComuna = resolveClientComuna(user);
   const [activeCat, setActiveCat] = useState<string>("Todo");
+  const [searchQuery, setSearchQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<{ product: MenuItem; basePrice: number } | null>(null);
 
-  const categories = useMemo(() => {
-    const cats = new Set(menu.map((m) => m.category));
-    return ["Todo", ...Array.from(cats).sort()];
-  }, [menu]);
-
-  const filtered = useMemo(
-    () =>
-      menu.filter(
-        (m) =>
-          m.available &&
-          (activeCat === "Todo" || m.category === activeCat)
-      ),
-    [menu, activeCat],
+  const sortedRestaurants = useMemo(
+    () => sortRestaurantsByProximity(restaurants, clientComuna),
+    [restaurants, clientComuna],
   );
+
+  const normalizedQuery = useMemo(() => normalizeSearch(searchQuery), [searchQuery]);
+  const isGlobalSearch = normalizedQuery.length > 0;
+
+  useEffect(() => {
+    if (!isGlobalSearch) return;
+    void ensureAllMenus();
+  }, [isGlobalSearch, ensureAllMenus]);
+
+  const catalogSource = isGlobalSearch ? allMenus : menu;
+
+  const categories = useMemo(() => {
+    const cats = new Set(catalogSource.map((m) => m.category));
+    return ["Todo", ...Array.from(cats).sort()];
+  }, [catalogSource]);
+
+  const filtered = useMemo(() => {
+    const matches = catalogSource.filter(
+      (m) =>
+        m.available &&
+        (activeCat === "Todo" || m.category === activeCat) &&
+        productMatchesQuery(m, normalizedQuery),
+    );
+
+    if (!isGlobalSearch) return matches;
+
+    return [...matches].sort((a, b) => {
+      if (a.price !== b.price) return a.price - b.price;
+      return a.name.localeCompare(b.name, "es");
+    });
+  }, [catalogSource, activeCat, normalizedQuery, isGlobalSearch]);
 
   const restaurantById = useMemo(
     () => Object.fromEntries(restaurants.map((r) => [r.id, r])),
@@ -73,6 +122,10 @@ function ClienteView() {
   useEffect(() => {
     setActiveCat("Todo");
   }, [activeRestaurantId]);
+
+  useEffect(() => {
+    if (isGlobalSearch) setActiveCat("Todo");
+  }, [isGlobalSearch]);
 
   const handleRefreshCatalog = async () => {
     setIsRefreshing(true);
@@ -178,17 +231,51 @@ function ClienteView() {
             </div>
           </div>
 
+          <div className="relative mb-6 sm:mb-8">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar en todos los menús (ej. papas, hamburguesa…)"
+              aria-label="Buscar productos en todos los restaurantes"
+              className="w-full rounded-xl border border-border bg-card py-2.5 pl-10 pr-10 text-sm outline-none ring-primary/20 placeholder:text-muted-foreground/70 focus:ring-2"
+            />
+            {searchQuery ? (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+                aria-label="Limpiar búsqueda"
+              >
+                <X className="size-4" />
+              </button>
+            ) : null}
+          </div>
+
+          {isGlobalSearch ? (
+            <p className="mb-4 text-xs text-muted-foreground">
+              {isLoadingAllMenus
+                ? "Buscando en todos los restaurantes…"
+                : "Resultados de todos los restaurantes · ordenados de menor a mayor precio"}
+            </p>
+          ) : null}
+
           {/* Restaurants quick access */}
           <div className="mb-6">
             <div className="mb-3 flex items-center justify-between gap-3">
               <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground sm:text-[11px] sm:tracking-[0.2em]">
-                Restaurantes en tu zona
+                {clientComuna ? `Restaurantes · ${clientComuna}` : "Restaurantes"}
               </p>
             </div>
+
             <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 md:grid-cols-4">
-              {restaurants.map((r) => {
+              {sortedRestaurants.map((r) => {
                 const isActive = activeRestaurantId === r.id;
-                // We no longer count locally because menu only has active restaurant items
+                const proximity = getRestaurantProximity(r, clientComuna);
                 return (
                   <button
                     key={r.id}
@@ -213,11 +300,20 @@ function ClienteView() {
                       </span>
                       <span className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-muted-foreground">
                         <span className="inline-flex items-center gap-0.5 font-medium text-amber-brand">
-                          ★ {r.rating?.toFixed(1) || '0.0'}
+                          ★ {r.rating?.toFixed(1) || "0.0"}
                         </span>
                         <span aria-hidden>·</span>
                         <span>{r.deliveryMinutes || 30} min</span>
                       </span>
+                      {proximity === "recomendado" ? (
+                        <span className="mt-1.5 inline-flex rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                          Recomendado
+                        </span>
+                      ) : proximity === "lejos" ? (
+                        <span className="mt-1.5 inline-flex rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                          Lejos de ti
+                        </span>
+                      ) : null}
                     </span>
                   </button>
                 );
@@ -324,7 +420,9 @@ function ClienteView() {
             ))}
             {filtered.length === 0 && (
               <p className="col-span-full rounded-2xl border border-dashed border-border bg-card/50 py-12 text-center text-sm text-muted-foreground">
-                No hay productos con estos filtros.
+                {normalizedQuery
+                  ? `No hay productos que coincidan con “${searchQuery.trim()}”.`
+                  : "No hay productos con estos filtros."}
               </p>
             )}
           </div>

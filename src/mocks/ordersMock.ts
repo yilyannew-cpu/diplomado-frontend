@@ -35,6 +35,8 @@ export interface OrderItemCustomizations {
 export interface OrderItem {
   lineId?: string;
   productId: string;
+  /** Nombre del producto al momento del pedido (API). Preferir sobre lookup en menú. */
+  productName?: string;
   quantity: number;
   customizations?: OrderItemCustomizations;
 }

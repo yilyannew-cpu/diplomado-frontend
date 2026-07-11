@@ -13,6 +13,7 @@ export interface User {
   vehicle?: string | null;
   document_id?: string | null;
   avatar?: string | null;
+  comuna?: string | null;
   status: UserStatus;
   restaurant_id?: string | null;
   restaurant_name?: string | null;
@@ -30,6 +31,7 @@ export interface RegisterClientPayload {
   password: string;
   password_confirmation: string;
   phone: string;
+  comuna: string;
 }
 
 export interface RegisterRestaurantPayload {
