@@ -209,6 +209,20 @@
   }
 }
 
+@keyframes order-line-flow-x {
+  0% {
+    background-position: 0% 0%;
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    background-position: 200% 0%;
+    opacity: 0.55;
+  }
+}
+
 @keyframes order-line-reveal {
   from {
     transform: scaleY(0);
@@ -323,6 +337,17 @@
   );
   background-size: 100% 200%;
   animation: order-line-flow 1.6s ease-in-out infinite;
+}
+
+.animate-order-line-flow-x {
+  background-image: linear-gradient(
+    90deg,
+    oklch(0.52 0.22 277) 0%,
+    oklch(0.82 0.12 88) 45%,
+    oklch(0.52 0.22 277) 90%
+  );
+  background-size: 200% 100%;
+  animation: order-line-flow-x 1.6s ease-in-out infinite;
 }
 
 .animate-order-line-reveal {
