@@ -34,4 +34,9 @@ export const clientOrdersApi = {
   track(code: string): Promise<ApiOrder> {
     return apiClient(`/orders/track/${encodeURIComponent(code)}`);
   },
+
+  /** Pedido activo del cliente autenticado (por teléfono de perfil). */
+  myActive(): Promise<ApiOrder | null> {
+    return apiClient<ApiOrder | null>("/orders/my-active", { auth: true });
+  },
 };
