@@ -17,6 +17,8 @@ export interface CreateOrderPayload {
   notes?: string;
   zone?: string;
   restaurant_id: string;
+  /** Tarifa de domicilio calculada por km de ruta (COP, redondeada a centena). */
+  delivery_fee?: number;
   items: Array<{
     product_id: string;
     quantity: number;

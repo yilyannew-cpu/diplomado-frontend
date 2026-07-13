@@ -3,6 +3,8 @@ export interface Restaurant {
   name: string;
   tagline: string;
   city: string;
+  /** Dirección física del local (si el API la envía). */
+  address?: string | null;
   rating: number;
   deliveryMinutes: number;
   accent: string; // tailwind utility-ready hex for ring/badge
