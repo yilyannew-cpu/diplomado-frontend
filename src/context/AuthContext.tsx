@@ -18,19 +18,31 @@ interface AuthState {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
-  refreshUser: () => Promise<User | null>;
+  refreshUser: (options?: { force?: boolean }) => Promise<User | null>;
   setSession: (token: string, user: User) => void;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
 
 let meInflight: Promise<User> | null = null;
+let meCache: { user: User; fetchedAt: number } | null = null;
+const ME_TTL_MS = 60_000;
 
-async function fetchMeCached(): Promise<User> {
+async function fetchMeCached(options?: { force?: boolean }): Promise<User> {
+  if (!options?.force && meCache && Date.now() - meCache.fetchedAt < ME_TTL_MS) {
+    return meCache.user;
+  }
   if (meInflight) return meInflight;
-  meInflight = authApi.me().finally(() => {
-    meInflight = null;
-  });
+
+  meInflight = authApi
+    .me()
+    .then((user) => {
+      meCache = { user, fetchedAt: Date.now() };
+      return user;
+    })
+    .finally(() => {
+      meInflight = null;
+    });
   return meInflight;
 }
 
@@ -55,26 +67,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearSession = useCallback(() => {
     setToken(null);
     setUser(null);
+    meCache = null;
     // No borramos la comuna local: el API en producción aún puede no
     // devolverla, y al volver a iniciar sesión hace falta para los avisos.
   }, []);
 
-  const refreshUser = useCallback(async (): Promise<User | null> => {
-    const token = getToken();
-    if (!token) {
-      setUser(null);
-      return null;
-    }
+  const refreshUser = useCallback(
+    async (options?: { force?: boolean }): Promise<User | null> => {
+      const token = getToken();
+      if (!token) {
+        setUser(null);
+        return null;
+      }
 
-    try {
-      const me = withResolvedComuna(await fetchMeCached());
-      setUser(me);
-      return me;
-    } catch {
-      clearSession();
-      return null;
-    }
-  }, [clearSession]);
+      try {
+        // Por defecto respeta TTL/inflight; force solo tras editar perfil.
+        const me = withResolvedComuna(await fetchMeCached(options));
+        setUser(me);
+        return me;
+      } catch {
+        clearSession();
+        return null;
+      }
+    },
+    [clearSession],
+  );
 
   useEffect(() => {
     void authApi.health().catch(() => {

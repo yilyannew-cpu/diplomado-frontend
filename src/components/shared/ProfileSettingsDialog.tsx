@@ -174,7 +174,7 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
       if (isClient && comuna.trim()) {
         persistClientComuna(user.id, comuna.trim());
       }
-      const refreshed = await refreshUser();
+      const refreshed = await refreshUser({ force: true });
       // refreshUser puede venir sin comuna del API; reaplicar la local.
       if (isClient && comuna.trim()) {
         const token = getToken();

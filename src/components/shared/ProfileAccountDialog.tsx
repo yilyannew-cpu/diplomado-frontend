@@ -60,7 +60,7 @@ interface ProfileAccountDialogProps {
 }
 
 export function ProfileAccountDialog({ open, onOpenChange }: ProfileAccountDialogProps) {
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const [restaurant, setRestaurant] = useState<ApiRestaurantProfile | null>(null);
   const [savedLogoUrl, setSavedLogoUrl] = useState<string | null>(null);
@@ -76,9 +76,8 @@ export function ProfileAccountDialog({ open, onOpenChange }: ProfileAccountDialo
 
   useEffect(() => {
     if (!open) return;
-    void refreshUser();
     setLogoJustSaved(false);
-  }, [open, refreshUser]);
+  }, [open]);
 
   useEffect(() => {
     if (!open || !isAdmin || !restaurantId) {
