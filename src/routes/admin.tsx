@@ -26,6 +26,7 @@ import { ProductImage } from "@/components/shared/ProductImage";
 import { AdminProvider, useAdmin } from "@/context/AdminContext";
 import { formatCOP } from "@/context/OrderContext";
 import { resolveLogoUrl } from "@/lib/mediaUrl";
+import { getOrderZone } from "@/lib/orderZones";
 import type { MenuItem } from "@/mocks/menuMock";
 import { ADDITION_CATEGORY } from "@/mocks/menuMock";
 import type { Order } from "@/mocks/ordersMock";
@@ -126,7 +127,8 @@ function AdminView() {
   const openAssignModal = async (orders: Order[]) => {
     setAssigningOrders(orders);
     try {
-      const couriers = await fetchAvailableCouriers(orders.length);
+      const zone = orders[0]?.zone ?? (orders[0] ? getOrderZone(orders[0].address) : undefined);
+      const couriers = await fetchAvailableCouriers(orders.length, zone);
       setAvailableCouriers(couriers);
     } catch {
       setAvailableCouriers([]);
@@ -269,7 +271,7 @@ function AdminView() {
                         className="size-16 shrink-0 rounded-xl object-cover"
                       />
                       <div className="min-w-0 flex-1">
-                        <p className="font-semibold leading-snug">{p.name}</p>
+                        <p className="line-clamp-2 font-semibold leading-snug break-words">{p.name}</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">{p.category}</p>
                         <p className="mt-1.5 font-mono text-sm font-semibold text-primary tabular-nums">
                           {p.category === ADDITION_CATEGORY ? `+ ${formatCOP(p.price)}` : formatCOP(p.price)}
@@ -313,14 +315,14 @@ function AdminView() {
                     </div>
                   </div>
                   <div className="hidden grid-cols-12 items-center border-b border-border px-5 py-3 text-sm last:border-b-0 md:grid">
-                  <div className="col-span-5 flex items-center gap-3">
-                    <ProductImage src={p.image} alt={p.name} className="size-10 rounded-lg object-cover" />
-                    <div>
-                      <p className="font-medium">{p.name}</p>
+                  <div className="col-span-5 flex min-w-0 items-center gap-3">
+                    <ProductImage src={p.image} alt={p.name} className="size-10 shrink-0 rounded-lg object-cover" />
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{p.name}</p>
                       <p className="line-clamp-1 text-[11px] text-muted-foreground">{p.description}</p>
                     </div>
                   </div>
-                  <span className="col-span-2 text-xs text-muted-foreground">{p.category}</span>
+                  <span className="col-span-2 truncate text-xs text-muted-foreground">{p.category}</span>
                   <span className="col-span-2 text-right font-mono text-xs tabular-nums">
                     {p.category === ADDITION_CATEGORY ? `+ ${formatCOP(p.price)}` : formatCOP(p.price)}
                   </span>
@@ -334,11 +336,11 @@ function AdminView() {
                       <span className={`size-5 rounded-full bg-white shadow transition-transform ${p.available ? "translate-x-5" : ""}`} />
                     </button>
                   </div>
-                  <div className="col-span-1 flex justify-end gap-2">
-                    <button onClick={() => setCustomizing(p)} className="text-xs font-medium text-foreground bg-secondary px-2 py-1 rounded hover:bg-secondary/80" title="Configurar receta (Ingredientes/Extras)">
+                  <div className="col-span-1 flex flex-wrap justify-end gap-1.5">
+                    <button onClick={() => setCustomizing(p)} className="rounded bg-secondary px-2 py-1 text-xs font-medium text-foreground hover:bg-secondary/80" title="Configurar receta (Ingredientes/Extras)">
                       Receta
                     </button>
-                    <button onClick={() => setEditing(p)} className="text-xs font-medium text-primary hover:underline px-1 py-1">
+                    <button onClick={() => setEditing(p)} className="px-1 py-1 text-xs font-medium text-primary hover:underline">
                       Editar
                     </button>
                   </div>

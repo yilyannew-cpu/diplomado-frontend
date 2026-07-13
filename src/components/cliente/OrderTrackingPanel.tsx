@@ -8,30 +8,14 @@ import { useAuth } from "@/context/AuthContext";
 import { formatCOP, useCliente } from "@/context/ClienteContext";
 import { deliveryReviewsApi } from "@/lib/api/endpoints/deliveryReviews";
 import { getOrderApiId } from "@/lib/api/admin/mappers";
+import {
+  isDeliveryReviewDone,
+  markDeliveryReviewDone,
+} from "@/lib/clientDeliveryReviewStorage";
 import { readClientAddress, readClientAddressCoords } from "@/lib/clientAddressStorage";
 import { getOrderDeliveryFee, getOrderProductSales } from "@/lib/deliveryFees";
 import { CLIENT_STATUS_FLOW } from "@/mocks/ordersMock";
 import { cn } from "@/lib/utils";
-
-const REVIEW_DONE_KEY = "ffcore_delivery_review_done";
-
-function readReviewDone(orderId: string): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    return window.localStorage.getItem(`${REVIEW_DONE_KEY}:${orderId}`) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function markReviewDone(orderId: string) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(`${REVIEW_DONE_KEY}:${orderId}`, "1");
-  } catch {
-    /* ignore */
-  }
-}
 
 export function OrderTrackingPanel() {
   const { user } = useAuth();
@@ -39,6 +23,7 @@ export function OrderTrackingPanel() {
     trackedOrder,
     isTrackingLoading,
     refreshTracking,
+    clearTracking,
     menu,
     restaurants,
     activeRestaurantId,
@@ -75,8 +60,9 @@ export function OrderTrackingPanel() {
     }
 
     const apiId = getOrderApiId(order);
-    if (readReviewDone(apiId)) {
+    if (isDeliveryReviewDone(apiId) || isDeliveryReviewDone(order.id)) {
       setShowReviewModal(false);
+      clearTracking();
       return;
     }
 
@@ -85,6 +71,12 @@ export function OrderTrackingPanel() {
       .getStatus(apiId)
       .then((status) => {
         if (cancelled) return;
+        if (status.reviewed) {
+          markDeliveryReviewDone(apiId);
+          markDeliveryReviewDone(order.id);
+          clearTracking();
+          return;
+        }
         setShowReviewModal(Boolean(status.can_review));
       })
       .catch(() => {
@@ -95,7 +87,7 @@ export function OrderTrackingPanel() {
     return () => {
       cancelled = true;
     };
-  }, [order?.id, order?.orderId, order?.status]);
+  }, [order?.id, order?.orderId, order?.status, clearTracking]);
 
   const handleLookup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -412,7 +404,8 @@ export function OrderTrackingPanel() {
                 <p className="mt-1 text-sm text-muted-foreground">
                   Gracias por usar FFCore. ¡Buen provecho!
                 </p>
-                {!showReviewModal && readReviewDone(getOrderApiId(order)) ? (
+                {!showReviewModal &&
+                (isDeliveryReviewDone(getOrderApiId(order)) || isDeliveryReviewDone(order.id)) ? (
                   <p className="mt-2 text-xs font-medium text-primary">
                     Ya recibimos tu calificación. ¡Gracias!
                   </p>
@@ -465,8 +458,11 @@ export function OrderTrackingPanel() {
           customerName={order.customerName || user?.name}
           hasCourier={Boolean(order.deliveryPersonId || order.courierName)}
           onDone={() => {
-            markReviewDone(getOrderApiId(order));
+            const apiId = getOrderApiId(order);
+            markDeliveryReviewDone(apiId);
+            markDeliveryReviewDone(order.id);
             setShowReviewModal(false);
+            clearTracking();
           }}
         />
       ) : null}

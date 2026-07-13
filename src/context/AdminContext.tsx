@@ -131,7 +131,7 @@ interface AdminContextValue {
   refreshDashboard: () => Promise<void>;
   refreshActiveDeliveries: () => Promise<void>;
   refreshDispatchHistory: (period?: HistoryPeriod) => Promise<void>;
-  fetchAvailableCouriers: (batchSize: number) => Promise<ApiAvailableCourier[]>;
+  fetchAvailableCouriers: (batchSize: number, zone?: string) => Promise<ApiAvailableCourier[]>;
   updateOrderStatus: (order: Order, next: OrderStatus) => Promise<void>;
   assignCourierBatch: (orders: Order[], courierId: string) => Promise<void>;
   dispatchBatch: (orders: Order[]) => Promise<void>;
@@ -430,9 +430,9 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   }, [restaurantId, refreshActiveDeliveries, refreshDispatchHistory]);
 
   const fetchAvailableCouriers = useCallback(
-    async (batchSize: number) => {
+    async (batchSize: number, zone?: string) => {
       if (!restaurantId) return [];
-      const res = await restaurantsApi.listAvailableCouriers(restaurantId, batchSize);
+      const res = await restaurantsApi.listAvailableCouriers(restaurantId, batchSize, zone);
       return res.data;
     },
     [restaurantId],

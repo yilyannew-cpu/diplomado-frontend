@@ -1,9 +1,18 @@
-export type OrderStatus =
-  | "Pendiente"
-  | "Preparando"
-  | "En Camino"
+/** Estados que acepta GET /orders?status= (enum del backend). */
+export type ApiOrderStatus =
+  | "Recibido"
+  | "EnPreparacion"
+  | "Listo"
+  | "EnCamino"
   | "Entregado"
   | "Cancelado";
+
+/** Filtros de UI del panel de operaciones. */
+export type OperationsOrderFilter =
+  | "activos"
+  | "EnCamino"
+  | "EnPreparacion"
+  | "Recibido";
 
 export type CourierAvailability = "disponible" | "en_ruta" | "offline";
 
@@ -32,7 +41,7 @@ export interface SystemStatus {
 export interface OrderSummary {
   id: string;
   order_number: string;
-  status: OrderStatus;
+  status: ApiOrderStatus;
   restaurant_name: string;
   customer_name: string;
   courier_name: string | null;
@@ -59,3 +68,13 @@ export interface OperationsMetrics {
   couriers_available: number;
   couriers_en_ruta: number;
 }
+
+/** Etiquetas amigables para estados del API. */
+export const ORDER_STATUS_LABEL: Record<ApiOrderStatus, string> = {
+  Recibido: "Pendiente",
+  EnPreparacion: "Preparando",
+  Listo: "Listo",
+  EnCamino: "En camino",
+  Entregado: "Entregado",
+  Cancelado: "Cancelado",
+};

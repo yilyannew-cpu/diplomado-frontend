@@ -47,6 +47,7 @@ export function mapApiOrderItem(item: ApiOrder["items"][number]): OrderItem {
     lineId: item.line_id,
     productId: item.product_id,
     productName: item.product_name?.trim() || undefined,
+    productImage: item.product_image ?? undefined,
     quantity: item.quantity,
     customizations: item.customizations
       ? {
@@ -87,6 +88,7 @@ export function mapApiOrder(raw: ApiOrder): Order {
     total: raw.total,
     deliveryFee: raw.delivery_fee,
     status: mapApiStatusToFrontend(raw.status),
+    restaurantId: raw.restaurant_id ?? undefined,
     deliveryPersonId: raw.courier_id ?? undefined,
     courierName: raw.courier_name ?? undefined,
     courierPhone: raw.courier_phone ?? undefined,
@@ -159,6 +161,7 @@ export function mapApiPromotion(raw: ApiPromotion): Promotion {
     endDate: raw.end_date,
     active: raw.active,
     createdAt: Date.parse(raw.start_date) || Date.now(),
+    restaurantId: raw.restaurant_id,
   };
 }
 

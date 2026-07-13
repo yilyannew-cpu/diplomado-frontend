@@ -18,6 +18,8 @@ export interface ClienteSessionCartItem {
 export interface ClienteSessionState {
   restaurants: Restaurant[];
   activeRestaurantId: string | null;
+  /** Vista ficha del restaurante (estilo Uber Eats / menú por sede). */
+  restaurantDetailOpen: boolean;
   menu: MenuItem[];
   allMenus: MenuItem[];
   promotions: Promotion[];

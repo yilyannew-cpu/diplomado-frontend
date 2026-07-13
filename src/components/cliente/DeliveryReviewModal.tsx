@@ -100,12 +100,12 @@ export function DeliveryReviewModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-ink/50 p-4 sm:items-center">
+    <div className="fixed inset-x-0 top-[var(--vv-top,0px)] z-[80] flex h-[var(--vv-height,100dvh)] items-end justify-center bg-ink/50 p-4 sm:items-center">
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="delivery-review-title"
-        className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-3xl border border-border bg-cream p-5 shadow-2xl sm:p-6"
+        className="max-h-[min(90dvh,var(--vv-height,90dvh))] w-full max-w-md overflow-y-auto rounded-3xl border border-border bg-cream p-5 shadow-2xl sm:p-6"
       >
         <p className="text-[10px] font-semibold uppercase tracking-widest text-primary">
           Pedido {orderCode}

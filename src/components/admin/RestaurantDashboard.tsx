@@ -116,7 +116,7 @@ export function RestaurantDashboard() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
         <MetricCard
           label="Ventas hoy"
           value={formatCOP(dashboard.sales_today)}
@@ -138,7 +138,7 @@ export function RestaurantDashboard() {
           accent="ink"
         />
         {hasDailyGoal || hasMonthlyGoal ? (
-          <div className="col-span-2 space-y-3 rounded-2xl border border-border bg-card p-3.5 sm:col-span-1 sm:space-y-4 sm:p-5 xl:col-span-1">
+          <div className="space-y-3 rounded-2xl border border-border bg-card p-3.5 sm:space-y-4 sm:p-5">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground sm:text-[11px]">
               Cumplimiento de meta
             </p>
@@ -158,11 +158,11 @@ export function RestaurantDashboard() {
             ) : null}
           </div>
         ) : (
-          <div className="col-span-2 rounded-2xl border border-dashed border-border bg-card/60 p-3.5 sm:col-span-1 sm:p-5 xl:col-span-1">
+          <div className="rounded-2xl border border-dashed border-border bg-card/60 p-3.5 sm:p-5">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground sm:text-[11px]">
               Cumplimiento de meta
             </p>
-            <p className="mt-2 text-sm leading-snug text-muted-foreground">
+            <p className="mt-2 text-sm leading-snug text-muted-foreground text-pretty">
               Opcional. Configura metas diarias o mensuales en{" "}
               <span className="font-medium text-foreground">Configuración</span>.
             </p>
@@ -290,18 +290,20 @@ export function RestaurantDashboard() {
             {reviews.map((review) => (
               <li
                 key={review.id}
-                className="rounded-xl border border-border bg-background/60 p-3.5 sm:p-4"
+                className="min-w-0 rounded-xl border border-border bg-background/60 p-3.5 sm:p-4"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">{review.customer_name}</p>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium" title={review.customer_name}>
+                      {review.customer_name}
+                    </p>
                     <p className="text-[11px] text-muted-foreground">
                       {formatReviewDate(review.created_at)}
                     </p>
                   </div>
                   <StarRating rating={review.rating} />
                 </div>
-                <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground sm:mt-3">
+                <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground break-words sm:mt-3">
                   {review.comment}
                 </p>
               </li>
@@ -365,7 +367,7 @@ function TopProductsRanking({
                 <p className="truncate text-sm font-medium leading-snug sm:text-base">
                   {product.name}
                 </p>
-                <div className="mt-0.5 flex items-baseline justify-between gap-2">
+                <div className="mt-0.5 flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-2">
                   <p className="truncate text-[10px] text-muted-foreground sm:text-[11px]">
                     {product.category}
                     <span className="mx-1 text-border">·</span>
@@ -412,7 +414,7 @@ function DonutCenterLabel({
       <tspan
         x={viewBox.cx}
         y={viewBox.cy - 5}
-        className="fill-foreground text-[11px] font-semibold sm:text-sm"
+        className="fill-foreground text-[9px] font-semibold sm:text-sm"
       >
         {value}
       </tspan>
@@ -486,7 +488,7 @@ function GoalProgressBlock({
           style={{ width: `${Math.min(100, progress)}%` }}
         />
       </div>
-      <p className="mt-1.5 text-[10px] leading-snug text-muted-foreground sm:text-[11px]">
+      <p className="mt-1.5 text-[10px] leading-snug text-muted-foreground text-pretty sm:text-[11px]">
         {progress >= 100 ? "¡Meta alcanzada!" : `Faltan ${formatCOP(remaining)}`}
       </p>
     </div>
@@ -512,16 +514,16 @@ function MetricCard({
         : "text-foreground";
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-3.5 sm:p-5">
+    <div className="min-w-0 rounded-2xl border border-border bg-card p-3.5 sm:p-5">
       <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground sm:text-[11px]">
         {label}
       </p>
       <p
-        className={`mt-2 font-display text-lg font-semibold tabular-nums leading-tight sm:mt-3 sm:text-3xl ${accentClass}`}
+        className={`mt-2 break-words font-display text-base font-semibold tabular-nums leading-tight sm:mt-3 sm:text-3xl ${accentClass}`}
       >
         {value}
       </p>
-      <p className="mt-1.5 text-[10px] leading-snug text-muted-foreground sm:mt-2 sm:text-[11px]">
+      <p className="mt-1.5 text-[10px] leading-snug text-muted-foreground text-pretty sm:mt-2 sm:text-[11px]">
         {hint}
       </p>
     </div>
@@ -530,7 +532,7 @@ function MetricCard({
 
 function StarRating({ rating }: { rating: number }) {
   return (
-    <div className="flex gap-0.5" aria-label={`${rating} de 5 estrellas`}>
+    <div className="flex shrink-0 gap-0.5" aria-label={`${rating} de 5 estrellas`}>
       {Array.from({ length: 5 }).map((_, i) => (
         <Star
           key={i}

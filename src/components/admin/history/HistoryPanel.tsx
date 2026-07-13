@@ -108,24 +108,26 @@ export function HistoryPanel() {
               {/* Móvil: card con labels */}
               <div className="space-y-2.5 md:hidden">
                 <div className="flex items-start justify-between gap-2">
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                       Pedido
                     </p>
-                    <p className="font-mono text-sm font-semibold">{row.order_id}</p>
+                    <p className="truncate font-mono text-sm font-semibold">{row.order_id}</p>
                   </div>
-                  <p className="font-mono text-sm font-semibold tabular-nums">
+                  <p className="shrink-0 font-mono text-sm font-semibold tabular-nums">
                     {formatCOP(row.total)}
                   </p>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Cliente
                   </p>
-                  <p className="text-sm">{row.customer_name}</p>
+                  <p className="truncate text-sm" title={row.customer_name}>
+                    {row.customer_name}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <UserAvatar name={row.courier_name} className="size-8" />
+                  <UserAvatar name={row.courier_name} className="size-8 shrink-0" />
                   <div className="min-w-0">
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                       Domiciliario
@@ -133,9 +135,11 @@ export function HistoryPanel() {
                     <p className="truncate text-sm">{row.courier_name}</p>
                   </div>
                 </div>
-                <div className="flex justify-between gap-3 text-xs text-muted-foreground">
-                  <span>Domicilio {formatCOP(row.delivery_fee)}</span>
-                  <span>{formatDispatchDate(new Date(row.dispatched_at).getTime())}</span>
+                <div className="flex flex-wrap justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                  <span className="min-w-0">Domicilio {formatCOP(row.delivery_fee)}</span>
+                  <span className="shrink-0">
+                    {formatDispatchDate(new Date(row.dispatched_at).getTime())}
+                  </span>
                 </div>
               </div>
 

@@ -15,9 +15,12 @@ import {
   fetchPromotionsCached,
   fetchRestaurantProductsCached,
   fetchRestaurantsCached,
+  fetchAllProductsCached,
+  fetchAllPromotionsCached,
   invalidateClientCatalogCache,
   patchCachedRestaurant,
   peekAllCachedProducts,
+  peekAllCachedPromotions,
   peekCachedPromotions,
   peekCachedRestaurants,
 } from "@/lib/api/cliente/clientCatalogCache";
@@ -35,6 +38,7 @@ import {
 import { clientOrdersApi } from "@/lib/api/endpoints/clientOrders";
 import { productsApi } from "@/lib/api/endpoints/products";
 import { mapApiOrder, mapApiProduct } from "@/lib/api/admin/mappers";
+import { isTrackingCycleClosed } from "@/lib/clientDeliveryReviewStorage";
 import { getSocketUrl } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
 import type { ApiRestaurantProfile } from "@/lib/api/types/admin";
@@ -99,9 +103,14 @@ interface ClienteState {
   restaurants: Restaurant[];
   activeRestaurantId: string | null;
   setActiveRestaurantId: (id: string) => void;
+  restaurantDetailOpen: boolean;
+  openRestaurantDetail: (id: string) => void;
+  closeRestaurantDetail: () => void;
   menu: MenuItem[];
   /** Productos disponibles de todos los restaurantes (para búsqueda global). */
   allMenus: MenuItem[];
+  /** Promociones activas de todos los restaurantes (módulo Promociones). */
+  allPromotions: Promotion[];
   promotions: Promotion[];
   isLoadingMenu: boolean;
   bootstrapError: string | null;
@@ -129,9 +138,13 @@ interface ClienteState {
   }) => Promise<Order>;
   fetchProductDetail: (productId: string) => Promise<MenuItem>;
   refreshTracking: (code?: string) => Promise<void>;
+  /** Cierra el seguimiento tras entregar + calificar (o ciclo ya cerrado). */
+  clearTracking: () => void;
   refreshCatalog: () => Promise<void>;
   /** Carga menús de todos los restaurantes (solo al buscar). */
   ensureAllMenus: () => Promise<void>;
+  /** Carga menús + promociones de todas las sedes (módulo Promociones). */
+  ensureAllPromotionsCatalog: () => Promise<void>;
   isLoadingAllMenus: boolean;
 }
 
@@ -151,6 +164,9 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
   const [activeRestaurantId, setActiveRestaurantId] = useState<string | null>(
     () => initial?.activeRestaurantId ?? null,
   );
+  const [restaurantDetailOpen, setRestaurantDetailOpen] = useState(
+    () => Boolean(initial?.restaurantDetailOpen),
+  );
   const [menu, setMenu] = useState<MenuItem[]>(() => initial?.menu ?? []);
   const [allMenus, setAllMenus] = useState<MenuItem[]>(() => {
     if (initial?.allMenus?.length) return initial.allMenus;
@@ -158,6 +174,10 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
     return peekAllCachedProducts(ids) ?? [];
   });
   const [promotions, setPromotions] = useState<Promotion[]>(() => initial?.promotions ?? []);
+  const [allPromotions, setAllPromotions] = useState<Promotion[]>(() => {
+    const ids = (initial?.restaurants ?? peekCachedRestaurants() ?? []).map((r) => r.id);
+    return peekAllCachedPromotions(ids) ?? [];
+  });
   const [isLoadingMenu, setIsLoadingMenu] = useState(() => {
     const cached = peekCachedRestaurants();
     return !cached || cached.length === 0;
@@ -165,19 +185,27 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const [cart, setCart] = useState<CartItem[]>(() => initial?.cart ?? []);
   const [cartOpen, setCartOpen] = useState(false);
-  const [activeClientOrderId, setActiveClientOrderId] = useState<string | null>(
-    () => initial?.activeClientOrderId ?? null,
-  );
-  const [trackedOrder, setTrackedOrder] = useState<Order | null>(() => initial?.trackedOrder ?? null);
+  const [activeClientOrderId, setActiveClientOrderId] = useState<string | null>(() => {
+    if (initial?.trackedOrder && isTrackingCycleClosed(initial.trackedOrder)) return null;
+    return initial?.activeClientOrderId ?? null;
+  });
+  const [trackedOrder, setTrackedOrder] = useState<Order | null>(() => {
+    if (initial?.trackedOrder && isTrackingCycleClosed(initial.trackedOrder)) return null;
+    return initial?.trackedOrder ?? null;
+  });
   const [isTrackingLoading, setIsTrackingLoading] = useState(false);
-  const [clientTab, setClientTab] = useState<ClientTab>(() => initial?.clientTab ?? "menu");
-  const [clientModule, setClientModule] = useState<ClientModule>(
+  const [clientTab, setClientTabState] = useState<ClientTab>(() => {
+    if (initial?.trackedOrder && isTrackingCycleClosed(initial.trackedOrder)) return "menu";
+    return initial?.clientTab ?? "menu";
+  });
+  const [clientModule, setClientModuleState] = useState<ClientModule>(
     () => initial?.clientModule ?? "inicio",
   );
   const [isLoadingAllMenus, setIsLoadingAllMenus] = useState(false);
   const trackingSocketRef = useRef<Socket | null>(null);
   const catalogRequestRef = useRef(0);
   const allMenusLoadedRef = useRef(false);
+  const allPromotionsLoadedRef = useRef(false);
 
   const loadRestaurantCatalog = useCallback(async (restaurantId: string, force = false) => {
     const requestId = ++catalogRequestRef.current;
@@ -243,9 +271,52 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
     }
   }, [restaurants, allMenus.length]);
 
+  const ensureAllPromotionsCatalog = useCallback(async (force = false) => {
+    const ids = restaurants.map((r) => r.id);
+    if (ids.length === 0) {
+      setAllMenus([]);
+      setAllPromotions([]);
+      return;
+    }
+
+    if (!force) {
+      const cachedMenus = peekAllCachedProducts(ids);
+      const cachedPromos = peekAllCachedPromotions(ids);
+      if (cachedMenus && cachedPromos) {
+        setAllMenus(cachedMenus);
+        setAllPromotions(cachedPromos);
+        allMenusLoadedRef.current = true;
+        allPromotionsLoadedRef.current = true;
+        return;
+      }
+      if (
+        allMenusLoadedRef.current &&
+        allPromotionsLoadedRef.current &&
+        allMenus.length > 0
+      ) {
+        return;
+      }
+    }
+
+    setIsLoadingAllMenus(true);
+    try {
+      const [products, promos] = await Promise.all([
+        fetchAllProductsCached(ids, { force }),
+        fetchAllPromotionsCached(ids, { force }),
+      ]);
+      setAllMenus(products);
+      setAllPromotions(promos);
+      allMenusLoadedRef.current = true;
+      allPromotionsLoadedRef.current = true;
+    } finally {
+      setIsLoadingAllMenus(false);
+    }
+  }, [restaurants, allMenus.length]);
+
   const refreshCatalog = useCallback(async () => {
     invalidateClientCatalogCache();
     allMenusLoadedRef.current = false;
+    allPromotionsLoadedRef.current = false;
     setIsLoadingMenu(true);
     try {
       const mapped = await fetchRestaurantsCached({ force: true });
@@ -258,6 +329,31 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
     }
   }, [activeRestaurantId, loadRestaurantCatalog]);
 
+  const clearTracking = useCallback(() => {
+    clearSavedTrackingCode(user?.id);
+    setActiveClientOrderId(null);
+    setTrackedOrder(null);
+    setRestaurantDetailOpen(false);
+    setClientTabState("menu");
+  }, [user?.id]);
+
+  const applyTrackedOrder = useCallback(
+    (order: Order) => {
+      if (isTrackingCycleClosed(order)) {
+        clearSavedTrackingCode(user?.id);
+        setActiveClientOrderId(null);
+        setTrackedOrder(null);
+        setClientTabState((tab) => (tab === "tracking" ? "menu" : tab));
+        return false;
+      }
+      setTrackedOrder(order);
+      setActiveClientOrderId(order.id);
+      writeSavedTrackingCode(order.id, user?.id);
+      return true;
+    },
+    [user?.id],
+  );
+
   const refreshTracking = useCallback(async (code?: string) => {
     const trackCode = code ?? activeClientOrderId;
     if (!trackCode) return;
@@ -267,9 +363,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
       const raw = await fetchOrderTrackCached(trackCode, { force: true });
       const order = mapApiOrder(raw);
       setTrackedOrderCache(raw);
-      setTrackedOrder(order);
-      setActiveClientOrderId(order.id);
-      writeSavedTrackingCode(order.id, user?.id);
+      applyTrackedOrder(order);
     } catch (err) {
       const message =
         err instanceof ApiError ? err.message : "No se pudo consultar el estado del pedido.";
@@ -277,7 +371,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsTrackingLoading(false);
     }
-  }, [activeClientOrderId, user?.id]);
+  }, [activeClientOrderId, applyTrackedOrder]);
 
   const cartItemCount = useMemo(
     () => cart.reduce((acc, i) => acc + i.quantity, 0),
@@ -347,9 +441,18 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
     if (activeClientOrderId) return;
     const saved = readSavedTrackingCode(user?.id);
     if (!saved) return;
-    setActiveClientOrderId(saved);
     const cached = peekTrackedOrder(saved);
-    if (cached) setTrackedOrder(mapApiOrder(cached));
+    if (cached) {
+      const order = mapApiOrder(cached);
+      if (isTrackingCycleClosed(order)) {
+        clearSavedTrackingCode(user?.id);
+        return;
+      }
+      setTrackedOrder(order);
+      setActiveClientOrderId(order.id);
+      return;
+    }
+    setActiveClientOrderId(saved);
   }, [activeClientOrderId, user?.id]);
 
   // Catálogo del restaurante activo solo en Inicio / Promociones.
@@ -393,10 +496,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
             if (cancelled) return;
             if (rawActive && typeof rawActive === "object" && "id" in rawActive && rawActive.id) {
               setTrackedOrderCache(rawActive);
-              const order = mapApiOrder(rawActive);
-              setTrackedOrder(order);
-              setActiveClientOrderId(order.id);
-              writeSavedTrackingCode(order.id, user.id);
+              applyTrackedOrder(mapApiOrder(rawActive));
               return;
             }
           } catch {
@@ -411,15 +511,21 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
 
         const cached = peekTrackedOrder(code);
         if (cached && !cancelled) {
-          setTrackedOrder(mapApiOrder(cached));
+          const cachedOrder = mapApiOrder(cached);
+          if (isTrackingCycleClosed(cachedOrder)) {
+            clearSavedTrackingCode(user?.id);
+            setActiveClientOrderId(null);
+            setTrackedOrder(null);
+            setClientTabState("menu");
+            return;
+          }
+          setTrackedOrder(cachedOrder);
         }
 
         const raw = await fetchOrderTrackCached(code);
         if (cancelled) return;
         setTrackedOrderCache(raw);
-        setTrackedOrder(mapApiOrder(raw));
-        setActiveClientOrderId(raw.id);
-        writeSavedTrackingCode(raw.id, user?.id);
+        applyTrackedOrder(mapApiOrder(raw));
       } catch (err) {
         if (cancelled) return;
         // Solo limpiar si el pedido ya no existe (404), no por fallos de red.
@@ -438,7 +544,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [clientTab, activeClientOrderId, user?.id]);
+  }, [clientTab, activeClientOrderId, user?.id, applyTrackedOrder]);
 
   useEffect(() => {
     const onProfileUpdated = (event: Event) => {
@@ -451,6 +557,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
         accent: detail.accent,
         initials: detail.initials,
         logo: resolveLogoUrl(detail.logo),
+        coverImage: resolveLogoUrl(detail.cover_image),
         rating: detail.rating,
         deliveryMinutes: detail.delivery_minutes,
       });
@@ -469,6 +576,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
                 accent: detail.accent || r.accent,
                 initials: detail.initials || r.initials,
                 logo: resolveLogoUrl(detail.logo),
+                coverImage: resolveLogoUrl(detail.cover_image) ?? r.coverImage,
                 rating: detail.rating ?? r.rating,
                 deliveryMinutes: detail.delivery_minutes ?? r.deliveryMinutes,
               }
@@ -484,6 +592,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
     writeClienteSession({
       restaurants,
       activeRestaurantId,
+      restaurantDetailOpen,
       menu,
       allMenus,
       promotions,
@@ -496,6 +605,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
   }, [
     restaurants,
     activeRestaurantId,
+    restaurantDetailOpen,
     menu,
     allMenus,
     promotions,
@@ -520,7 +630,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
       try {
         const order = mapApiOrder(payload as Parameters<typeof mapApiOrder>[0]);
         if (order.id === code) {
-          setTrackedOrder(order);
+          applyTrackedOrder(order);
         }
       } catch {
         /* payload inesperado */
@@ -531,7 +641,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
       socket.disconnect();
       trackingSocketRef.current = null;
     };
-  }, [clientTab, trackedOrder?.id, activeClientOrderId]);
+  }, [clientTab, trackedOrder?.id, activeClientOrderId, applyTrackedOrder]);
 
   const addToCart = (product: MenuItem, customizations?: Customizations) => {
     const hash = customizations
@@ -627,11 +737,36 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
     setActiveClientOrderId(order.id);
     writeSavedTrackingCode(order.id, user?.id);
     setCart([]);
-    setClientTab("tracking");
+    setRestaurantDetailOpen(false);
+    setClientTabState("tracking");
     toast.success(`Pedido ${order.id} enviado a cocina`);
 
     return order;
   };
+
+  const openRestaurantDetail = useCallback(
+    (id: string) => {
+      setActiveRestaurantId(id);
+      setRestaurantDetailOpen(true);
+      setClientTabState("menu");
+      setClientModuleState("inicio");
+    },
+    [],
+  );
+
+  const closeRestaurantDetail = useCallback(() => {
+    setRestaurantDetailOpen(false);
+  }, []);
+
+  const setClientTab = useCallback((tab: ClientTab) => {
+    setClientTabState(tab);
+    if (tab === "tracking") setRestaurantDetailOpen(false);
+  }, []);
+
+  const setClientModule = useCallback((module: ClientModule) => {
+    setClientModuleState(module);
+    setRestaurantDetailOpen(false);
+  }, []);
 
   return (
     <ClienteContext.Provider
@@ -639,8 +774,12 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
         restaurants,
         activeRestaurantId,
         setActiveRestaurantId,
+        restaurantDetailOpen,
+        openRestaurantDetail,
+        closeRestaurantDetail,
         menu,
         allMenus,
+        allPromotions,
         promotions,
         isLoadingMenu,
         bootstrapError,
@@ -662,8 +801,10 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
         confirmCart,
         fetchProductDetail,
         refreshTracking,
+        clearTracking,
         refreshCatalog,
         ensureAllMenus,
+        ensureAllPromotionsCatalog,
         isLoadingAllMenus,
       }}
     >

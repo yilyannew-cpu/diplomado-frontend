@@ -210,7 +210,7 @@ export function PerfilDrawer({ open, onOpenChange }: PerfilDrawerProps) {
         if (!val) onOpenChange(null);
       }}
     >
-      <DrawerContent className="max-h-[90dvh]">
+      <DrawerContent className="max-h-[min(90dvh,var(--vv-height,90dvh))]">
         <DrawerHeader className="text-left">
           <button
             onClick={() => onOpenChange(null)}

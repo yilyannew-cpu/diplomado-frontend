@@ -105,8 +105,8 @@ export function AddAdditionModal({ open, onClose, onSave }: AddAdditionModalProp
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
-      <DialogContent className="max-h-[100dvh] w-[calc(100%-1rem)] max-w-lg overflow-y-auto rounded-2xl p-4 sm:max-h-[90vh] sm:rounded-3xl sm:p-6">
-        <DialogHeader>
+      <DialogContent className="max-h-[min(100dvh,var(--vv-height,100dvh))] w-[calc(100%-1rem)] max-w-lg overflow-y-auto rounded-2xl p-4 sm:max-h-[90vh] sm:rounded-3xl sm:p-6">
+        <DialogHeader className="pr-10">
           <DialogTitle className="font-display text-xl">Nueva adición</DialogTitle>
           <DialogDescription>
             Complemento extra para el menú. Se guardará en la categoría{" "}
@@ -124,7 +124,7 @@ export function AddAdditionModal({ open, onClose, onSave }: AddAdditionModalProp
 
           <div>
             <Label className="text-xs font-medium">Imagen</Label>
-            <div className="mt-2 flex items-start gap-4">
+            <div className="mt-2 flex min-w-0 items-start gap-3 sm:gap-4">
               <div className="relative size-24 shrink-0 overflow-hidden rounded-2xl border border-border bg-secondary/40">
                 <img
                   src={image || PLACEHOLDER_IMAGE}
@@ -132,7 +132,7 @@ export function AddAdditionModal({ open, onClose, onSave }: AddAdditionModalProp
                   className="size-full object-cover"
                 />
               </div>
-              <div className="flex-1">
+              <div className="min-w-0 flex-1">
                 <input
                   ref={fileRef}
                   type="file"
@@ -143,9 +143,9 @@ export function AddAdditionModal({ open, onClose, onSave }: AddAdditionModalProp
                 />
                 <label
                   htmlFor="addition-image"
-                  className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-border px-4 py-3 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
+                  className="inline-flex max-w-full cursor-pointer items-center gap-2 rounded-xl border border-dashed border-border px-3 py-3 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground sm:px-4"
                 >
-                  <ImagePlus className="size-4" />
+                  <ImagePlus className="size-4 shrink-0" />
                   Subir imagen
                 </label>
                 <p className="mt-2 text-[11px] text-muted-foreground">

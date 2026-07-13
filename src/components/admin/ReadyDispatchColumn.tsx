@@ -69,7 +69,8 @@ export function ReadyDispatchColumn({
 
           {zoneOrders.length > MAX_ORDERS_PER_COURIER && (
             <p className="mt-2 text-[10px] text-muted-foreground">
-              Máximo {MAX_ORDERS_PER_COURIER} pedidos por domiciliario. Asigna por grupos.
+              Máximo {MAX_ORDERS_PER_COURIER} pedidos por domiciliario en la misma zona. Asigna por
+              grupos. Si ya salió, no estará disponible hasta entregar.
             </p>
           )}
         </div>
@@ -103,7 +104,7 @@ function BatchActions({
     <div className="space-y-2">
       {readyToDispatch && assignedCourierId ? (
         <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 transition-all duration-300">
-          <div className="grid size-8 place-items-center rounded-full bg-primary/15 text-primary">
+          <div className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
             <User className="size-4" />
           </div>
           <div className="min-w-0 flex-1">

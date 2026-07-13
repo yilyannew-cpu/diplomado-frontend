@@ -206,19 +206,19 @@ export function OrderCommandMonitor({ onAssignZone, onDispatchBatch }: OrderComm
       </div>
 
       {/* Móvil: resumen del tab activo */}
-      <div className="flex items-center justify-between rounded-xl border border-border/60 bg-card/50 px-3 py-2 md:hidden">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-card/50 px-3 py-2 md:hidden">
+        <div className="flex min-w-0 items-center gap-2">
           <span
             className={cn(
-              "size-2 rounded-full",
+              "size-2 shrink-0 rounded-full",
               isStationDelayed(activeMobileColumn.key as MonitorStation)
                 ? "animate-pulse bg-red-500"
                 : activeMobileColumn.accent,
             )}
           />
-          <p className="text-sm font-semibold">{activeMobileColumn.label}</p>
+          <p className="truncate text-sm font-semibold">{activeMobileColumn.label}</p>
         </div>
-        <span className="rounded-full bg-secondary px-2.5 py-0.5 text-[11px] font-medium tabular-nums">
+        <span className="shrink-0 rounded-full bg-secondary px-2.5 py-0.5 text-[11px] font-medium tabular-nums">
           {`${activeMobileColumn.orders.length} pedido${activeMobileColumn.orders.length !== 1 ? "s" : ""}`}
         </span>
       </div>

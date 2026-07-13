@@ -196,7 +196,7 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-h-[min(100dvh,var(--vv-height,100dvh))] max-w-md overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Configuración</DialogTitle>
           <DialogDescription>

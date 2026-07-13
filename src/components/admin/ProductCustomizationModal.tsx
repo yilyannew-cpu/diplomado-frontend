@@ -103,12 +103,12 @@ export function ProductCustomizationModal({ product, open, onClose, onSave }: Pr
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="flex max-h-[100dvh] w-[calc(100%-1rem)] max-w-2xl flex-col overflow-hidden rounded-2xl p-0 sm:max-h-[90vh] sm:rounded-3xl">
-        <DialogHeader className="shrink-0 border-b border-border p-4 pb-2 sm:p-6 sm:pb-2">
+      <DialogContent className="flex max-h-[min(100dvh,var(--vv-height,100dvh))] w-[calc(100%-1rem)] max-w-2xl flex-col overflow-hidden rounded-2xl p-0 sm:max-h-[90vh] sm:rounded-3xl">
+        <DialogHeader className="shrink-0 border-b border-border p-4 pb-2 pr-12 sm:p-6 sm:pb-2 sm:pr-14">
           <DialogTitle className="font-display text-lg sm:text-xl">Configurar Receta</DialogTitle>
           <DialogDescription className="text-xs sm:text-sm">
             Configura los ingredientes base y las reglas extras de{" "}
-            <span className="font-medium text-foreground">{product.name}</span>
+            <span className="break-words font-medium text-foreground">{product.name}</span>
           </DialogDescription>
           
           <div className="flex gap-1 pt-3 sm:gap-4 sm:pt-4">
@@ -197,38 +197,44 @@ export function ProductCustomizationModal({ product, open, onClose, onSave }: Pr
 
               {modifierGroups.map((group, gi) => (
                 <div key={group.id} className="bg-card border border-border p-4 rounded-2xl space-y-4 shadow-sm">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 space-y-3">
+                  <div className="flex items-start justify-between gap-3 sm:gap-4">
+                    <div className="min-w-0 flex-1 space-y-3">
                       <input
                         value={group.name}
                         onChange={(e) => updateModifierGroup(gi, { name: e.target.value })}
                         className="w-full font-semibold rounded-lg border border-border bg-background px-3 py-1.5 outline-none focus:ring-2 focus:ring-primary/20"
                         placeholder="Nombre del grupo (Ej: Elige tu salsa)"
                       />
-                      <div className="flex gap-4">
-                        <div>
-                          <Label className="text-xs text-muted-foreground mb-1 block">Mín. opciones (0 = Opcional)</Label>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+                        <div className="min-w-0 flex-1 sm:flex-none">
+                          <Label className="mb-1 block text-xs text-muted-foreground">
+                            Mín. opciones (0 = Opcional)
+                          </Label>
                           <input
                             type="number"
                             min="0"
                             value={group.minSelections}
                             onChange={(e) => updateModifierGroup(gi, { minSelections: Number(e.target.value) })}
-                            className="w-24 rounded-lg border border-border bg-background px-3 py-1 text-sm outline-none"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-1 text-sm outline-none sm:w-24"
                           />
                         </div>
-                        <div>
-                          <Label className="text-xs text-muted-foreground mb-1 block">Máx. opciones</Label>
+                        <div className="min-w-0 flex-1 sm:flex-none">
+                          <Label className="mb-1 block text-xs text-muted-foreground">Máx. opciones</Label>
                           <input
                             type="number"
                             min="1"
                             value={group.maxSelections}
                             onChange={(e) => updateModifierGroup(gi, { maxSelections: Number(e.target.value) })}
-                            className="w-24 rounded-lg border border-border bg-background px-3 py-1 text-sm outline-none"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-1 text-sm outline-none sm:w-24"
                           />
                         </div>
                       </div>
                     </div>
-                    <button onClick={() => removeModifierGroup(gi)} className="text-muted-foreground hover:text-destructive">
+                    <button
+                      onClick={() => removeModifierGroup(gi)}
+                      className="shrink-0 text-muted-foreground hover:text-destructive"
+                      aria-label="Eliminar grupo"
+                    >
                       <X className="size-4" />
                     </button>
                   </div>
@@ -302,7 +308,7 @@ export function ProductCustomizationModal({ product, open, onClose, onSave }: Pr
           </button>
           <button
             onClick={handleSave}
-            className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+            className="min-h-11 flex-1 rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
           >
             Guardar Configuración
           </button>

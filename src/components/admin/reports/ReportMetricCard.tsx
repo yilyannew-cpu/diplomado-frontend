@@ -26,11 +26,11 @@ export function ReportMetricCard({
         : "text-muted-foreground";
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-3.5 shadow-sm sm:p-5">
+    <div className="min-w-0 rounded-2xl border border-border bg-card p-3.5 shadow-sm sm:p-5">
       <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground text-pretty sm:text-[11px]">
         {label}
       </p>
-      <p className={`mt-2 font-display text-xl font-semibold tabular-nums leading-tight sm:mt-3 sm:text-3xl ${accentClass}`}>
+      <p className={`mt-2 break-words font-display text-xl font-semibold tabular-nums leading-tight sm:mt-3 sm:text-3xl ${accentClass}`}>
         {formatAsCount ? value.toLocaleString("es-CO") : formatReportAmount(value)}
       </p>
       <p className="mt-1.5 text-[10px] leading-snug text-muted-foreground text-pretty sm:mt-2 sm:text-[11px]">

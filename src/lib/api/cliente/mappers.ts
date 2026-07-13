@@ -14,6 +14,7 @@ export function mapApiRestaurantListItem(raw: ApiRestaurantListItem): Restaurant
     accent: raw.accent || "#4f46e5",
     initials: raw.initials,
     logo: resolveLogoUrl(raw.logo),
+    coverImage: resolveLogoUrl(raw.coverImage ?? (raw as { cover_image?: string | null }).cover_image),
   };
 }
 

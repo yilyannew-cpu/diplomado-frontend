@@ -158,7 +158,9 @@ export async function fetchPromotionsCached(
   const request = clienteApi
     .listActivePromotions(restaurantId)
     .then((raw) => {
-      const mapped = mapApiPromotions(raw);
+      const mapped = mapApiPromotions(raw).map((promo) =>
+        promo.restaurantId ? promo : { ...promo, restaurantId },
+      );
       promotionsCache.set(restaurantId, { data: mapped, fetchedAt: Date.now() });
       return mapped;
     })
@@ -172,6 +174,29 @@ export async function fetchPromotionsCached(
 
   promotionsInflight.set(restaurantId, request);
   return request;
+}
+
+/** Promociones activas de todos los restaurantes (módulo Promociones). */
+export async function fetchAllPromotionsCached(
+  restaurantIds: string[],
+  options?: { force?: boolean },
+): Promise<Promotion[]> {
+  if (restaurantIds.length === 0) return [];
+  const chunks = await Promise.all(
+    restaurantIds.map((id) => fetchPromotionsCached(id, options)),
+  );
+  return chunks.flat();
+}
+
+export function peekAllCachedPromotions(restaurantIds: string[]): Promotion[] | null {
+  if (restaurantIds.length === 0) return [];
+  const chunks: Promotion[][] = [];
+  for (const id of restaurantIds) {
+    const hit = peekCachedPromotions(id);
+    if (!hit) return null;
+    chunks.push(hit);
+  }
+  return chunks.flat();
 }
 
 export function patchCachedRestaurant(

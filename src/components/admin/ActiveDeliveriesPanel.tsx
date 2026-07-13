@@ -49,20 +49,26 @@ export function ActiveDeliveriesPanel() {
         {rows.map((row) => (
           <div key={row.courier_id} className="border-b border-border last:border-b-0">
             <div className="space-y-3 p-3 sm:p-4 lg:hidden">
-              <div className="flex items-center gap-3">
-                <UserAvatar name={row.courier_name} className="size-10" />
+              <div className="flex items-start gap-3">
+                <UserAvatar name={row.courier_name} className="size-10 shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold">{row.courier_name}</p>
-                  <p className="text-[11px] text-muted-foreground">{row.vehicle ?? "Sin vehículo"}</p>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="min-w-0 truncate font-semibold" title={row.courier_name}>
+                      {row.courier_name}
+                    </p>
+                    <p className="shrink-0 font-mono text-xs font-semibold tabular-nums text-primary sm:text-sm">
+                      {formatCOP(row.total_delivery_pay)}
+                    </p>
+                  </div>
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    {row.vehicle ?? "Sin vehículo"}
+                  </p>
                   <CourierRatingBadge
                     averageRating={row.average_rating}
                     reviewCount={0}
                     className="mt-1"
                   />
                 </div>
-                <p className="font-mono text-sm font-semibold text-primary tabular-nums">
-                  {formatCOP(row.total_delivery_pay)}
-                </p>
               </div>
               <ul className="space-y-2">
                 {row.orders.map((order) => {
@@ -73,10 +79,10 @@ export function ActiveDeliveriesPanel() {
                       className="rounded-xl border border-border/60 bg-background/50 px-3 py-2.5 text-xs"
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-mono font-semibold">{order.order_id}</p>
-                          <p className="mt-0.5">{order.customer_name}</p>
-                          <p className="mt-1 truncate text-muted-foreground">{order.address}</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-mono font-semibold">{order.order_id}</p>
+                          <p className="mt-0.5 truncate">{order.customer_name}</p>
+                          <p className="mt-1 min-w-0 break-words text-muted-foreground">{order.address}</p>
                         </div>
                         <span
                           className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusBadgeClass(status)}`}

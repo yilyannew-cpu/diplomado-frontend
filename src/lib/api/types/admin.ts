@@ -12,6 +12,7 @@ export interface ApiRestaurantProfile {
   accent: string;
   initials: string;
   logo?: string | null;
+  cover_image?: string | null;
   rating: number;
   status: string;
 }
@@ -96,6 +97,7 @@ export interface ApiOrderItem {
   line_id: string;
   product_id: string;
   product_name: string;
+  product_image?: string | null;
   quantity: number;
   unit_price: number;
   customizations: {
@@ -120,6 +122,7 @@ export interface ApiOrder {
   status: string;
   total: number;
   delivery_fee: number;
+  restaurant_id?: string;
   courier_id: string | null;
   courier_name?: string | null;
   courier_phone?: string | null;
@@ -180,6 +183,7 @@ export interface ApiAvailableCourier {
   average_rating: number;
   active_orders: number;
   can_take_batch: boolean;
+  unavailable_reason?: string | null;
 }
 
 export interface ApiActiveDeliveryOrder {

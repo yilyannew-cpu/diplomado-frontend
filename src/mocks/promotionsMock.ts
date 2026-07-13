@@ -8,6 +8,7 @@ export interface Promotion {
   /** Control manual: si es false, la promoción no aplica aunque esté en rango de fechas. */
   active: boolean;
   createdAt: number;
+  restaurantId?: string;
 }
 
 export const promotionsMock: Promotion[] = [
@@ -20,5 +21,6 @@ export const promotionsMock: Promotion[] = [
     endDate: "2025-06-30",
     active: true,
     createdAt: Date.now(),
+    restaurantId: "rest-01",
   },
 ];

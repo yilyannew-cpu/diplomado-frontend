@@ -80,7 +80,7 @@ export function KitchenConsolidationBar({ monitorOrders }: KitchenConsolidationB
               <div key={group.station}>
                 <p className="text-[10px] font-medium text-red-600/90">{group.subtitle}</p>
 
-                <p className="mt-0.5 font-mono text-[10px] text-red-700/70">
+                <p className="mt-0.5 break-all font-mono text-[10px] text-red-700/70">
                   {group.orders.map((o) => o.id).join(" · ")}
                 </p>
 

@@ -72,7 +72,7 @@ export function CourierPayoutList({ couriers, periodLabel }: CourierPayoutListPr
                     <p className="font-mono text-sm font-semibold tabular-nums text-amber-brand">
                       {formatCOP(row.pendingAmount)}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="mt-1.5 text-[10px] leading-snug text-muted-foreground text-pretty break-words">
                       pendiente · {formatCOP(row.settledAmount)} pagado
                     </p>
                   </>

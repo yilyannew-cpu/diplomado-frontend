@@ -68,6 +68,10 @@
 }
 
 :root {
+  /* Visual viewport — updated by MobileKeyboardAvoidance on mobile. */
+  --vv-height: 100dvh;
+  --vv-top: 0px;
+  --keyboard-inset: 0px;
   --radius: 0.75rem;
   /* Midnight Indigo palette — light surface for cliente/admin/superadmin */
   --background: oklch(0.985 0.004 270);
@@ -179,6 +183,16 @@
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
+}
+
+/* Soft keyboard: leave room when scrolling focused fields into view. */
+html {
+  scroll-padding-bottom: calc(var(--keyboard-inset, 0px) + 1.5rem);
+}
+
+/* Dialogs / sheets stay inside the visual viewport while typing on mobile. */
+html[data-keyboard-open] [role="dialog"] {
+  max-height: var(--vv-height, 100dvh);
 }
 
 @keyframes order-dot-blink {

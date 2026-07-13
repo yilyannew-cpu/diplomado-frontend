@@ -64,15 +64,24 @@ function ExtraSection({
               key={opt.id}
               type="button"
               onClick={() => onToggle(opt.id)}
-              className={`flex w-full items-center justify-between rounded-xl border p-3 text-left transition-colors md:p-4 ${
+              className={`flex w-full items-center gap-3 rounded-xl border p-2.5 text-left transition-colors md:gap-4 md:p-3 ${
                 isSelected
                   ? "border-primary bg-primary/5"
                   : "border-border bg-background hover:bg-secondary/50"
               }`}
             >
-              <span className="text-sm font-medium md:text-base">{opt.name}</span>
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-muted-foreground md:text-sm">+{formatCOP(opt.price)}</span>
+              <ProductImage
+                src={opt.image}
+                alt={opt.name}
+                className="size-12 shrink-0 rounded-lg object-cover ring-1 ring-border/60 md:size-14"
+              />
+              <span className="min-w-0 flex-1 text-sm font-medium leading-snug md:text-base">
+                {opt.name}
+              </span>
+              <div className="flex shrink-0 items-center gap-2.5 md:gap-3">
+                <span className="text-xs tabular-nums text-muted-foreground md:text-sm">
+                  +{formatCOP(opt.price)}
+                </span>
                 <div
                   className={`grid size-5 shrink-0 place-items-center rounded-full border md:size-6 ${
                     isSelected
@@ -151,65 +160,83 @@ export function ProductDetailModal({ product, onClose, basePrice }: ProductDetai
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 backdrop-blur-sm sm:items-center sm:p-6">
-      <div className="relative flex max-h-[90vh] w-full flex-col overflow-hidden rounded-2xl bg-background shadow-2xl md:h-[80vh] md:max-h-[800px] md:max-w-[80vw] md:flex-row">
+    <div className="fixed inset-x-0 top-[var(--vv-top,0px)] z-50 flex h-[var(--vv-height,100dvh)] items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-6">
+      <div className="relative flex max-h-[min(92dvh,var(--vv-height,92dvh))] w-full flex-col overflow-hidden rounded-t-2xl bg-background shadow-2xl sm:max-h-[90vh] sm:rounded-2xl md:h-[80vh] md:max-h-[800px] md:max-w-[80vw] md:flex-row">
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-3 top-3 z-10 grid size-8 place-items-center rounded-full bg-black/50 text-white backdrop-blur-md hover:bg-black/70 md:right-4 md:top-4"
+          className="absolute right-3 top-3 z-20 grid size-8 place-items-center rounded-full bg-black/50 text-white backdrop-blur-md hover:bg-black/70 md:right-4 md:top-4"
         >
           <X className="size-5" />
         </button>
 
-        <div className="relative aspect-video w-full shrink-0 bg-secondary md:aspect-auto md:h-full md:w-2/5 lg:w-1/2">
-          <ProductImage src={product.image} alt={product.name} className="size-full object-cover" loading="eager" />
+        {/* Desktop: imagen fija a la izquierda */}
+        <div className="relative hidden shrink-0 bg-secondary md:block md:h-full md:w-2/5 lg:w-1/2">
+          <ProductImage
+            src={product.image}
+            alt={product.name}
+            className="size-full object-cover"
+            loading="eager"
+          />
         </div>
 
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto p-5 scrollbar-thin md:p-8">
-            <h2 className="font-display text-2xl font-bold md:text-3xl">{product.name}</h2>
-            <p className="mt-2 text-sm text-muted-foreground md:text-base">{product.description}</p>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          {/* Móvil: imagen + opciones en el mismo scroll; el footer queda fijo abajo */}
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            <div className="relative aspect-[4/3] w-full bg-secondary sm:aspect-video md:hidden">
+              <ProductImage
+                src={product.image}
+                alt={product.name}
+                className="size-full object-cover"
+                loading="eager"
+              />
+            </div>
 
-            <div className="mt-6 space-y-6 md:mt-8 md:space-y-8">
-              <ExtraSection
-                title="Elige tus adiciones"
-                hint="Puedes elegir varias. Cada una suma su precio al plato."
-                options={additions}
-                selectedIds={selectedAdditionIds}
-                onToggle={(id) => toggleInSet(setSelectedAdditionIds, id)}
-              />
-              <ExtraSection
-                title="Elige tus acompañamientos"
-                hint="Opcional. Selecciona los acompañamientos que quieras."
-                options={sides}
-                selectedIds={selectedSideIds}
-                onToggle={(id) => toggleInSet(setSelectedSideIds, id)}
-              />
-              <ExtraSection
-                title="Elige tu bebida adicional"
-                hint="Opcional. Puedes agregar una o más bebidas."
-                options={drinks}
-                selectedIds={selectedDrinkIds}
-                onToggle={(id) => toggleInSet(setSelectedDrinkIds, id)}
-              />
+            <div className="p-5 pb-6 md:p-8">
+              <h2 className="font-display text-2xl font-bold md:text-3xl">{product.name}</h2>
+              <p className="mt-2 text-sm text-muted-foreground md:text-base">{product.description}</p>
 
-              <div className="rounded-2xl border border-border/50 bg-secondary/10 p-4 md:p-5">
-                <div className="mb-3 flex items-baseline justify-between border-b border-border/50 pb-3">
-                  <h3 className="text-sm font-semibold uppercase tracking-wider md:text-base">
-                    Instrucciones especiales
-                  </h3>
-                  <span className="rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground">
-                    Opcional
-                  </span>
-                </div>
-                <textarea
-                  value={specialInstructions}
-                  onChange={(e) => setSpecialInstructions(e.target.value)}
-                  maxLength={500}
-                  rows={3}
-                  placeholder="Ej. Sin cebolla / Sin azúcar"
-                  className="w-full resize-none rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              <div className="mt-6 space-y-6 md:mt-8 md:space-y-8">
+                <ExtraSection
+                  title="Elige tus adiciones"
+                  hint="Puedes elegir varias. Cada una suma su precio al plato."
+                  options={additions}
+                  selectedIds={selectedAdditionIds}
+                  onToggle={(id) => toggleInSet(setSelectedAdditionIds, id)}
                 />
+                <ExtraSection
+                  title="Elige tus acompañamientos"
+                  hint="Opcional. Selecciona los acompañamientos que quieras."
+                  options={sides}
+                  selectedIds={selectedSideIds}
+                  onToggle={(id) => toggleInSet(setSelectedSideIds, id)}
+                />
+                <ExtraSection
+                  title="Elige tu bebida adicional"
+                  hint="Opcional. Puedes agregar una o más bebidas."
+                  options={drinks}
+                  selectedIds={selectedDrinkIds}
+                  onToggle={(id) => toggleInSet(setSelectedDrinkIds, id)}
+                />
+
+                <div className="rounded-2xl border border-border/50 bg-secondary/10 p-4 md:p-5">
+                  <div className="mb-3 flex items-baseline justify-between border-b border-border/50 pb-3">
+                    <h3 className="text-sm font-semibold uppercase tracking-wider md:text-base">
+                      Instrucciones especiales
+                    </h3>
+                    <span className="rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground">
+                      Opcional
+                    </span>
+                  </div>
+                  <textarea
+                    value={specialInstructions}
+                    onChange={(e) => setSpecialInstructions(e.target.value)}
+                    maxLength={500}
+                    rows={3}
+                    placeholder="Ej. Sin cebolla / Sin azúcar"
+                    className="w-full resize-none rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
               </div>
             </div>
           </div>
