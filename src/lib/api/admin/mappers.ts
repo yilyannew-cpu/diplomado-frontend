@@ -88,6 +88,8 @@ export function mapApiOrder(raw: ApiOrder): Order {
     deliveryFee: raw.delivery_fee,
     status: mapApiStatusToFrontend(raw.status),
     deliveryPersonId: raw.courier_id ?? undefined,
+    courierName: raw.courier_name ?? undefined,
+    courierPhone: raw.courier_phone ?? undefined,
     createdAt: formatOrderTime(raw.received_at),
     receivedAt: new Date(raw.received_at).getTime(),
     statusEnteredAt: new Date(raw.status_entered_at).getTime(),

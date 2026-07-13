@@ -121,6 +121,8 @@ export interface ApiOrder {
   total: number;
   delivery_fee: number;
   courier_id: string | null;
+  courier_name?: string | null;
+  courier_phone?: string | null;
   items: ApiOrderItem[];
   received_at: string;
   status_entered_at: string;

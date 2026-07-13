@@ -160,9 +160,18 @@ export function AssignCourierModal({
 
         {availableCouriers.length === 0 && !batchTooLarge && (
           <p className="rounded-xl border border-dashed border-amber-brand/40 bg-amber-brand/5 px-4 py-3 text-center text-xs text-muted-foreground">
-            Ningún domiciliario tiene cupo para {orders.length} pedido
-            {orders.length !== 1 ? "s" : ""} más. Espera a que liberen entregas o asigna un grupo
-            más pequeño.
+            {couriers.length === 0 ? (
+              <>
+                No hay domiciliarios con estado <strong className="text-foreground">Activo</strong>.
+                Apruébalos en superadmin (Seguimiento logístico debe mostrarlos como Disponibles).
+              </>
+            ) : (
+              <>
+                Ningún domiciliario tiene cupo para {orders.length} pedido
+                {orders.length !== 1 ? "s" : ""} más. Espera a que liberen entregas o asigna un
+                grupo más pequeño.
+              </>
+            )}
           </p>
         )}
       </DialogContent>
