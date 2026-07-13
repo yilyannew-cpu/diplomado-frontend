@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { BrandLogo } from "@/components/shared/BrandLogo";
@@ -22,6 +22,11 @@ const DEFAULT_HERO = {
     "Gestiona el ciclo completo —catálogo, comanda, cocina y entrega— desde vistas dedicadas para cliente, restaurante, gobernanza y domiciliario.",
 };
 
+/**
+ * Evita mismatches de hidratación por extensiones del navegador que inyectan
+ * atributos (p. ej. bis_skin_checked) en el HTML antes de que React hidrate.
+ * El layout completo solo se monta en el cliente tras el primer paint.
+ */
 export function AuthLayout({
   title,
   subtitle,
@@ -33,6 +38,27 @@ export function AuthLayout({
   heroDescription = DEFAULT_HERO.description,
   heroEyebrow = DEFAULT_HERO.eyebrow,
 }: AuthLayoutProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <main className="min-h-screen bg-cream">
+        <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4 py-10 sm:px-8">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-primary">
+            {eyebrow}
+          </p>
+          <h2 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
+          <div className="mt-8 h-40 animate-pulse rounded-2xl bg-secondary/60" aria-hidden />
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-cream">
       <div className="mx-auto grid min-h-screen max-w-screen-2xl grid-cols-1 lg:grid-cols-12">

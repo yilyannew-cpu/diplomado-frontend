@@ -8,6 +8,7 @@ export function mapApiRestaurantListItem(raw: ApiRestaurantListItem): Restaurant
     name: raw.name,
     tagline: raw.tagline ?? "",
     city: raw.city,
+    address: raw.address ?? null,
     rating: raw.rating,
     deliveryMinutes: raw.deliveryMinutes,
     accent: raw.accent || "#4f46e5",
