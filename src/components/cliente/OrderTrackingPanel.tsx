@@ -1,5 +1,5 @@
 import { MapPin, Package, RefreshCw } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { DeliveryRouteMap } from "@/components/cliente/DeliveryRouteMap";
 import { StatusStepIcon } from "@/components/cliente/StatusStepIcon";
 import { OrderItemLines } from "@/components/shared/OrderItemLines";
@@ -19,6 +19,8 @@ export function OrderTrackingPanel() {
     restaurants,
     activeRestaurantId,
   } = useCliente();
+  const [manualCode, setManualCode] = useState("");
+  const [lookingUp, setLookingUp] = useState(false);
 
   const order = trackedOrder;
 
@@ -41,14 +43,52 @@ export function OrderTrackingPanel() {
     return restaurants.find((r) => r.id === restaurantId) ?? restaurants[0] ?? null;
   }, [order, menu, restaurants, activeRestaurantId]);
 
-  if (!order) {
+  const handleLookup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const code = manualCode.trim().toUpperCase();
+    if (!/^PED-\d+$/i.test(code)) return;
+    setLookingUp(true);
+    try {
+      await refreshTracking(code);
+    } finally {
+      setLookingUp(false);
+    }
+  };
+
+  if (isTrackingLoading && !order) {
     return (
       <div className="mx-auto max-w-lg rounded-2xl border border-dashed border-border bg-card/50 px-6 py-12 text-center sm:px-8 sm:py-16">
+        <RefreshCw className="mx-auto mb-4 size-8 animate-spin text-primary/50" />
+        <p className="text-sm text-muted-foreground">Buscando tu pedido activo…</p>
+      </div>
+    );
+  }
+
+  if (!order) {
+    return (
+      <div className="mx-auto max-w-lg rounded-2xl border border-dashed border-border bg-card/50 px-6 py-10 text-center sm:px-8 sm:py-12">
         <Package className="mx-auto mb-4 size-10 text-muted-foreground/40" />
-        <p className="font-display text-lg font-semibold">Sin pedido activo</p>
+        <p className="font-display text-lg font-semibold">Sin pedido activo en esta sesión</p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Cuando confirmes y pagues un pedido, podrás seguir su estado aquí.
+          Si ya pediste (por ejemplo desde cocina ves PED-101), ingresa el código aquí para
+          recuperar el seguimiento.
         </p>
+        <form onSubmit={handleLookup} className="mt-6 flex flex-col gap-2 sm:flex-row">
+          <input
+            value={manualCode}
+            onChange={(e) => setManualCode(e.target.value)}
+            placeholder="Ej. PED-101"
+            className="flex-1 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-mono uppercase outline-none focus:ring-2 focus:ring-primary/20"
+            aria-label="Código de pedido"
+          />
+          <button
+            type="submit"
+            disabled={lookingUp || !manualCode.trim()}
+            className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+          >
+            {lookingUp ? "Buscando…" : "Ver estado"}
+          </button>
+        </form>
       </div>
     );
   }
