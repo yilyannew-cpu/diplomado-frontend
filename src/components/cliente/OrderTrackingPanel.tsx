@@ -1,4 +1,4 @@
-import { MapPin, Package, RefreshCw } from "lucide-react";
+import { Bike, Clock3, MapPin, Package, RefreshCw, UserRound } from "lucide-react";
 import { useMemo, useState } from "react";
 import { DeliveryRouteMap } from "@/components/cliente/DeliveryRouteMap";
 import { StatusStepIcon } from "@/components/cliente/StatusStepIcon";
@@ -6,6 +6,7 @@ import { OrderItemLines } from "@/components/shared/OrderItemLines";
 import { useAuth } from "@/context/AuthContext";
 import { formatCOP, useCliente } from "@/context/ClienteContext";
 import { readClientAddress, readClientAddressCoords } from "@/lib/clientAddressStorage";
+import { getOrderDeliveryFee, getOrderProductSales } from "@/lib/deliveryFees";
 import { CLIENT_STATUS_FLOW } from "@/mocks/ordersMock";
 import { cn } from "@/lib/utils";
 
@@ -70,8 +71,7 @@ export function OrderTrackingPanel() {
         <Package className="mx-auto mb-4 size-10 text-muted-foreground/40" />
         <p className="font-display text-lg font-semibold">Sin pedido activo en esta sesión</p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Si ya pediste (por ejemplo desde cocina ves PED-101), ingresa el código aquí para
-          recuperar el seguimiento.
+          Si ya pediste, ingresa el código aquí para recuperar el seguimiento.
         </p>
         <form onSubmit={handleLookup} className="mt-6 flex flex-col gap-2 sm:flex-row">
           <input
@@ -98,6 +98,11 @@ export function OrderTrackingPanel() {
   const currentIdx = CLIENT_STATUS_FLOW.indexOf(normalizedStatus);
   const safeIdx = currentIdx >= 0 ? currentIdx : 0;
   const isDelivered = order.status === "Entregado";
+  const isOnTheWay = normalizedStatus === "En Camino";
+  const isPreparing = !isDelivered && !isOnTheWay;
+
+  const deliveryFee = getOrderDeliveryFee(order);
+  const productsSubtotal = getOrderProductSales(order);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -105,7 +110,7 @@ export function OrderTrackingPanel() {
         <div className="border-b border-border bg-gradient-to-br from-primary/[0.08] via-card to-amber-brand/10 px-4 py-6 sm:px-8 sm:py-8">
           <div className="flex items-start justify-between gap-3">
             <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-primary sm:text-[11px] sm:tracking-[0.3em]">
-              Seguimiento en tiempo real
+              Seguimiento del pedido
             </p>
             <button
               type="button"
@@ -129,19 +134,15 @@ export function OrderTrackingPanel() {
               <p
                 className={cn(
                   "mt-1 font-display text-xl font-semibold sm:text-2xl",
-                  isDelivered ? "text-primary" : "text-amber-brand",
+                  isDelivered ? "text-primary" : isOnTheWay ? "text-primary" : "text-amber-brand",
                 )}
               >
-                {order.status}
+                {order.status === "Recogido" ? "En Camino" : order.status}
               </p>
             </div>
           </div>
-          <p className="mt-4 flex items-start gap-2 text-xs text-muted-foreground sm:text-sm">
-            <MapPin className="mt-0.5 size-4 shrink-0 text-primary" />
-            <span className="text-pretty text-foreground/80">{order.address}</span>
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Pedido a las {order.createdAt} · Total {formatCOP(order.total)}
+          <p className="mt-4 text-xs text-muted-foreground">
+            Pedido a las {order.createdAt}
             {restaurant ? ` · ${restaurant.name}` : null}
           </p>
         </div>
@@ -227,11 +228,7 @@ export function OrderTrackingPanel() {
                       {status}
                     </p>
                     <p className="mt-0.5 hidden text-[10px] text-muted-foreground sm:block sm:text-xs">
-                      {active
-                        ? "En curso"
-                        : completed
-                          ? "Listo"
-                          : "Pendiente"}
+                      {active ? "En curso" : completed ? "Listo" : "Pendiente"}
                     </p>
                   </div>
                 </li>
@@ -239,42 +236,150 @@ export function OrderTrackingPanel() {
             })}
           </ol>
 
-          {!isDelivered && (
-            <div className="mt-8">
-              <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                Ruta estimada de entrega
+          {isPreparing && (
+            <div className="mt-8 rounded-2xl border border-border bg-secondary/40 px-5 py-5 text-center">
+              <Clock3 className="mx-auto mb-2 size-7 text-amber-brand" />
+              <p className="font-display text-base font-semibold text-foreground">
+                Tu pedido se está preparando
               </p>
-              <DeliveryRouteMap
-                restaurant={restaurant}
-                destinationAddress={order.address}
-                destinationCoords={destinationCoords}
-              />
+              <p className="mt-1.5 text-sm text-muted-foreground text-pretty">
+                Cuando el domiciliario salga con tu pedido (estado <strong>En camino</strong>),
+                verás aquí la ruta estimada, el tiempo de llegada y los datos del repartidor.
+                No hay GPS en vivo del domiciliario.
+              </p>
+            </div>
+          )}
+
+          {isOnTheWay && (
+            <div className="mt-8 space-y-6">
+              <div>
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  Ruta estimada · el pedido ya salió
+                </p>
+                <DeliveryRouteMap
+                  restaurant={restaurant}
+                  destinationAddress={order.address}
+                  destinationCoords={destinationCoords}
+                />
+              </div>
+
+              <div className="rounded-2xl border border-border bg-secondary/25 px-4 py-4 sm:px-5">
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  Detalle de tu compra
+                </p>
+                <OrderItemLines
+                  items={order.items}
+                  menu={menu}
+                  showPrices
+                  itemClassName="text-foreground/80"
+                  customizationClassName="text-primary"
+                />
+
+                <dl className="mt-4 space-y-1.5 border-t border-border pt-4 text-sm">
+                  <div className="flex justify-between text-muted-foreground">
+                    <dt>Productos</dt>
+                    <dd className="font-mono tabular-nums">{formatCOP(productsSubtotal)}</dd>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <dt>Domicilio</dt>
+                    <dd className="font-mono tabular-nums">{formatCOP(deliveryFee)}</dd>
+                  </div>
+                  <div className="flex justify-between border-t border-dashed border-border pt-2 text-base font-semibold">
+                    <dt>Total</dt>
+                    <dd className="font-mono text-primary tabular-nums">
+                      {formatCOP(order.total)}
+                    </dd>
+                  </div>
+                </dl>
+
+                {order.notes?.trim() ? (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Nota para el repartidor:{" "}
+                    <span className="text-foreground/80">{order.notes.trim()}</span>
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-4 sm:px-5">
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-primary">
+                  Repartidor asignado
+                </p>
+                {order.courierName || order.deliveryPersonId ? (
+                  <div className="flex items-start gap-3">
+                    <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+                      <Bike className="size-5" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-display text-base font-semibold text-foreground">
+                        {order.courierName ?? "Domiciliario asignado"}
+                      </p>
+                      {order.courierPhone ? (
+                        <a
+                          href={`tel:${order.courierPhone}`}
+                          className="mt-1 inline-flex text-sm text-primary hover:underline"
+                        >
+                          {order.courierPhone}
+                        </a>
+                      ) : (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Teléfono no disponible en esta versión del seguimiento.
+                        </p>
+                      )}
+                      <p className="mt-2 flex items-start gap-1.5 text-xs text-muted-foreground">
+                        <MapPin className="mt-0.5 size-3.5 shrink-0" />
+                        Entrega en {order.address}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-3 text-sm text-muted-foreground">
+                    <UserRound className="mt-0.5 size-5 shrink-0" />
+                    <p>
+                      Aún no figura el nombre del repartidor. Actualiza en unos segundos; el
+                      restaurante puede estar asignándolo.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
           {isDelivered && (
-            <div className="mt-8 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4 text-center">
-              <p className="font-display text-lg font-semibold text-primary">
-                ¡Pedido entregado!
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Gracias por usar FFCore. ¡Buen provecho!
-              </p>
+            <div className="mt-8 space-y-4">
+              <div className="rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4 text-center">
+                <p className="font-display text-lg font-semibold text-primary">
+                  ¡Pedido entregado!
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Gracias por usar FFCore. ¡Buen provecho!
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border bg-secondary/25 px-4 py-4 sm:px-5">
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  Resumen final
+                </p>
+                <OrderItemLines
+                  items={order.items}
+                  menu={menu}
+                  showPrices
+                  itemClassName="text-foreground/80"
+                  customizationClassName="text-primary"
+                />
+                <dl className="mt-4 space-y-1.5 border-t border-border pt-4 text-sm">
+                  <div className="flex justify-between text-muted-foreground">
+                    <dt>Domicilio</dt>
+                    <dd className="font-mono tabular-nums">{formatCOP(deliveryFee)}</dd>
+                  </div>
+                  <div className="flex justify-between font-semibold">
+                    <dt>Total</dt>
+                    <dd className="font-mono text-primary tabular-nums">
+                      {formatCOP(order.total)}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
             </div>
           )}
-        </div>
-
-        <div className="border-t border-border bg-secondary/30 px-4 py-4 sm:px-8 sm:py-5">
-          <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-            Resumen del pedido
-          </p>
-          <OrderItemLines
-            items={order.items}
-            menu={menu}
-            showPrices
-            itemClassName="text-foreground/80"
-            customizationClassName="text-primary"
-          />
         </div>
       </div>
     </div>
