@@ -6,8 +6,10 @@ export function ClientTabNav() {
   const { clientTab, setClientTab, trackedOrder, activeClientOrderId } = useCliente();
 
   const activeOrder = trackedOrder;
-  const hasTracking = Boolean(activeOrder || activeClientOrderId);
-  const isInProgress = activeOrder && activeOrder.status !== "Entregado";
+  const hasActiveOrder = Boolean(
+    activeClientOrderId || (activeOrder && activeOrder.status !== "Entregado"),
+  );
+  const isInProgress = Boolean(activeOrder && activeOrder.status !== "Entregado");
 
   return (
     <nav
@@ -31,25 +33,23 @@ export function ClientTabNav() {
       <button
         type="button"
         onClick={() => setClientTab("tracking")}
-        disabled={!hasTracking}
         className={cn(
           "relative flex flex-1 items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-xs font-medium transition-all sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm",
           clientTab === "tracking"
             ? "bg-blue-600 text-white shadow-md"
             : "text-gray-600 hover:bg-blue-100 hover:text-blue-700",
-          !hasTracking && "cursor-not-allowed opacity-45",
         )}
       >
         <Radio
           className={cn(
             "size-3.5 sm:size-4",
-            isInProgress && clientTab !== "tracking" && "text-blue-600"
+            isInProgress && clientTab !== "tracking" && "text-blue-600",
           )}
         />
         <span className="sm:hidden">Estado</span>
         <span className="hidden sm:inline">Estado del pedido</span>
 
-        {isInProgress && (
+        {hasActiveOrder && (
           <span className="absolute right-2 top-1.5 size-2 rounded-full bg-blue-500 animate-order-dot-blink sm:right-3 sm:top-2" />
         )}
       </button>

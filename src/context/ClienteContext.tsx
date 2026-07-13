@@ -66,6 +66,35 @@ export type ClientModule = SessionClientModule;
 const TRACKING_STORAGE_KEY = "ffcore_client_tracking_code";
 const ACTIVE_RESTAURANT_KEY = "ffcore_client_active_restaurant";
 
+function trackingStorageKey(userId?: string | null): string {
+  return userId ? `${TRACKING_STORAGE_KEY}:${userId}` : TRACKING_STORAGE_KEY;
+}
+
+function readSavedTrackingCode(userId?: string | null): string | null {
+  if (typeof window === "undefined") return null;
+  if (userId) {
+    const perUser = window.localStorage.getItem(trackingStorageKey(userId));
+    if (perUser) return perUser;
+  }
+  return window.localStorage.getItem(TRACKING_STORAGE_KEY);
+}
+
+function writeSavedTrackingCode(code: string, userId?: string | null): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(TRACKING_STORAGE_KEY, code);
+  if (userId) {
+    window.localStorage.setItem(trackingStorageKey(userId), code);
+  }
+}
+
+function clearSavedTrackingCode(userId?: string | null): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(TRACKING_STORAGE_KEY);
+  if (userId) {
+    window.localStorage.removeItem(trackingStorageKey(userId));
+  }
+}
+
 interface ClienteState {
   restaurants: Restaurant[];
   activeRestaurantId: string | null;
@@ -240,9 +269,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
       setTrackedOrderCache(raw);
       setTrackedOrder(order);
       setActiveClientOrderId(order.id);
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(TRACKING_STORAGE_KEY, order.id);
-      }
+      writeSavedTrackingCode(order.id, user?.id);
     } catch (err) {
       const message =
         err instanceof ApiError ? err.message : "No se pudo consultar el estado del pedido.";
@@ -250,7 +277,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsTrackingLoading(false);
     }
-  }, [activeClientOrderId]);
+  }, [activeClientOrderId, user?.id]);
 
   const cartItemCount = useMemo(
     () => cart.reduce((acc, i) => acc + i.quantity, 0),
@@ -317,14 +344,13 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
 
   // Restaura el código de pedido sin llamar al API (el track se hace al abrir Estado).
   useEffect(() => {
-    if (typeof window === "undefined") return;
     if (activeClientOrderId) return;
-    const saved = window.localStorage.getItem(TRACKING_STORAGE_KEY);
+    const saved = readSavedTrackingCode(user?.id);
     if (!saved) return;
     setActiveClientOrderId(saved);
     const cached = peekTrackedOrder(saved);
     if (cached) setTrackedOrder(mapApiOrder(cached));
-  }, [activeClientOrderId]);
+  }, [activeClientOrderId, user?.id]);
 
   // Catálogo del restaurante activo solo en Inicio / Promociones.
   useEffect(() => {
@@ -349,39 +375,70 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
     void loadRestaurantCatalog(activeRestaurantId);
   }, [activeRestaurantId, clientModule, clientTab, loadRestaurantCatalog]);
 
-  // Track del pedido solo al entrar a la pestaña Estado (con dedupe/caché).
+  // Track / recuperación del pedido al entrar a Estado.
   useEffect(() => {
     if (clientTab !== "tracking") return;
-    const code = activeClientOrderId;
-    if (!code) return;
 
     let cancelled = false;
-    const cached = peekTrackedOrder(code);
-    if (cached) {
-      setTrackedOrder(mapApiOrder(cached));
-    }
 
-    setIsTrackingLoading(true);
-    void fetchOrderTrackCached(code)
-      .then((raw) => {
+    async function loadTracking() {
+      setIsTrackingLoading(true);
+      try {
+        let code = activeClientOrderId ?? readSavedTrackingCode(user?.id);
+
+        // Si no hay código local, recuperar pedido activo del backend (por teléfono).
+        if (!code && user?.id) {
+          try {
+            const rawActive = await clientOrdersApi.myActive();
+            if (cancelled) return;
+            if (rawActive && typeof rawActive === "object" && "id" in rawActive && rawActive.id) {
+              setTrackedOrderCache(rawActive);
+              const order = mapApiOrder(rawActive);
+              setTrackedOrder(order);
+              setActiveClientOrderId(order.id);
+              writeSavedTrackingCode(order.id, user.id);
+              return;
+            }
+          } catch {
+            /* endpoint aún no desplegado o sin pedido */
+          }
+        }
+
+        if (!code) {
+          if (!cancelled) setTrackedOrder(null);
+          return;
+        }
+
+        const cached = peekTrackedOrder(code);
+        if (cached && !cancelled) {
+          setTrackedOrder(mapApiOrder(cached));
+        }
+
+        const raw = await fetchOrderTrackCached(code);
         if (cancelled) return;
         setTrackedOrderCache(raw);
         setTrackedOrder(mapApiOrder(raw));
-      })
-      .catch(() => {
+        setActiveClientOrderId(raw.id);
+        writeSavedTrackingCode(raw.id, user?.id);
+      } catch (err) {
         if (cancelled) return;
-        window.localStorage.removeItem(TRACKING_STORAGE_KEY);
-        setActiveClientOrderId(null);
-        setTrackedOrder(null);
-      })
-      .finally(() => {
+        // Solo limpiar si el pedido ya no existe (404), no por fallos de red.
+        const isNotFound = err instanceof ApiError && err.status === 404;
+        if (isNotFound) {
+          clearSavedTrackingCode(user?.id);
+          setActiveClientOrderId(null);
+          setTrackedOrder(null);
+        }
+      } finally {
         if (!cancelled) setIsTrackingLoading(false);
-      });
+      }
+    }
 
+    void loadTracking();
     return () => {
       cancelled = true;
     };
-  }, [clientTab, activeClientOrderId]);
+  }, [clientTab, activeClientOrderId, user?.id]);
 
   useEffect(() => {
     const onProfileUpdated = (event: Event) => {
@@ -568,9 +625,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
 
     setTrackedOrder(order);
     setActiveClientOrderId(order.id);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(TRACKING_STORAGE_KEY, order.id);
-    }
+    writeSavedTrackingCode(order.id, user?.id);
     setCart([]);
     setClientTab("tracking");
     toast.success(`Pedido ${order.id} enviado a cocina`);
