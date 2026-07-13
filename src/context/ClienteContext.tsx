@@ -96,6 +96,7 @@ interface ClienteState {
     address: string;
     phone: string;
     notes?: string;
+    deliveryFee?: number;
   }) => Promise<Order>;
   fetchProductDetail: (productId: string) => Promise<MenuItem>;
   refreshTracking: (code?: string) => Promise<void>;
@@ -541,6 +542,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
       phone: customer.phone.trim(),
       ...(notes ? { notes } : {}),
       restaurant_id: activeRestaurantId,
+      ...(customer.deliveryFee ? { delivery_fee: customer.deliveryFee } : {}),
       items: cart.map((c) => ({
         product_id: c.product.id,
         quantity: c.quantity,

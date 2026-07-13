@@ -1,14 +1,45 @@
 import { MapPin, Package, RefreshCw } from "lucide-react";
+import { useMemo } from "react";
+import { DeliveryRouteMap } from "@/components/cliente/DeliveryRouteMap";
 import { StatusStepIcon } from "@/components/cliente/StatusStepIcon";
 import { OrderItemLines } from "@/components/shared/OrderItemLines";
+import { useAuth } from "@/context/AuthContext";
 import { formatCOP, useCliente } from "@/context/ClienteContext";
+import { readClientAddress, readClientAddressCoords } from "@/lib/clientAddressStorage";
 import { CLIENT_STATUS_FLOW } from "@/mocks/ordersMock";
 import { cn } from "@/lib/utils";
 
 export function OrderTrackingPanel() {
-  const { trackedOrder, isTrackingLoading, refreshTracking, menu } = useCliente();
+  const { user } = useAuth();
+  const {
+    trackedOrder,
+    isTrackingLoading,
+    refreshTracking,
+    menu,
+    restaurants,
+    activeRestaurantId,
+  } = useCliente();
 
   const order = trackedOrder;
+
+  const destinationCoords = useMemo(() => {
+    if (!user?.id || !order?.address) return null;
+    const saved = readClientAddress(user.id);
+    if (!saved || saved.trim().toLowerCase() !== order.address.trim().toLowerCase()) {
+      return null;
+    }
+    return readClientAddressCoords(user.id);
+  }, [user?.id, order?.address]);
+
+  const restaurant = useMemo(() => {
+    if (!order) return null;
+    const fromItem = order.items
+      .map((item) => menu.find((m) => m.id === item.productId)?.restaurantId)
+      .find(Boolean);
+    const restaurantId = fromItem ?? activeRestaurantId;
+    if (!restaurantId) return restaurants[0] ?? null;
+    return restaurants.find((r) => r.id === restaurantId) ?? restaurants[0] ?? null;
+  }, [order, menu, restaurants, activeRestaurantId]);
 
   if (!order) {
     return (
@@ -71,6 +102,7 @@ export function OrderTrackingPanel() {
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             Pedido a las {order.createdAt} · Total {formatCOP(order.total)}
+            {restaurant ? ` · ${restaurant.name}` : null}
           </p>
         </div>
 
@@ -166,6 +198,19 @@ export function OrderTrackingPanel() {
               );
             })}
           </ol>
+
+          {!isDelivered && (
+            <div className="mt-8">
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                Ruta estimada de entrega
+              </p>
+              <DeliveryRouteMap
+                restaurant={restaurant}
+                destinationAddress={order.address}
+                destinationCoords={destinationCoords}
+              />
+            </div>
+          )}
 
           {isDelivered && (
             <div className="mt-8 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4 text-center">
