@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { clienteApi } from "@/lib/api/endpoints/cliente";
 import { usersApi } from "@/lib/api/endpoints/users";
 import { ApiError } from "@/lib/api/errors";
 import type { PendingUser, User } from "@/lib/api/types";
@@ -23,6 +24,23 @@ function filterByHistoryTab(users: User[], filter: ApprovalHistoryFilter): User[
   return approvalUsers.filter((u) => u.status === "Activo" || u.status === "Rechazado");
 }
 
+async function withRestaurantLogos(users: User[]): Promise<User[]> {
+  try {
+    const restaurants = await clienteApi.listRestaurants();
+    const logos = new Map(
+      restaurants.filter((r) => r.logo).map((r) => [r.id, r.logo as string]),
+    );
+    if (logos.size === 0) return users;
+    return users.map((user) => {
+      if (user.role !== "admin" || !user.restaurant_id || user.restaurant_logo) return user;
+      const logo = logos.get(user.restaurant_id);
+      return logo ? { ...user, restaurant_logo: logo } : user;
+    });
+  } catch {
+    return users;
+  }
+}
+
 export function useApprovalHistory(filter: ApprovalHistoryFilter) {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,12 +51,12 @@ export function useApprovalHistory(filter: ApprovalHistoryFilter) {
     setError(null);
     try {
       if (filter === "aprobados") {
-        const data = await usersApi.list({ status: "Activo" });
+        const data = await withRestaurantLogos(await usersApi.list({ status: "Activo" }));
         setUsers(filterByHistoryTab(data, "aprobados"));
         return;
       }
       if (filter === "rechazados") {
-        const data = await usersApi.list({ status: "Rechazado" });
+        const data = await withRestaurantLogos(await usersApi.list({ status: "Rechazado" }));
         setUsers(filterByHistoryTab(data, "rechazados"));
         return;
       }
@@ -48,7 +66,8 @@ export function useApprovalHistory(filter: ApprovalHistoryFilter) {
       ]);
       const merged = [...activos, ...rechazados];
       const byId = new Map(merged.map((u) => [u.id, u]));
-      setUsers(filterByHistoryTab([...byId.values()], "todos"));
+      const enriched = await withRestaurantLogos([...byId.values()]);
+      setUsers(filterByHistoryTab(enriched, "todos"));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Error al cargar el historial");
       setUsers([]);

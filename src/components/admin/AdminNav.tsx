@@ -4,6 +4,7 @@ import {
   ChefHat,
   History,
   LayoutDashboard,
+  Settings,
   Tag,
   Truck,
   UtensilsCrossed,
@@ -18,7 +19,8 @@ export type AdminTab =
   | "promociones"
   | "domicilios"
   | "historial"
-  | "motorizados";
+  | "motorizados"
+  | "configuracion";
 
 export const ADMIN_NAV_ITEMS: PanelNavItem<AdminTab>[] = [
   { id: "dashboard", label: "Dashboard", shortLabel: "Dashboard", icon: LayoutDashboard },
@@ -29,6 +31,7 @@ export const ADMIN_NAV_ITEMS: PanelNavItem<AdminTab>[] = [
   { id: "domicilios", label: "Domicilios activos", shortLabel: "Domicilios", icon: Bike },
   { id: "motorizados", label: "Gestión de motorizados", shortLabel: "Motorizados", icon: Truck },
   { id: "historial", label: "Historial de despachos", shortLabel: "Historial", icon: History },
+  { id: "configuracion", label: "Configuración", shortLabel: "Config", icon: Settings },
 ];
 
 interface AdminNavProps {

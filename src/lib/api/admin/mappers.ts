@@ -8,6 +8,9 @@ import type {
 } from "@/mocks/menuMock";
 import type { Order, OrderItem, OrderStatus } from "@/mocks/ordersMock";
 import type { Promotion } from "@/mocks/promotionsMock";
+import { dataUrlToFile, resolveMediaUrl, toApiImageUrl, PLACEHOLDER_IMAGE } from "@/lib/mediaUrl";
+import { uploadsApi } from "@/lib/api/endpoints/uploads";
+import { productsApi } from "@/lib/api/endpoints/products";
 
 const API_TO_FRONT_STATUS: Record<string, OrderStatus> = {
   Recibido: "Recibido",
@@ -43,12 +46,30 @@ export function mapApiOrderItem(item: ApiOrder["items"][number]): OrderItem {
   return {
     lineId: item.line_id,
     productId: item.product_id,
+    productName: item.product_name?.trim() || undefined,
+    productImage: item.product_image ?? undefined,
     quantity: item.quantity,
     customizations: item.customizations
       ? {
-          removedIngredients: item.customizations.removed_ingredients,
-          addedModifiers: item.customizations.added_modifiers,
-          extraPrice: item.customizations.extra_price,
+          removedIngredients: item.customizations.removed_ingredients ?? [],
+          addedModifiers: item.customizations.added_modifiers ?? {},
+          additions: (item.customizations.additions ?? []).map((e) => ({
+            productId: e.product_id,
+            name: e.name,
+            price: e.price,
+          })),
+          sides: (item.customizations.sides ?? []).map((e) => ({
+            productId: e.product_id,
+            name: e.name,
+            price: e.price,
+          })),
+          drinks: (item.customizations.drinks ?? []).map((e) => ({
+            productId: e.product_id,
+            name: e.name,
+            price: e.price,
+          })),
+          specialInstructions: item.customizations.special_instructions ?? undefined,
+          extraPrice: item.customizations.extra_price ?? 0,
         }
       : undefined,
   };
@@ -67,7 +88,11 @@ export function mapApiOrder(raw: ApiOrder): Order {
     total: raw.total,
     deliveryFee: raw.delivery_fee,
     status: mapApiStatusToFrontend(raw.status),
+    restaurantId: raw.restaurant_id ?? undefined,
     deliveryPersonId: raw.courier_id ?? undefined,
+    courierName: raw.courier_name ?? undefined,
+    courierPhone: raw.courier_phone ?? undefined,
+    courierAvatar: raw.courier_avatar ?? undefined,
     createdAt: formatOrderTime(raw.received_at),
     receivedAt: new Date(raw.received_at).getTime(),
     statusEnteredAt: new Date(raw.status_entered_at).getTime(),
@@ -91,7 +116,7 @@ export function mapApiProduct(raw: ApiProduct): MenuItem {
     category,
     categoryId: raw.category_id,
     description: raw.description,
-    image: raw.image,
+    image: resolveMediaUrl(raw.image),
     available: raw.available,
     restaurantId: raw.restaurant_id,
     ingredients: raw.ingredients?.map(
@@ -137,6 +162,7 @@ export function mapApiPromotion(raw: ApiPromotion): Promotion {
     endDate: raw.end_date,
     active: raw.active,
     createdAt: Date.parse(raw.start_date) || Date.now(),
+    restaurantId: raw.restaurant_id,
   };
 }
 
@@ -145,14 +171,26 @@ export function mapApiPromotions(raw: ApiPromotion[]): Promotion[] {
   return raw.map(mapApiPromotion);
 }
 
+/**
+ * Prepara imagen para el campo `image` del JSON del API.
+ * - http(s) y /uploads relativos → URL absoluta https
+ * - data: → sube por multipart /uploads/images (nunca data URL en JSON: provoca 500)
+ */
 export async function resolveImageUrl(image: string): Promise<string> {
-  if (!image || image.startsWith("http")) return image;
-  if (!image.startsWith("data:")) return image;
+  if (!image) return PLACEHOLDER_IMAGE;
 
-  const response = await fetch(image);
-  const blob = await response.blob();
-  const file = new File([blob], "upload.jpg", { type: blob.type || "image/jpeg" });
-  const { uploadsApi } = await import("@/lib/api/endpoints/uploads");
-  const result = await uploadsApi.uploadImage(file);
-  return result.url;
+  if (image.startsWith("data:")) {
+    const file = await dataUrlToFile(image);
+    const result = await uploadsApi.uploadImage(file);
+    return toApiImageUrl(result.url);
+  }
+
+  return toApiImageUrl(image);
+}
+
+/** Sube data URL por multipart al producto (evita PATCH JSON gigante). */
+export async function uploadProductDataImage(productId: string, image: string) {
+  if (!image.startsWith("data:")) return null;
+  const file = await dataUrlToFile(image);
+  return productsApi.uploadImage(productId, file);
 }

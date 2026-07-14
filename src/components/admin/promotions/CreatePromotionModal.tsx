@@ -93,8 +93,8 @@ export function CreatePromotionModal({ open, onClose }: CreatePromotionModalProp
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
-      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto rounded-3xl">
-        <DialogHeader>
+      <DialogContent className="max-h-[min(100dvh,var(--vv-height,100dvh))] w-[calc(100%-1rem)] max-w-lg overflow-y-auto rounded-2xl p-4 sm:max-h-[90vh] sm:rounded-3xl sm:p-6">
+        <DialogHeader className="pr-10">
           <DialogTitle className="font-display text-xl">Nueva promoción</DialogTitle>
           <DialogDescription>
             Selecciona productos del menú, define el descuento y el rango de fechas. Se activará
@@ -180,21 +180,22 @@ export function CreatePromotionModal({ open, onClose }: CreatePromotionModalProp
 
                   return (
                     <li key={product.id}>
-                      <label className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-secondary/50">
+                      <label className="flex min-w-0 cursor-pointer items-center gap-3 overflow-hidden rounded-lg px-2 py-2 hover:bg-secondary/50">
                         <Checkbox
                           checked={checked}
                           onCheckedChange={() => toggleProduct(product.id)}
+                          className="shrink-0"
                         />
                         <img
                           src={product.image}
                           alt=""
-                          className="size-10 rounded-lg object-cover"
+                          className="size-10 shrink-0 rounded-lg object-cover"
                         />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium">{product.name}</p>
-                          <p className="text-[11px] text-muted-foreground">{product.category}</p>
+                          <p className="truncate text-[11px] text-muted-foreground">{product.category}</p>
                         </div>
-                        <div className="shrink-0 text-right">
+                        <div className="shrink-0 whitespace-nowrap text-right">
                           {checked && previewDiscount > 0 ? (
                             <>
                               <p className="text-[10px] text-muted-foreground line-through">
@@ -222,17 +223,17 @@ export function CreatePromotionModal({ open, onClose }: CreatePromotionModalProp
 
           {error ? <p className="text-xs text-destructive">{error}</p> : null}
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
             <button
               type="button"
               onClick={handleClose}
-              className="rounded-xl border border-border px-4 py-2 text-xs font-semibold hover:bg-secondary"
+              className="min-h-11 rounded-xl border border-border px-4 py-2.5 text-xs font-semibold hover:bg-secondary sm:min-h-0 sm:py-2"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+              className="min-h-11 rounded-xl bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 sm:min-h-0 sm:py-2"
             >
               Guardar promoción
             </button>

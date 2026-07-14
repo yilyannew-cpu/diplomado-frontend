@@ -68,6 +68,10 @@
 }
 
 :root {
+  /* Visual viewport — updated by MobileKeyboardAvoidance on mobile. */
+  --vv-height: 100dvh;
+  --vv-top: 0px;
+  --keyboard-inset: 0px;
   --radius: 0.75rem;
   /* Midnight Indigo palette — light surface for cliente/admin/superadmin */
   --background: oklch(0.985 0.004 270);
@@ -168,7 +172,7 @@
 
 @layer utilities {
   .page-container {
-    @apply mx-auto max-w-screen-2xl px-4 py-6 sm:px-6 sm:py-8 lg:py-10;
+    @apply mx-auto max-w-screen-2xl px-3 py-4 sm:px-6 sm:py-8 lg:py-10;
   }
 
   .scrollbar-none {
@@ -179,6 +183,16 @@
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
+}
+
+/* Soft keyboard: leave room when scrolling focused fields into view. */
+html {
+  scroll-padding-bottom: calc(var(--keyboard-inset, 0px) + 1.5rem);
+}
+
+/* Dialogs / sheets stay inside the visual viewport while typing on mobile. */
+html[data-keyboard-open] [role="dialog"] {
+  max-height: var(--vv-height, 100dvh);
 }
 
 @keyframes order-dot-blink {
@@ -206,6 +220,20 @@
   100% {
     background-position: 0% 200%;
     opacity: 0.65;
+  }
+}
+
+@keyframes order-line-flow-x {
+  0% {
+    background-position: 0% 0%;
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    background-position: 200% 0%;
+    opacity: 0.55;
   }
 }
 
@@ -323,6 +351,17 @@
   );
   background-size: 100% 200%;
   animation: order-line-flow 1.6s ease-in-out infinite;
+}
+
+.animate-order-line-flow-x {
+  background-image: linear-gradient(
+    90deg,
+    oklch(0.52 0.22 277) 0%,
+    oklch(0.82 0.12 88) 45%,
+    oklch(0.52 0.22 277) 90%
+  );
+  background-size: 200% 100%;
+  animation: order-line-flow-x 1.6s ease-in-out infinite;
 }
 
 .animate-order-line-reveal {

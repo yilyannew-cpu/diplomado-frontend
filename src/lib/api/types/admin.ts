@@ -7,9 +7,12 @@ export interface ApiRestaurantProfile {
   city: string;
   address: string;
   delivery_minutes: number;
-  monthly_goal: number;
+  monthly_goal: number | null;
+  daily_goal: number | null;
   accent: string;
   initials: string;
+  logo?: string | null;
+  cover_image?: string | null;
   rating: number;
   status: string;
 }
@@ -18,8 +21,10 @@ export interface ApiDashboard {
   sales_today: number;
   orders_today: number;
   monthly_sales: number;
-  monthly_goal: number;
-  goal_progress_percent: number;
+  monthly_goal: number | null;
+  daily_goal: number | null;
+  goal_progress_percent: number | null;
+  daily_goal_progress_percent: number | null;
   sales_by_category: Array<{
     category_id: string;
     category_name: string;
@@ -78,19 +83,31 @@ export interface ApiMonthlySales {
 export interface ApiCourierPayout {
   courier_id: string;
   courier_name: string;
+  courier_avatar?: string | null;
   orders_delivered: number;
   total_payout: number;
+}
+
+export interface ApiSelectedExtra {
+  product_id: string;
+  name: string;
+  price: number;
 }
 
 export interface ApiOrderItem {
   line_id: string;
   product_id: string;
   product_name: string;
+  product_image?: string | null;
   quantity: number;
   unit_price: number;
   customizations: {
-    removed_ingredients: string[];
-    added_modifiers: Record<string, string[]>;
+    removed_ingredients?: string[];
+    added_modifiers?: Record<string, string[]>;
+    additions?: ApiSelectedExtra[];
+    sides?: ApiSelectedExtra[];
+    drinks?: ApiSelectedExtra[];
+    special_instructions?: string | null;
     extra_price: number;
   } | null;
 }
@@ -106,7 +123,11 @@ export interface ApiOrder {
   status: string;
   total: number;
   delivery_fee: number;
+  restaurant_id?: string;
   courier_id: string | null;
+  courier_name?: string | null;
+  courier_phone?: string | null;
+  courier_avatar?: string | null;
   items: ApiOrderItem[];
   received_at: string;
   status_entered_at: string;
@@ -160,10 +181,12 @@ export interface ApiPromotion {
 export interface ApiAvailableCourier {
   id: string;
   name: string;
+  avatar?: string | null;
   vehicle: string | null;
   average_rating: number;
   active_orders: number;
   can_take_batch: boolean;
+  unavailable_reason?: string | null;
 }
 
 export interface ApiActiveDeliveryOrder {
@@ -178,6 +201,7 @@ export interface ApiActiveDeliveryOrder {
 export interface ApiActiveDeliveryGroup {
   courier_id: string;
   courier_name: string;
+  courier_avatar?: string | null;
   vehicle: string | null;
   average_rating: number;
   orders: ApiActiveDeliveryOrder[];
@@ -192,6 +216,7 @@ export interface ApiDispatchRecord {
   delivery_fee: number;
   courier_id: string;
   courier_name: string;
+  courier_avatar?: string | null;
   dispatched_at: string;
 }
 

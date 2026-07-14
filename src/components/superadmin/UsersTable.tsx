@@ -1,4 +1,6 @@
 import { type User, type Role } from "@/lib/api/types";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { resolveLogoUrl } from "@/lib/mediaUrl";
 
 const roleLabel: Record<Role, string> = {
   cliente: "Cliente",
@@ -27,7 +29,12 @@ export function UsersTable({
   
   const filtered = users.filter((u) => {
     if (roleFilter !== "todos" && u.role !== roleFilter) return false;
-    if (query && !`${u.name} ${u.email}`.toLowerCase().includes(query.toLowerCase())) return false;
+    if (
+      query &&
+      !`${u.name} ${u.email} ${u.restaurant_name ?? ""}`.toLowerCase().includes(query.toLowerCase())
+    ) {
+      return false;
+    }
     return true;
   });
 
@@ -44,7 +51,7 @@ export function UsersTable({
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar por nombre o email…"
+            placeholder="Buscar por nombre, email o restaurante…"
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 sm:w-56"
           />
           <select
@@ -66,6 +73,7 @@ export function UsersTable({
             <tr>
               <th className="px-5 py-3">Usuario</th>
               <th className="px-5 py-3">Rol</th>
+              <th className="px-5 py-3">Restaurante</th>
               <th className="px-5 py-3">Contacto</th>
               <th className="px-5 py-3">Estado</th>
               <th className="px-5 py-3 text-right">Acciones</th>
@@ -76,9 +84,21 @@ export function UsersTable({
               <tr key={u.id} className="hover:bg-secondary/30">
                 <td className="px-5 py-3">
                   <div className="flex items-center gap-3">
-                    <div className="grid size-9 place-items-center rounded-full bg-ink text-xs font-semibold text-cream">
-                      {u.name.split(" ").map((p) => p[0]).slice(0, 2).join("")}
-                    </div>
+                    <UserAvatar
+                      name={
+                        u.role === "admin"
+                          ? (u.restaurant_name?.trim() || u.name)
+                          : u.name
+                      }
+                      src={
+                        u.role === "admin"
+                          ? (resolveLogoUrl(u.restaurant_logo) ??
+                            u.restaurant_logo ??
+                            undefined)
+                          : (resolveLogoUrl(u.avatar) ?? u.avatar ?? undefined)
+                      }
+                      className="size-9"
+                    />
                     <div>
                       <p className="font-medium">{u.name}</p>
                       <p className="text-[11px] text-muted-foreground">{u.email}</p>
@@ -87,6 +107,11 @@ export function UsersTable({
                 </td>
                 <td className="px-5 py-3 text-xs">
                   <span className="rounded-full bg-secondary px-2.5 py-1 font-medium">{roleLabel[u.role]}</span>
+                </td>
+                <td className="px-5 py-3 text-xs text-muted-foreground">
+                  {u.role === "admin"
+                    ? (u.restaurant_name?.trim() || "Sin restaurante")
+                    : "—"}
                 </td>
                 <td className="px-5 py-3 text-xs text-muted-foreground">
                   {u.phone ?? "—"}

@@ -1,9 +1,21 @@
 import { useState, useEffect } from "react";
-import { CreditCard, ShoppingBag } from "lucide-react";
+import { CreditCard, LocateFixed, Loader2, ShoppingBag } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { formatCOP, useCliente } from "@/context/ClienteContext";
 import { formatCustomizationLines } from "@/lib/orderCustomizations";
-import { DEFAULT_DELIVERY_FEE_COP } from "@/lib/deliveryFees";
+import {
+  calculateDeliveryFeeFromRoute,
+  DEFAULT_DELIVERY_FEE_COP,
+  DELIVERY_BASE_FEE_COP,
+  type DeliveryFeeBreakdown,
+} from "@/lib/deliveryFees";
+import {
+  buildRestaurantOriginQuery,
+  formatRouteEta,
+  resolveDeliveryRoute,
+} from "@/lib/deliveryRoute";
+import { persistClientAddress, readClientAddress, readClientAddressCoords } from "@/lib/clientAddressStorage";
+import { resolveCurrentLocation } from "@/lib/geolocationAddress";
 import { getProductPricing } from "@/lib/promotions";
 import {
   Sheet,
@@ -26,27 +38,116 @@ export function CartSheet() {
     removeFromCart,
     confirmCart,
     promotions,
+    restaurants,
+    activeRestaurantId,
   } = useCliente();
+
+  const restaurant =
+    restaurants.find((r) => r.id === activeRestaurantId) ?? restaurants[0] ?? null;
 
   const [step, setStep] = useState<CheckoutStep>("cart");
   const [customerName, setCustomerName] = useState(user?.name ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
-  const [address, setAddress] = useState("Av. 0 #12-34, Caobos, Cúcuta");
+  const [address, setAddress] = useState("");
+  const [courierNote, setCourierNote] = useState("");
   const [isPaying, setIsPaying] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [deliveryFee, setDeliveryFee] = useState(DEFAULT_DELIVERY_FEE_COP);
+  const [feeBreakdown, setFeeBreakdown] = useState<DeliveryFeeBreakdown | null>(null);
+  const [etaSeconds, setEtaSeconds] = useState<number | null>(null);
+  const [estimatingFee, setEstimatingFee] = useState(false);
 
   useEffect(() => {
     if (user?.name) setCustomerName(user.name);
     if (user?.phone) setPhone(user.phone);
-  }, [user?.name, user?.phone]);
+    if (user?.id) {
+      const saved = readClientAddress(user.id);
+      if (saved) setAddress(saved);
+    }
+  }, [user?.id, user?.name, user?.phone]);
 
-  const deliveryFee = cart.length > 0 ? DEFAULT_DELIVERY_FEE_COP : 0;
-  const total = cartTotal + deliveryFee;
+  useEffect(() => {
+    if (cart.length === 0 || !restaurant || !address.trim()) {
+      setDeliveryFee(DEFAULT_DELIVERY_FEE_COP);
+      setFeeBreakdown(null);
+      setEtaSeconds(null);
+      setEstimatingFee(false);
+      return;
+    }
+
+    let cancelled = false;
+    setEstimatingFee(true);
+
+    const savedAddress = user?.id ? readClientAddress(user.id) : null;
+    const savedCoords =
+      user?.id &&
+      savedAddress &&
+      savedAddress.trim().toLowerCase() === address.trim().toLowerCase()
+        ? readClientAddressCoords(user.id)
+        : null;
+
+    const timer = window.setTimeout(() => {
+      void resolveDeliveryRoute({
+        originQuery: buildRestaurantOriginQuery(restaurant),
+        destinationQuery: address.trim(),
+        destinationCoords: savedCoords,
+      })
+        .then((route) => {
+          if (cancelled) return;
+          const breakdown = calculateDeliveryFeeFromRoute({
+            distanceMeters: route.distanceMeters,
+            durationSeconds: route.durationSeconds,
+          });
+          setEtaSeconds(route.durationSeconds);
+          setFeeBreakdown(breakdown);
+          setDeliveryFee(breakdown.total_domicilio);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setEtaSeconds(null);
+          setFeeBreakdown(null);
+          setDeliveryFee(DEFAULT_DELIVERY_FEE_COP);
+        })
+        .finally(() => {
+          if (!cancelled) setEstimatingFee(false);
+        });
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [address, restaurant, cart.length, user?.id]);
+
+  const appliedDeliveryFee = cart.length > 0 ? deliveryFee : 0;
+  const total = cartTotal + appliedDeliveryFee;
 
   const handleOpenChange = (open: boolean) => {
     setCartOpen(open);
     if (!open) {
       setStep("cart");
       setIsPaying(false);
+      setCourierNote("");
+      setLocationError(null);
+    }
+  };
+
+  const handleUseLocation = async () => {
+    setLocating(true);
+    setLocationError(null);
+    try {
+      const loc = await resolveCurrentLocation();
+      setAddress(loc.address);
+      if (user?.id) {
+        persistClientAddress(user.id, loc.address, { lat: loc.lat, lng: loc.lng });
+      }
+    } catch (err) {
+      setLocationError(
+        err instanceof Error ? err.message : "No se pudo obtener la ubicación.",
+      );
+    } finally {
+      setLocating(false);
     }
   };
 
@@ -56,10 +157,15 @@ export function CartSheet() {
     setIsPaying(true);
     await new Promise((r) => setTimeout(r, 900));
     try {
+      if (user?.id && address.trim()) {
+        persistClientAddress(user.id, address.trim());
+      }
       await confirmCart({
         name: customerName.trim(),
         address,
         phone: phone.trim(),
+        notes: courierNote.trim() || undefined,
+        deliveryFee,
       });
     } catch (e) {
       console.error("Error creating order:", e);
@@ -69,6 +175,7 @@ export function CartSheet() {
     }
     setIsPaying(false);
     setStep("cart");
+    setCourierNote("");
     setCartOpen(false);
   };
 
@@ -140,8 +247,34 @@ export function CartSheet() {
                   </div>
                   <div className="flex justify-between text-muted-foreground">
                     <dt>Domicilio</dt>
-                    <dd className="font-mono tabular-nums">{formatCOP(deliveryFee)}</dd>
+                    <dd className="font-mono tabular-nums">
+                      {estimatingFee ? "Calculando…" : formatCOP(appliedDeliveryFee)}
+                    </dd>
                   </div>
+                  {feeBreakdown && address.trim() ? (
+                    <div className="space-y-0.5 text-[11px] leading-snug text-muted-foreground">
+                      <p>
+                        Ruta ≈ {feeBreakdown.distancia_km} km ·{" "}
+                        {etaSeconds != null
+                          ? formatRouteEta(etaSeconds)
+                          : `≈ ${feeBreakdown.tiempo_estimado_minutos} min`}
+                      </p>
+                      <p>
+                        Base {formatCOP(feeBreakdown.tarifa_base)}
+                        {feeBreakdown.valor_km_adicionales > 0
+                          ? ` + km extra ${formatCOP(feeBreakdown.valor_km_adicionales)}`
+                          : ""}
+                        {feeBreakdown.recargo_trafico > 0
+                          ? ` + tráfico ${formatCOP(feeBreakdown.recargo_trafico)}`
+                          : ""}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] leading-snug text-muted-foreground">
+                      La tarifa se calcula por kilómetros de ruta (mín.{" "}
+                      {formatCOP(DELIVERY_BASE_FEE_COP)}). Indica tu dirección para confirmarla.
+                    </p>
+                  )}
                   <div className="flex justify-between border-t border-dashed border-border pt-2 text-base font-semibold">
                     <dt>Total</dt>
                     <dd className="font-mono text-primary tabular-nums">{formatCOP(total)}</dd>
@@ -159,7 +292,7 @@ export function CartSheet() {
             )}
           </div>
         ) : (
-          <div className="flex flex-1 flex-col">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
             <div className="space-y-4">
               <div>
                 <label htmlFor="checkout-name" className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -188,15 +321,52 @@ export function CartSheet() {
               </div>
 
               <div>
-                <label htmlFor="checkout-address" className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Dirección de entrega
-                </label>
+                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                  <label
+                    htmlFor="checkout-address"
+                    className="block text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                  >
+                    Dirección de entrega
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => void handleUseLocation()}
+                    disabled={locating}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-primary/25 bg-primary/5 px-2 py-1 text-[11px] font-semibold text-primary hover:bg-primary/10 disabled:opacity-60"
+                  >
+                    {locating ? (
+                      <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                    ) : (
+                      <LocateFixed className="size-3.5" aria-hidden />
+                    )}
+                    {locating ? "Detectando…" : "Usar mi ubicación"}
+                  </button>
+                </div>
                 <textarea
                   id="checkout-address"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   rows={3}
+                  placeholder="Usa tu ubicación o escribe tu dirección"
                   className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/20 focus:ring-2"
+                />
+                {locationError ? (
+                  <p className="mt-1 text-xs text-destructive">{locationError}</p>
+                ) : null}
+              </div>
+
+              <div>
+                <label htmlFor="checkout-courier-note" className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Nota al repartidor
+                </label>
+                <input
+                  id="checkout-courier-note"
+                  type="text"
+                  value={courierNote}
+                  onChange={(e) => setCourierNote(e.target.value)}
+                  maxLength={500}
+                  placeholder="Casa de dos pisos / Apartamento 201"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none ring-primary/20 placeholder:text-muted-foreground/70 focus:ring-2"
                 />
               </div>
 
@@ -210,6 +380,10 @@ export function CartSheet() {
                 </p>
                 <p className="mt-3 font-mono text-lg font-semibold text-primary tabular-nums">
                   {formatCOP(total)}
+                </p>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Incluye domicilio {formatCOP(appliedDeliveryFee)}
+                  {etaSeconds != null ? ` · ruta ${formatRouteEta(etaSeconds)}` : ""}
                 </p>
               </div>
             </div>

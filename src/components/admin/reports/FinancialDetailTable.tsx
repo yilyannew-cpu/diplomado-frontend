@@ -21,17 +21,73 @@ export function FinancialDetailTable({ months }: FinancialDetailTableProps) {
 
   return (
     <>
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-primary">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-primary sm:text-[11px]">
             Resumen por mes
           </p>
-          <h2 className="mt-1 font-display text-lg font-semibold">Detalle financiero</h2>
+          <h2 className="mt-1 font-display text-base font-semibold sm:text-lg">Detalle financiero</h2>
         </div>
         <ExportReportButton months={months} />
       </div>
 
-      <div className="overflow-x-auto">
+      {/* Móvil: cards */}
+      <div className="space-y-2 md:hidden">
+        {rows.length === 0 ? (
+          <p className="py-10 text-center text-sm text-muted-foreground">
+            Sin datos para el periodo seleccionado.
+          </p>
+        ) : (
+          rows.map((month) => (
+            <article
+              key={month.monthKey}
+              className="rounded-xl border border-border/60 bg-background/50 p-3"
+            >
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
+                <p className="min-w-0 font-medium leading-snug">{month.label}</p>
+                <p className="shrink-0 font-mono text-sm font-semibold tabular-nums text-chart-2">
+                  {formatCOP(month.netProfit)}
+                </p>
+              </div>
+              <dl className="mt-2 grid grid-cols-1 gap-y-1.5 text-[11px] min-[400px]:grid-cols-2 min-[400px]:gap-x-3">
+                <div className="min-w-0">
+                  <dt className="text-muted-foreground">Bruta</dt>
+                  <dd className="break-all font-mono tabular-nums">{formatCOP(month.grossSales)}</dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-muted-foreground">Domicilios</dt>
+                  <dd className="break-all font-mono tabular-nums text-chart-4">
+                    {formatCOP(month.courierPayout)}
+                  </dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-muted-foreground">Comisiones</dt>
+                  <dd className="break-all font-mono tabular-nums text-amber-brand">
+                    {formatCOP(month.appCommissions)}
+                  </dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-muted-foreground">Neta</dt>
+                  <dd className="break-all font-mono font-semibold tabular-nums text-chart-2">
+                    {formatCOP(month.netProfit)}
+                  </dd>
+                </div>
+              </dl>
+              <button
+                type="button"
+                onClick={() => setSelectedMonth(month)}
+                className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-3 text-xs font-medium text-primary hover:bg-primary/10"
+              >
+                <Eye className="size-3.5" />
+                Ver detalle
+              </button>
+            </article>
+          ))
+        )}
+      </div>
+
+      {/* Desktop: tabla */}
+      <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[720px] text-sm">
           <thead>
             <tr className="border-b border-border text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
@@ -70,7 +126,7 @@ export function FinancialDetailTable({ months }: FinancialDetailTableProps) {
                     <button
                       type="button"
                       onClick={() => setSelectedMonth(month)}
-                      className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                      className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
                     >
                       <Eye className="size-3.5" />
                       Ver detalle
@@ -85,8 +141,8 @@ export function FinancialDetailTable({ months }: FinancialDetailTableProps) {
 
       <Dialog open={!!selectedMonth} onOpenChange={(open) => !open && setSelectedMonth(null)}>
         {selectedMonth ? (
-          <DialogContent className="max-w-md">
-            <DialogHeader>
+          <DialogContent className="w-[calc(100%-1rem)] max-w-md rounded-2xl p-4 sm:p-6">
+            <DialogHeader className="pr-10">
               <DialogTitle>Detalle — {selectedMonth.label}</DialogTitle>
             </DialogHeader>
             <dl className="space-y-3 text-sm">
@@ -133,9 +189,11 @@ function DetailRow({
   valueClass?: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-border/50 pb-2 last:border-0">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className={`font-mono text-sm tabular-nums ${valueClass ?? ""}`}>{value}</dd>
+    <div className="flex items-start justify-between gap-3 border-b border-border/50 pb-2 last:border-0 sm:items-center sm:gap-4">
+      <dt className="min-w-0 flex-1 text-xs text-muted-foreground text-pretty sm:text-sm">{label}</dt>
+      <dd className={`max-w-[48%] shrink-0 break-all text-right font-mono text-sm tabular-nums ${valueClass ?? ""}`}>
+        {value}
+      </dd>
     </div>
   );
 }

@@ -1,7 +1,9 @@
-import { MapPin, Truck, User } from "lucide-react";
+import { MapPin, Truck } from "lucide-react";
 import { useMemo } from "react";
 import { KitchenOrderCard } from "@/components/admin/kitchen/KitchenOrderCard";
+import { UserAvatar } from "@/components/shared/UserAvatar";
 import { chunkOrders, MAX_ORDERS_PER_COURIER } from "@/lib/deliveryLimits";
+import { resolveLogoUrl } from "@/lib/mediaUrl";
 import { groupOrdersByZone } from "@/lib/orderZones";
 import type { Order } from "@/mocks/ordersMock";
 
@@ -69,7 +71,8 @@ export function ReadyDispatchColumn({
 
           {zoneOrders.length > MAX_ORDERS_PER_COURIER && (
             <p className="mt-2 text-[10px] text-muted-foreground">
-              Máximo {MAX_ORDERS_PER_COURIER} pedidos por domiciliario. Asigna por grupos.
+              Máximo {MAX_ORDERS_PER_COURIER} pedidos por domiciliario en la misma zona. Asigna por
+              grupos. Si ya salió, no estará disponible hasta entregar.
             </p>
           )}
         </div>
@@ -94,6 +97,12 @@ function BatchActions({
   const assignedCourierId = batch.every((o) => o.deliveryPersonId)
     ? batch[0].deliveryPersonId
     : undefined;
+  const assignedCourierName = assignedCourierId
+    ? batch.find((o) => o.deliveryPersonId === assignedCourierId)?.courierName
+    : undefined;
+  const assignedCourierAvatar = assignedCourierId
+    ? batch.find((o) => o.deliveryPersonId === assignedCourierId)?.courierAvatar
+    : undefined;
   const allAssigned = batch.every(
     (o) => o.deliveryPersonId && o.deliveryPersonId === assignedCourierId,
   );
@@ -103,14 +112,18 @@ function BatchActions({
     <div className="space-y-2">
       {readyToDispatch && assignedCourierId ? (
         <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 transition-all duration-300">
-          <div className="grid size-8 place-items-center rounded-full bg-primary/15 text-primary">
-            <User className="size-4" />
-          </div>
+          <UserAvatar
+            name={assignedCourierName ?? "Domiciliario"}
+            src={resolveLogoUrl(assignedCourierAvatar) ?? assignedCourierAvatar}
+            className="size-8 shrink-0"
+          />
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-primary">
               Repartidor asignado
             </p>
-            <p className="truncate text-sm font-semibold">Listo para despachar</p>
+            <p className="truncate text-sm font-semibold">
+              {assignedCourierName ?? "Listo para despachar"}
+            </p>
           </div>
         </div>
       ) : null}

@@ -21,7 +21,10 @@ import {
   mapApiPromotions,
   mapFrontendStatusToApi,
   resolveImageUrl,
+  uploadProductDataImage,
 } from "@/lib/api/admin/mappers";
+import { PLACEHOLDER_IMAGE, resolveLogoUrl } from "@/lib/mediaUrl";
+import { dedupeAsync, invalidateDedupeCache } from "@/lib/api/admin/dedupeAsync";
 import { reportRangeLabel, reportRangeToDates, reportRangeToQuery } from "@/lib/api/admin/reportDates";
 import { mapHistoryPeriodToApi } from "@/lib/api/admin/historyPeriod";
 import { adminOrdersApi } from "@/lib/api/endpoints/adminOrders";
@@ -30,6 +33,7 @@ import { promotionsApi } from "@/lib/api/endpoints/promotions";
 import { restaurantsApi, type ApiReview } from "@/lib/api/endpoints/restaurants";
 import { getSocketUrl } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
+import { RESTAURANT_PROFILE_UPDATED_EVENT } from "@/components/shared/ProfileAccountDialog";
 import type {
   ApiActiveDeliveryGroup,
   ApiAvailableCourier,
@@ -41,6 +45,7 @@ import type {
   ApiRestaurantProfile,
   ApiSalesReport,
 } from "@/lib/api/types/admin";
+import type { AdminTab } from "@/components/admin/AdminNav";
 import type { NewProductData } from "@/components/admin/AddProductModal";
 import type { EditProductData } from "@/components/admin/EditProductModal";
 import type { Ingredient, MenuItem, ModifierGroup } from "@/mocks/menuMock";
@@ -52,6 +57,16 @@ import type { HistoryPeriod } from "@/lib/orderHistory";
 import type { NewAdditionData } from "@/components/admin/AddAdditionModal";
 
 const KITCHEN_STATUSES: OrderStatus[] = ["Recibido", "En Cocina", "Listo"];
+
+/** Módulos que se precargan al abrir el panel (reportes se pide al elegir rango). */
+const PRELOAD_TABS: AdminTab[] = [
+  "dashboard",
+  "comandas",
+  "menu",
+  "promociones",
+  "domicilios",
+  "historial",
+];
 
 function isKitchenOrder(order: Order): boolean {
   return KITCHEN_STATUSES.includes(order.status);
@@ -80,7 +95,8 @@ function buildMonthlyReports(monthly: ApiMonthlySales, year: number): MonthlySal
     const grossSales = point.gross_sales;
     const appCommissions = Math.round(grossSales * 0.05);
     const courierPayout = 0;
-    const netProfit = grossSales - appCommissions - courierPayout;
+    // gross_sales de la API ya es solo productos (sin domicilio)
+    const netProfit = grossSales - appCommissions;
     return {
       monthKey: `${year}-${String(point.month).padStart(2, "0")}`,
       label: `${point.label} ${year}`,
@@ -115,7 +131,7 @@ interface AdminContextValue {
   refreshDashboard: () => Promise<void>;
   refreshActiveDeliveries: () => Promise<void>;
   refreshDispatchHistory: (period?: HistoryPeriod) => Promise<void>;
-  fetchAvailableCouriers: (batchSize: number) => Promise<ApiAvailableCourier[]>;
+  fetchAvailableCouriers: (batchSize: number, zone?: string) => Promise<ApiAvailableCourier[]>;
   updateOrderStatus: (order: Order, next: OrderStatus) => Promise<void>;
   assignCourierBatch: (orders: Order[], courierId: string) => Promise<void>;
   dispatchBatch: (orders: Order[]) => Promise<void>;
@@ -143,6 +159,13 @@ interface AdminContextValue {
   }>;
   exportSalesCsv: (range: ReportDateRange) => Promise<void>;
   getCategoryIdByName: (name: string) => string | undefined;
+  /** Guarda metas de ventas opcionales y refresca el dashboard. */
+  updateSalesGoals: (goals: {
+    dailyGoal: number | null;
+    monthlyGoal: number | null;
+  }) => Promise<void>;
+  /** Recarga un módulo (no-op si ya está cargado, salvo force). */
+  ensureTabData: (tab: AdminTab, force?: boolean) => Promise<void>;
 }
 
 const AdminContext = createContext<AdminContextValue | null>(null);
@@ -167,6 +190,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   const socketRef = useRef<Socket | null>(null);
+  const loadedTabsRef = useRef<Set<AdminTab>>(new Set());
+  const tabInflightRef = useRef<Partial<Record<AdminTab, Promise<void>>>>({});
 
   const handleApiError = useCallback((err: unknown, fallback: string) => {
     const message = err instanceof ApiError ? err.message : fallback;
@@ -174,100 +199,228 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     toast.error(message);
   }, []);
 
-  const refreshKitchenOrders = useCallback(async () => {
+  const refreshDashboard = useCallback(async (force = false) => {
     if (!restaurantId) return;
-    const raw = await adminOrdersApi.listKitchenOrders(restaurantId);
+    const result = await dedupeAsync(
+      `admin:dashboard:${restaurantId}`,
+      async () => {
+        const [profile, dash, reviewsPage] = await Promise.all([
+          dedupeAsync(
+            `admin:profile:${restaurantId}`,
+            () => restaurantsApi.getProfile(restaurantId),
+            { ttlMs: 60_000, force },
+          ),
+          restaurantsApi.getDashboard(restaurantId),
+          restaurantsApi.listReviews(restaurantId, { limit: 10, offset: 0 }),
+        ]);
+        return { profile, dash, reviews: reviewsPage.data };
+      },
+      { ttlMs: 20_000, force },
+    );
+    setRestaurant(result.profile);
+    setDashboard(result.dash);
+    setReviews(result.reviews);
+  }, [restaurantId]);
+
+  const refreshKitchenOrders = useCallback(async (force = false) => {
+    if (!restaurantId) return;
+    const raw = await dedupeAsync(
+      `admin:kitchen:${restaurantId}`,
+      () => adminOrdersApi.listKitchenOrders(restaurantId),
+      { ttlMs: 8_000, force },
+    );
     setKitchenOrders(mapApiOrders(raw));
   }, [restaurantId]);
 
-  const refreshMenu = useCallback(async () => {
+  const refreshMenu = useCallback(async (force = false) => {
     if (!restaurantId) return;
-    let cats = await restaurantsApi.listCategories(restaurantId);
-    if (cats.length === 0) {
-      cats = await Promise.all(
-        [...CATEGORIES].map((name, position) =>
-          restaurantsApi.createCategory(restaurantId, { name, position }),
-        ),
-      );
-    }
-    const products = await productsApi.list({ restaurantId }, { auth: true });
-    setCategories(cats);
-    setMenu(mapApiProducts(products));
+    await dedupeAsync(
+      `admin:menu:${restaurantId}`,
+      async () => {
+        let cats = await restaurantsApi.listCategories(restaurantId);
+        if (cats.length === 0) {
+          cats = await Promise.all(
+            [...CATEGORIES].map((name, position) =>
+              restaurantsApi.createCategory(restaurantId, { name, position }),
+            ),
+          );
+        }
+        const products = await productsApi.list({ restaurantId }, { auth: true });
+        setCategories(cats);
+        setMenu(mapApiProducts(products));
+      },
+      { ttlMs: 45_000, force },
+    );
   }, [restaurantId]);
 
-  const refreshPromotions = useCallback(async () => {
+  const refreshPromotions = useCallback(async (force = false) => {
     if (!restaurantId) return;
-    const raw = await restaurantsApi.listPromotions(restaurantId);
+    const raw = await dedupeAsync(
+      `admin:promos:${restaurantId}`,
+      () => restaurantsApi.listPromotions(restaurantId),
+      { ttlMs: 30_000, force },
+    );
     setPromotions(mapApiPromotions(raw));
   }, [restaurantId]);
 
-  const refreshDashboard = useCallback(async () => {
+  const refreshActiveDeliveries = useCallback(async (force = false) => {
     if (!restaurantId) return;
-    const [profile, dash, reviewsPage] = await Promise.all([
-      restaurantsApi.getProfile(restaurantId),
-      restaurantsApi.getDashboard(restaurantId),
-      restaurantsApi.listReviews(restaurantId, { limit: 10, offset: 0 }),
-    ]);
-    setRestaurant(profile);
-    setDashboard(dash);
-    setReviews(reviewsPage.data);
-  }, [restaurantId]);
-
-  const refreshActiveDeliveries = useCallback(async () => {
-    if (!restaurantId) return;
-    const res = await restaurantsApi.getActiveDeliveries(restaurantId);
+    const res = await dedupeAsync(
+      `admin:deliveries:${restaurantId}`,
+      () => restaurantsApi.getActiveDeliveries(restaurantId),
+      { ttlMs: 12_000, force },
+    );
     setActiveDeliveries(res.data);
   }, [restaurantId]);
 
   const refreshDispatchHistory = useCallback(
-    async (period: HistoryPeriod = "month") => {
+    async (period: HistoryPeriod = "month", force = false) => {
       if (!restaurantId) return;
       const apiPeriod = mapHistoryPeriodToApi(period);
-      const [records, summary] = await Promise.all([
-        restaurantsApi.listDispatches(restaurantId, { period: apiPeriod }),
-        restaurantsApi.getDispatchSummary(restaurantId, apiPeriod),
-      ]);
-      setDispatchRecords(records.data);
-      setDispatchSummary(summary);
+      const result = await dedupeAsync(
+        `admin:history:${restaurantId}:${apiPeriod}`,
+        async () => {
+          const [records, summary] = await Promise.all([
+            restaurantsApi.listDispatches(restaurantId, { period: apiPeriod }),
+            restaurantsApi.getDispatchSummary(restaurantId, apiPeriod),
+          ]);
+          return { records: records.data, summary };
+        },
+        { ttlMs: 20_000, force },
+      );
+      setDispatchRecords(result.records);
+      setDispatchSummary(result.summary);
     },
     [restaurantId],
   );
 
-  const bootstrap = useCallback(async () => {
+  const ensureTabData = useCallback(
+    async (tab: AdminTab, force = false) => {
+      if (!restaurantId) return;
+
+      const existing = tabInflightRef.current[tab];
+      if (existing) return existing;
+      if (!force && loadedTabsRef.current.has(tab)) return;
+
+      if (force) {
+        loadedTabsRef.current.delete(tab);
+      }
+
+      const run = (async () => {
+        switch (tab) {
+          case "dashboard":
+            await refreshDashboard(force);
+            break;
+          case "comandas":
+            await refreshKitchenOrders(force);
+            break;
+          case "menu":
+            await refreshMenu(force);
+            break;
+          case "promociones":
+            await Promise.all([refreshPromotions(force), refreshMenu(force)]);
+            break;
+          case "domicilios":
+            await refreshActiveDeliveries(force);
+            break;
+          case "historial":
+            await refreshDispatchHistory("month", force);
+            break;
+          case "configuracion":
+          case "reportes":
+            break;
+          default:
+            break;
+        }
+        loadedTabsRef.current.add(tab);
+      })()
+        .catch((err) => {
+          handleApiError(err, `Error al cargar ${tab}`);
+        })
+        .finally(() => {
+          delete tabInflightRef.current[tab];
+        });
+
+      tabInflightRef.current[tab] = run;
+      return run;
+    },
+    [
+      restaurantId,
+      refreshDashboard,
+      refreshKitchenOrders,
+      refreshMenu,
+      refreshPromotions,
+      refreshActiveDeliveries,
+      refreshDispatchHistory,
+      handleApiError,
+    ],
+  );
+
+  const loadAllPanelData = useCallback(async () => {
+    if (!restaurantId) return;
+
+    // Marca tabs como en carga para que ensureTabData no dispare un segundo round.
+    for (const tab of PRELOAD_TABS) {
+      loadedTabsRef.current.add(tab);
+    }
+
+    await Promise.all([
+      refreshDashboard(),
+      refreshKitchenOrders(),
+      refreshMenu(),
+      refreshPromotions(),
+      refreshActiveDeliveries(),
+      refreshDispatchHistory("month"),
+    ]);
+  }, [
+    restaurantId,
+    refreshDashboard,
+    refreshKitchenOrders,
+    refreshMenu,
+    refreshPromotions,
+    refreshActiveDeliveries,
+    refreshDispatchHistory,
+  ]);
+
+  useEffect(() => {
     if (!restaurantId) {
       setLoading(false);
       return;
     }
+
+    let cancelled = false;
+    loadedTabsRef.current.clear();
+    invalidateDedupeCache(`admin:`);
     setLoading(true);
     setError(null);
-    try {
-      await Promise.all([
-        refreshKitchenOrders(),
-        refreshMenu(),
-        refreshPromotions(),
-        refreshDashboard(),
-        refreshActiveDeliveries(),
-        refreshDispatchHistory("month"),
-      ]);
-    } catch (err) {
-      handleApiError(err, "Error al cargar el panel admin");
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    restaurantId,
-    refreshKitchenOrders,
-    refreshMenu,
-    refreshPromotions,
-    refreshDashboard,
-    refreshActiveDeliveries,
-    refreshDispatchHistory,
-    handleApiError,
-  ]);
+
+    // Precarga todos los módulos; dedupeAsync+TTL evita duplicados (Strict Mode / tabs).
+    void loadAllPanelData()
+      .catch((err) => {
+        if (!cancelled) {
+          // Si falló la precarga, permitir reintento por pestaña.
+          loadedTabsRef.current.clear();
+          handleApiError(err, "Error al cargar el panel");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [restaurantId, loadAllPanelData, handleApiError]);
 
   useEffect(() => {
-    void bootstrap();
-  }, [bootstrap]);
+    const onProfileUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<ApiRestaurantProfile>).detail;
+      if (!detail?.id || detail.id !== restaurantId) return;
+      setRestaurant(detail);
+    };
+    window.addEventListener(RESTAURANT_PROFILE_UPDATED_EVENT, onProfileUpdated);
+    return () => window.removeEventListener(RESTAURANT_PROFILE_UPDATED_EVENT, onProfileUpdated);
+  }, [restaurantId]);
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -282,6 +435,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       setKitchenOrders((current) => mergeKitchenOrder(current, order));
     };
 
+    let socketRefreshTimer = 0;
     const onStatusChanged = (payload: unknown) => {
       if (Array.isArray(payload)) {
         setKitchenOrders((current) => mergeKitchenOrders(current, mapApiOrders(payload as Parameters<typeof mapApiOrders>[0])));
@@ -289,14 +443,19 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         const order = mapApiOrder(payload as Parameters<typeof mapApiOrder>[0]);
         setKitchenOrders((current) => mergeKitchenOrder(current, order));
       }
-      void refreshActiveDeliveries();
-      void refreshDispatchHistory("month");
+      // Debounce: muchos eventos de cocina no deben martillar /active + historial.
+      window.clearTimeout(socketRefreshTimer);
+      socketRefreshTimer = window.setTimeout(() => {
+        void refreshActiveDeliveries(true);
+        void refreshDispatchHistory("month", true);
+      }, 900);
     };
 
     socket.on("new_order", onNewOrder);
     socket.on("order_status_changed", onStatusChanged);
 
     return () => {
+      window.clearTimeout(socketRefreshTimer);
       socket.off("new_order", onNewOrder);
       socket.off("order_status_changed", onStatusChanged);
       socket.disconnect();
@@ -305,9 +464,9 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   }, [restaurantId, refreshActiveDeliveries, refreshDispatchHistory]);
 
   const fetchAvailableCouriers = useCallback(
-    async (batchSize: number) => {
+    async (batchSize: number, zone?: string) => {
       if (!restaurantId) return [];
-      const res = await restaurantsApi.listAvailableCouriers(restaurantId, batchSize);
+      const res = await restaurantsApi.listAvailableCouriers(restaurantId, batchSize, zone);
       return res.data;
     },
     [restaurantId],
@@ -358,7 +517,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         setKitchenOrders((current) =>
           current.filter((o) => !orders.some((x) => getOrderApiId(x) === getOrderApiId(o))),
         );
-        await Promise.all([refreshActiveDeliveries(), refreshDispatchHistory("month")]);
+        await Promise.all([refreshActiveDeliveries(true), refreshDispatchHistory("month", true)]);
         toast.success("Pedidos despachados");
       } catch (err) {
         handleApiError(err, "No se pudo despachar el lote");
@@ -409,16 +568,27 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       }
       try {
         const categoryId = await ensureCategoryIdByName(data.category);
-        const imageUrl = await resolveImageUrl(data.image);
-        const created = await productsApi.create({
+        const hasNewImage = data.image.startsWith("data:");
+        // Crear primero con URL https válida; la foto nueva se sube por multipart.
+        const imageForCreate = hasNewImage
+          ? PLACEHOLDER_IMAGE
+          : await resolveImageUrl(data.image || PLACEHOLDER_IMAGE);
+
+        let created = await productsApi.create({
           name: data.name,
           description: data.description,
           price: data.price,
           category_id: categoryId,
           restaurant_id: restaurantId,
-          image: imageUrl,
+          image: imageForCreate,
           available: data.available,
         });
+
+        if (hasNewImage) {
+          const withImage = await uploadProductDataImage(created.id, data.image);
+          if (withImage) created = withImage;
+        }
+
         setMenu((current) => [...current, mapApiProduct(created)]);
         toast.success("Producto creado");
       } catch (err) {
@@ -439,13 +609,21 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const updateMenuItem = useCallback(
     async (productId: string, data: EditProductData) => {
       try {
-        const imageUrl = await resolveImageUrl(data.image);
-        const updated = await productsApi.update(productId, {
+        const hasNewImage = data.image.startsWith("data:");
+
+        // Campos de texto/precio sin meter data URL en el JSON (causa 500 en Render).
+        let updated = await productsApi.update(productId, {
           description: data.description,
           price: data.price,
-          image: imageUrl,
           available: data.available,
+          ...(hasNewImage ? {} : { image: await resolveImageUrl(data.image) }),
         });
+
+        if (hasNewImage) {
+          const withImage = await uploadProductDataImage(productId, data.image);
+          if (withImage) updated = withImage;
+        }
+
         setMenu((current) =>
           current.map((item) => (item.id === productId ? mapApiProduct(updated) : item)),
         );
@@ -554,38 +732,44 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       if (!restaurantId) throw new Error("Sin restaurante");
       const year = new Date().getFullYear();
       const dates = reportRangeToDates(range);
-      const [period, monthly, courierRes] = await Promise.all([
-        restaurantsApi.getSalesReport(restaurantId, reportRangeToQuery(range)),
-        restaurantsApi.getMonthlySales(restaurantId, year),
-        restaurantsApi.getCourierPayouts(restaurantId, dates),
-      ]);
+      const query = reportRangeToQuery(range);
+      const cacheKey = `admin:sales:${restaurantId}:${JSON.stringify(query)}:${year}:${dates.from}:${dates.to}`;
 
-      const months = buildMonthlyReports(monthly, year);
-      const courierPayouts: CourierPayoutRow[] = courierRes.data.map((row) => ({
-        courierId: row.courier_id,
-        courierName: row.courier_name,
-        deliveries: row.orders_delivered,
-        settledAmount: row.total_payout,
-        pendingAmount: 0,
-        status: "liquidado" as const,
-        averageRating: 0,
-        reviewCount: 0,
-      }));
+      return dedupeAsync(cacheKey, async () => {
+        const [period, monthly, courierRes] = await Promise.all([
+          restaurantsApi.getSalesReport(restaurantId, query),
+          restaurantsApi.getMonthlySales(restaurantId, year),
+          restaurantsApi.getCourierPayouts(restaurantId, dates),
+        ]);
 
-      const ytdRealNetProfit = months.reduce((sum, m) => sum + m.realNetProfit, 0);
-      const ytdCourierPayout = months.reduce((sum, m) => sum + m.courierPayout, 0);
-      const ytdNetProfit = months.reduce((sum, m) => sum + m.netProfit, 0);
+        const months = buildMonthlyReports(monthly, year);
+        const courierPayouts: CourierPayoutRow[] = courierRes.data.map((row) => ({
+          courierId: row.courier_id,
+          courierName: row.courier_name,
+          courierAvatar: resolveLogoUrl(row.courier_avatar) ?? row.courier_avatar ?? undefined,
+          deliveries: row.orders_delivered,
+          settledAmount: row.total_payout,
+          pendingAmount: 0,
+          status: "liquidado" as const,
+          averageRating: 0,
+          reviewCount: 0,
+        }));
 
-      return {
-        period,
-        monthly,
-        months,
-        courierPayouts,
-        rangeLabel: reportRangeLabel(range),
-        ytdRealNetProfit,
-        ytdCourierPayout,
-        ytdNetProfit,
-      };
+        const ytdRealNetProfit = months.reduce((sum, m) => sum + m.realNetProfit, 0);
+        const ytdCourierPayout = months.reduce((sum, m) => sum + m.courierPayout, 0);
+        const ytdNetProfit = months.reduce((sum, m) => sum + m.netProfit, 0);
+
+        return {
+          period,
+          monthly,
+          months,
+          courierPayouts,
+          rangeLabel: reportRangeLabel(range),
+          ytdRealNetProfit,
+          ytdCourierPayout,
+          ytdNetProfit,
+        };
+      });
     },
     [restaurantId],
   );
@@ -603,6 +787,29 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       URL.revokeObjectURL(url);
     },
     [restaurantId],
+  );
+
+  const updateSalesGoals = useCallback(
+    async (goals: { dailyGoal: number | null; monthlyGoal: number | null }) => {
+      if (!restaurantId) {
+        const message = "No se encontró el restaurante del administrador.";
+        toast.error(message);
+        throw new Error(message);
+      }
+      try {
+        // Siempre enviar ambos campos (número o null) para mantener diaria ↔ mensual sincronizadas.
+        const updated = await restaurantsApi.updateProfile(restaurantId, {
+          daily_goal: goals.dailyGoal,
+          monthly_goal: goals.monthlyGoal,
+        });
+        setRestaurant(updated);
+        await refreshDashboard(true);
+      } catch (err) {
+        handleApiError(err, "No se pudieron guardar las metas");
+        throw err;
+      }
+    },
+    [restaurantId, refreshDashboard, handleApiError],
   );
 
   const value = useMemo<AdminContextValue>(
@@ -641,6 +848,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       fetchSalesReport,
       exportSalesCsv,
       getCategoryIdByName,
+      updateSalesGoals,
+      ensureTabData,
     }),
     [
       restaurantId,
@@ -677,6 +886,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       fetchSalesReport,
       exportSalesCsv,
       getCategoryIdByName,
+      updateSalesGoals,
+      ensureTabData,
     ],
   );
 
@@ -689,4 +900,9 @@ export function useAdmin() {
     throw new Error("useAdmin debe usarse dentro de AdminProvider");
   }
   return ctx;
+}
+
+/** Disponible dentro o fuera de AdminProvider (p. ej. avatar del TopBar). */
+export function useOptionalAdmin() {
+  return useContext(AdminContext);
 }

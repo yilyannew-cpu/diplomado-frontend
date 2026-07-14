@@ -12,6 +12,9 @@ export interface ApiRestaurantListItem {
   deliveryMinutes: number;
   accent: string;
   initials: string;
+  logo?: string | null;
+  /** Portada de la ficha (camelCase del listado público). */
+  coverImage?: string | null;
   status?: string;
 }
 

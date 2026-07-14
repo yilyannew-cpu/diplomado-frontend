@@ -15,6 +15,9 @@ import { useAuth } from "@/context/AuthContext";
 import { profileApi } from "@/lib/api/endpoints/profile";
 import { mapApiErrorToForm } from "@/lib/api/mapApiErrorToForm";
 import { isValidPassword, isValidPhone, passwordRules } from "@/lib/api/profileValidation";
+import { getToken } from "@/lib/api/client";
+import { persistClientComuna } from "@/lib/clientComunaStorage";
+import { CUCUTA_COMUNAS } from "@/lib/cucutaComunas";
 import type { UpdateProfileBody } from "@/lib/api/types/profile";
 
 interface ProfileSettingsDialogProps {
@@ -23,9 +26,10 @@ interface ProfileSettingsDialogProps {
 }
 
 export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDialogProps) {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, setSession } = useAuth();
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [comuna, setComuna] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
@@ -34,12 +38,14 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
   const [formError, setFormError] = useState<string | null>(null);
 
   const isAdmin = user?.role === "admin";
+  const isClient = user?.role === "cliente";
   const passwordOnly = isAdmin;
 
   useEffect(() => {
     if (open && user) {
       setEmail(user.email);
       setPhone(user.phone ?? "");
+      setComuna(user.comuna?.trim() || "");
       setCurrentPassword("");
       setPassword("");
       setPasswordConfirmation("");
@@ -57,6 +63,7 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
       if (!email.trim()) errors.email = "El correo es requerido";
       if (!phone.trim()) errors.phone = "El teléfono es requerido";
       else if (!isValidPhone(phone)) errors.phone = "Formato inválido. Use +57...";
+      // Comuna solo se exige si el cliente quiere cambiarla; al registrarse ya la eligió.
     }
 
     const wantsPasswordChange =
@@ -87,7 +94,9 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
 
     const profileChanged =
       !passwordOnly &&
-      (email !== user.email || phone !== (user.phone ?? ""));
+      (email !== user.email ||
+        phone !== (user.phone ?? "") ||
+        (isClient && comuna !== (user.comuna ?? "")));
     const wantsPasswordChange =
       currentPassword.length > 0 || password.length > 0 || passwordConfirmation.length > 0;
 
@@ -105,14 +114,37 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
       const body: UpdateProfileBody = {};
       if (email !== user.email) body.email = email;
       if (phone !== (user.phone ?? "")) body.phone = phone;
+      const comunaChanged = isClient && comuna !== (user.comuna ?? "");
+      if (comunaChanged && comuna.trim()) body.comuna = comuna.trim();
 
+      // La comuna se guarda en el dispositivo aunque el API aún no la persista.
+      if (comunaChanged && comuna.trim()) {
+        persistClientComuna(user.id, comuna.trim());
+        const token = getToken();
+        if (token) {
+          setSession(token, { ...user, comuna: comuna.trim() });
+        }
+        profileUpdated = true;
+      }
+
+      const apiBody: UpdateProfileBody = { ...body };
       try {
-        await profileApi.updateProfile(body);
+        await profileApi.updateProfile(apiBody);
         profileUpdated = true;
       } catch (err) {
-        const mapped = mapApiErrorToForm(err);
-        if (mapped.formError) setFormError(mapped.formError);
-        if (mapped.fieldErrors) Object.assign(errors, mapped.fieldErrors);
+        // Si solo cambió la comuna y el API la rechaza, ya quedó en local.
+        const onlyComuna =
+          comunaChanged &&
+          Object.keys(apiBody).every((k) => k === "comuna");
+        if (!onlyComuna) {
+          const mapped = mapApiErrorToForm(err);
+          if (mapped.formError) setFormError(mapped.formError);
+          if (mapped.fieldErrors) Object.assign(errors, mapped.fieldErrors);
+          if (comunaChanged) {
+            // email/teléfono fallaron; no marcar éxito solo por comuna local
+            profileUpdated = false;
+          }
+        }
       }
     }
 
@@ -139,7 +171,18 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
     }
 
     if (profileUpdated || passwordUpdated) {
-      await refreshUser();
+      if (isClient && comuna.trim()) {
+        persistClientComuna(user.id, comuna.trim());
+      }
+      const refreshed = await refreshUser({ force: true });
+      // refreshUser puede venir sin comuna del API; reaplicar la local.
+      if (isClient && comuna.trim()) {
+        const token = getToken();
+        const base = refreshed ?? user;
+        if (token) {
+          setSession(token, { ...base, comuna: comuna.trim() });
+        }
+      }
       toast.success(
         passwordUpdated && !profileUpdated
           ? "Contraseña actualizada correctamente"
@@ -153,13 +196,15 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-h-[min(100dvh,var(--vv-height,100dvh))] max-w-md overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Configuración</DialogTitle>
           <DialogDescription>
             {passwordOnly
               ? "Actualiza la contraseña de tu cuenta."
-              : "Actualiza tu correo, teléfono y contraseña."}
+              : isClient
+                ? "Actualiza tu correo, teléfono, comuna y contraseña."
+                : "Actualiza tu correo, teléfono y contraseña."}
           </DialogDescription>
         </DialogHeader>
 
@@ -200,6 +245,30 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
                   <p className="text-xs text-destructive">{fieldErrors.phone}</p>
                 )}
               </div>
+
+              {isClient ? (
+                <div className="space-y-2">
+                  <Label htmlFor="profile-comuna">Comuna</Label>
+                  <select
+                    id="profile-comuna"
+                    value={comuna}
+                    onChange={(e) => setComuna(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="" disabled>
+                      Selecciona tu comuna
+                    </option>
+                    {CUCUTA_COMUNAS.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                  {fieldErrors.comuna && (
+                    <p className="text-xs text-destructive">{fieldErrors.comuna}</p>
+                  )}
+                </div>
+              ) : null}
             </>
           )}
 

@@ -3,16 +3,22 @@ import { useState } from "react";
 import {
   AuthFormAlert,
   AuthFormField,
+  AuthFormSelect,
   AuthInlineLink,
   AuthLayout,
   AuthLinkRow,
   validatePassword,
   validatePhone,
 } from "@/components/auth/AuthLayout";
+import { UseCurrentLocationButton } from "@/components/auth/UseCurrentLocationButton";
 import { useAuth } from "@/context/AuthContext";
 import { authApi } from "@/lib/api/endpoints/auth";
 import { mapApiErrorToForm } from "@/lib/api/mapApiErrorToForm";
 import { getRoleHomePath } from "@/lib/auth/roleRoutes";
+import { persistClientAddress } from "@/lib/clientAddressStorage";
+import { persistClientComuna } from "@/lib/clientComunaStorage";
+import { CUCUTA_COMUNAS } from "@/lib/cucutaComunas";
+import { inferComunaFromAddress } from "@/lib/geolocationAddress";
 
 export const Route = createFileRoute("/registro/cliente")({
   head: () => ({
@@ -30,7 +36,14 @@ function RegisterClientPage() {
     password: "",
     password_confirmation: "",
     phone: "",
+    comuna: "",
+    address: "",
   });
+  const [locationCoords, setLocationCoords] = useState<{ lat: number; lng: number } | null>(
+    null,
+  );
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [locationApprox, setLocationApprox] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -57,6 +70,12 @@ function RegisterClientPage() {
     }
     const phoneError = validatePhone(form.phone);
     if (phoneError) clientErrors.phone = phoneError;
+    if (!form.comuna) {
+      clientErrors.comuna = "Selecciona tu comuna";
+    }
+    if (!form.address.trim()) {
+      clientErrors.address = "Indica tu dirección o usa tu ubicación actual";
+    }
 
     if (Object.keys(clientErrors).length > 0) {
       setFieldErrors(clientErrors);
@@ -71,8 +90,19 @@ function RegisterClientPage() {
         password: form.password,
         password_confirmation: form.password_confirmation,
         phone: form.phone.trim(),
+        comuna: form.comuna,
       });
-      setSession(response.token, response.user);
+      const sessionUser = {
+        ...response.user,
+        comuna: response.user.comuna ?? form.comuna,
+      };
+      persistClientComuna(sessionUser.id, sessionUser.comuna ?? form.comuna);
+      persistClientAddress(
+        sessionUser.id,
+        form.address.trim(),
+        locationCoords ?? undefined,
+      );
+      setSession(response.token, sessionUser);
       navigate({ to: getRoleHomePath(response.user.role) });
     } catch (err) {
       const mapped = mapApiErrorToForm(err);
@@ -121,6 +151,97 @@ function RegisterClientPage() {
           error={fieldErrors.phone}
           required
         />
+        <div>
+          <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+            <label htmlFor="address" className="text-xs font-medium">
+              Dirección de entrega
+            </label>
+            <UseCurrentLocationButton
+              onResolved={(loc) => {
+                const fromAddress = inferComunaFromAddress(loc.address);
+                setForm((prev) => ({
+                  ...prev,
+                  address: loc.address,
+                  comuna: loc.comuna ?? fromAddress ?? prev.comuna,
+                }));
+                setLocationCoords({ lat: loc.lat, lng: loc.lng });
+                setLocationApprox(loc.approximate);
+                setLocationError(null);
+                setFieldErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.address;
+                  if (loc.comuna || fromAddress) delete next.comuna;
+                  return next;
+                });
+                setFormError(null);
+              }}
+              onError={(message) => {
+                setLocationError(message || null);
+                setLocationApprox(false);
+                if (message) setFormError(message);
+              }}
+            />
+          </div>
+          <input
+            id="address"
+            name="address"
+            value={form.address}
+            required
+            onChange={(e) => {
+              const value = e.target.value;
+              const inferred = inferComunaFromAddress(value);
+              setForm((prev) => ({
+                ...prev,
+                address: value,
+                ...(inferred ? { comuna: inferred } : {}),
+              }));
+              setLocationError(null);
+              setLocationApprox(false);
+              setFieldErrors((prev) => {
+                const next = { ...prev };
+                delete next.address;
+                if (inferred) delete next.comuna;
+                return next;
+              });
+            }}
+            placeholder="Ej. Cll 4 #12-45 San Martín, Cúcuta"
+            className={`w-full rounded-xl border bg-card px-4 py-3 text-sm outline-none transition-shadow focus:ring-2 focus:ring-primary/20 ${
+              fieldErrors.address || locationError ? "border-destructive" : "border-border"
+            }`}
+          />
+          {locationError ? (
+            <p className="mt-1 text-xs text-destructive">{locationError}</p>
+          ) : locationApprox && form.address ? (
+            <p className="mt-1 text-[11px] text-amber-700">
+              Zona aproximada (sin GPS preciso). Completa calle y número, ej.{" "}
+              <span className="font-medium">Cll 4 #12-45 San Martín</span>.
+            </p>
+          ) : form.address ? (
+            <p className="mt-1 text-[11px] text-emerald-700">
+              Dirección detectada: puedes editarla si hace falta.
+              {form.comuna ? ` Comuna sugerida: ${form.comuna}.` : ""}
+            </p>
+          ) : fieldErrors.address ? (
+            <p className="mt-1 text-xs text-destructive">{fieldErrors.address}</p>
+          ) : (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Si escribes el barrio (ej. San Martín), la comuna se sugiere sola. También puedes usar el botón de ubicación.
+            </p>
+          )}
+        </div>
+        <AuthFormSelect
+          label="Comuna"
+          name="comuna"
+          value={form.comuna}
+          onChange={update("comuna")}
+          optionItems={[...CUCUTA_COMUNAS]}
+          placeholder="Selecciona tu comuna"
+          error={fieldErrors.comuna}
+          required
+        />
+        <p className="-mt-2 text-[11px] text-muted-foreground">
+          Se rellena al usar ubicación o al reconocer el barrio en la dirección; puedes cambiarla.
+        </p>
         <AuthFormField
           label="Contraseña"
           name="password"

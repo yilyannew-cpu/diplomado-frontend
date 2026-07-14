@@ -34,27 +34,30 @@ export function PromotionsPanel() {
 
   return (
     <>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-4">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-primary">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-primary sm:text-[11px]">
             Marketing y ventas
           </p>
-          <h2 className="mt-1 font-display text-lg font-semibold">Promociones programadas</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {activeCount} promoción{activeCount !== 1 ? "es" : ""} activa{activeCount !== 1 ? "s" : ""} hoy
+          <h2 className="mt-1 font-display text-base font-semibold sm:text-lg">
+            Promociones programadas
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
+            {activeCount} promoción{activeCount !== 1 ? "es" : ""} activa
+            {activeCount !== 1 ? "s" : ""} hoy
           </p>
         </div>
         <button
           type="button"
           onClick={() => setCreating(true)}
-          className="rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          className="min-h-11 w-full rounded-xl bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto sm:min-h-0 sm:py-2"
         >
           + Nueva promoción
         </button>
       </div>
 
       {rows.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
+        <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-10 text-center sm:p-12">
           <Tag className="mx-auto size-8 text-muted-foreground/50" />
           <p className="mt-3 text-sm font-medium">Sin promociones creadas</p>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -66,12 +69,14 @@ export function PromotionsPanel() {
           {rows.map(({ promo, status, products }) => (
             <article
               key={promo.id}
-              className="rounded-2xl border border-border bg-card p-5 shadow-sm transition-all duration-300"
+              className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card p-3.5 shadow-sm transition-all duration-300 sm:p-5"
             >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+                <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-display text-lg font-semibold">{promo.name}</h3>
+                    <h3 className="min-w-0 break-words font-display text-base font-semibold sm:text-lg">
+                      {promo.name}
+                    </h3>
                     <span
                       className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${promotionStatusClass(status)}`}
                     >
@@ -85,42 +90,42 @@ export function PromotionsPanel() {
                     {promo.startDate} → {promo.endDate}
                   </p>
                 </div>
-                <div className="flex flex-col items-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setEditing(promo)}
-                    className="text-xs font-medium text-primary hover:underline"
-                  >
-                    Editar
-                  </button>
+                <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:gap-2">
                   <p className="text-[11px] text-muted-foreground">
                     {promo.productIds.length} producto{promo.productIds.length !== 1 ? "s" : ""}
                   </p>
+                  <button
+                    type="button"
+                    onClick={() => setEditing(promo)}
+                    className="inline-flex min-h-10 shrink-0 items-center rounded-lg border border-border px-3 text-xs font-medium text-primary hover:bg-primary/10"
+                  >
+                    Editar
+                  </button>
                 </div>
               </div>
 
-              <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+              <ul className="mt-3 grid gap-2 sm:mt-4 sm:grid-cols-2">
                 {products.map((product) => {
                   const pricing = getProductPricing(product, promotions);
                   return (
                     <li
                       key={product.id}
-                      className="flex items-center gap-3 rounded-xl border border-border/60 bg-background/50 p-3"
+                      className="flex min-w-0 items-center gap-2.5 overflow-hidden rounded-xl border border-border/60 bg-background/50 p-2.5 sm:gap-3 sm:p-3"
                     >
                       <img
                         src={product.image}
                         alt=""
-                        className="size-12 rounded-lg object-cover"
+                        className="size-10 shrink-0 rounded-lg object-cover sm:size-12"
                       />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{product.name}</p>
-                        <p className="text-[11px] text-muted-foreground">{product.category}</p>
+                        <p className="truncate text-[11px] text-muted-foreground">{product.category}</p>
                       </div>
-                      <div className="shrink-0 text-right">
+                      <div className="shrink-0 whitespace-nowrap text-right">
                         <p className="text-[10px] text-muted-foreground line-through">
                           {formatCOP(pricing.originalPrice)}
                         </p>
-                        <p className="font-mono text-sm font-semibold tabular-nums text-primary">
+                        <p className="font-mono text-xs font-semibold tabular-nums text-primary sm:text-sm">
                           {formatCOP(pricing.salePrice)}
                         </p>
                       </div>

@@ -1,21 +1,24 @@
 import { useState } from "react";
 import { Bike, Package, RefreshCw, Truck } from "lucide-react";
+import { UserAvatar } from "@/components/shared/UserAvatar";
 import { formatCOP } from "@/context/OrderContext";
 import type { OrderFilter } from "@/hooks/useOperationsTracking";
 import { useOperationsTracking } from "@/hooks/useOperationsTracking";
 import type { CourierAvailability } from "@/lib/api/types/operations";
+import { ORDER_STATUS_LABEL } from "@/lib/api/types/operations";
+import { resolveLogoUrl } from "@/lib/mediaUrl";
 import { cn } from "@/lib/utils";
 
 const ORDER_FILTERS: Array<{ id: OrderFilter; label: string }> = [
   { id: "activos", label: "Todos activos" },
-  { id: "En Camino", label: "En camino" },
-  { id: "Preparando", label: "Preparando" },
-  { id: "Pendiente", label: "Pendientes" },
+  { id: "EnCamino", label: "En camino" },
+  { id: "EnPreparacion", label: "Preparando" },
+  { id: "Recibido", label: "Pendientes" },
 ];
 
 const AVAILABILITY_LABEL: Record<CourierAvailability, string> = {
   disponible: "Disponible",
-  en_ruta: "En ruta",
+  en_ruta: "En ruta / ocupado",
   offline: "Offline",
 };
 
@@ -39,7 +42,9 @@ export function OperationsPanel() {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">Seguimiento en tiempo real de pedidos y domiciliarios.</p>
+        <p className="text-sm text-muted-foreground">
+          Seguimiento en tiempo real de pedidos y domiciliarios.
+        </p>
         <button
           type="button"
           onClick={() => void refresh()}
@@ -69,7 +74,7 @@ export function OperationsPanel() {
       )}
 
       <div className="grid gap-8 lg:grid-cols-3">
-        <section className="lg:col-span-2 overflow-hidden rounded-2xl border border-border bg-card">
+        <section className="overflow-hidden rounded-2xl border border-border bg-card lg:col-span-2">
           <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
             <Package className="size-4 text-primary" />
             <h3 className="font-display text-sm font-semibold">Pedidos</h3>
@@ -95,26 +100,50 @@ export function OperationsPanel() {
           {loading ? (
             <div className="p-8 text-center text-sm text-muted-foreground">Cargando pedidos…</div>
           ) : orders.length === 0 ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">No hay pedidos para este filtro.</div>
+            <div className="p-8 text-center text-sm text-muted-foreground">
+              No hay pedidos para este filtro.
+            </div>
           ) : (
             <div className="divide-y divide-border">
               {orders.map((order) => (
-                <div key={order.id} className="flex flex-col gap-2 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-sm">{order.order_number}</p>
-                      <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium">
-                        {order.status}
+                <div
+                  key={order.id}
+                  className="flex flex-col gap-2 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <p className="truncate text-sm font-semibold">{order.order_number}</p>
+                      <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium">
+                        {ORDER_STATUS_LABEL[order.status] ?? order.status}
                       </span>
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="mt-1 truncate text-xs text-muted-foreground">
                       {order.customer_name} · {order.restaurant_name}
                     </p>
-                    <p className="text-[11px] text-muted-foreground/80">
-                      {order.courier_name ? `Domiciliario: ${order.courier_name}` : "Sin domiciliario asignado"}
-                    </p>
+                    <div className="mt-1.5 flex min-w-0 items-center gap-2">
+                      {order.courier_name ? (
+                        <>
+                          <UserAvatar
+                            name={order.courier_name}
+                            src={
+                              resolveLogoUrl(order.courier_avatar) ??
+                              order.courier_avatar ??
+                              undefined
+                            }
+                            className="size-6 shrink-0"
+                          />
+                          <p className="truncate text-[11px] text-muted-foreground/80">
+                            Domiciliario: {order.courier_name}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="truncate text-[11px] text-muted-foreground/80">
+                          Sin domiciliario asignado
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-right text-xs">
+                  <div className="shrink-0 text-right text-xs">
                     <p className="font-semibold tabular-nums">{formatCOP(order.total_cop)}</p>
                     <p className="text-muted-foreground">{formatOrderTime(order.created_at)}</p>
                   </div>
@@ -130,18 +159,29 @@ export function OperationsPanel() {
             <h3 className="font-display text-sm font-semibold">Domiciliarios activos</h3>
           </div>
 
-          {loading ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">Cargando domiciliarios…</div>
+          {loading && couriers.length === 0 ? (
+            <div className="p-8 text-center text-sm text-muted-foreground">
+              Cargando domiciliarios…
+            </div>
           ) : couriers.length === 0 ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">No hay domiciliarios activos.</div>
+            <div className="p-8 text-center text-sm text-muted-foreground">
+              No hay domiciliarios activos.
+            </div>
           ) : (
             <div className="divide-y divide-border">
               {couriers.map((courier) => (
                 <div key={courier.id} className="px-4 py-4">
                   <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="font-medium text-sm">{courier.name}</p>
-                      <p className="text-xs text-muted-foreground">{courier.email}</p>
+                    <div className="flex min-w-0 items-start gap-3">
+                      <UserAvatar
+                        name={courier.name}
+                        src={resolveLogoUrl(courier.avatar) ?? courier.avatar ?? undefined}
+                        className="size-9 shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{courier.name}</p>
+                        <p className="truncate text-xs text-muted-foreground">{courier.email}</p>
+                      </div>
                     </div>
                     <span
                       className={cn(
@@ -152,12 +192,12 @@ export function OperationsPanel() {
                       {AVAILABILITY_LABEL[courier.availability]}
                     </span>
                   </div>
-                  <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
+                  <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
                       <Truck className="size-3" />
                       {courier.active_orders} pedido{courier.active_orders !== 1 ? "s" : ""}
                     </span>
-                    {courier.vehicle && <span>{courier.vehicle}</span>}
+                    {courier.vehicle && <span className="truncate">{courier.vehicle}</span>}
                   </div>
                 </div>
               ))}
@@ -172,7 +212,9 @@ export function OperationsPanel() {
 function KpiCard({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded-xl border border-border bg-card p-3">
-      <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">{label}</p>
+      <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+        {label}
+      </p>
       <p className="mt-1 font-display text-lg font-semibold tabular-nums">{value}</p>
     </div>
   );

@@ -14,6 +14,8 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "../context/AuthContext";
 import { OrderProvider } from "../context/OrderContext";
 import { CourierApplicationsProvider } from "../context/CourierApplicationsContext";
+import { Toaster } from "../components/ui/sonner";
+import { MobileKeyboardAvoidance } from "../components/shared/MobileKeyboardAvoidance";
 
 function NotFoundComponent() {
   return (
@@ -79,7 +81,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      {
+        name: "viewport",
+        content:
+          "width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content",
+      },
       { title: "FFCore — Fast Food Core · Sistema integral de gestión y domicilios" },
       { name: "description", content: "Prototipo no funcional multirrol para gestión de comandas, menú, usuarios y entregas." },
       { name: "author", content: "Lovable" },
@@ -131,8 +137,10 @@ function RootComponent() {
       <AuthProvider>
         <OrderProvider>
           <CourierApplicationsProvider>
+            <MobileKeyboardAvoidance />
             {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
             <Outlet />
+            <Toaster richColors position="top-center" />
           </CourierApplicationsProvider>
         </OrderProvider>
       </AuthProvider>

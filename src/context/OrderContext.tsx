@@ -103,7 +103,12 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 
   const addToCart = (product: MenuItem, customizations?: Customizations) => {
     const hash = customizations
-      ? `${product.id}-${JSON.stringify(customizations.removedIngredients)}-${JSON.stringify(customizations.addedModifiers)}`
+      ? `${product.id}-${JSON.stringify({
+          additions: customizations.additions?.map((e) => e.productId) ?? [],
+          sides: customizations.sides?.map((e) => e.productId) ?? [],
+          drinks: customizations.drinks?.map((e) => e.productId) ?? [],
+          specialInstructions: customizations.specialInstructions ?? "",
+        })}`
       : product.id;
 
     setCart((c) => {

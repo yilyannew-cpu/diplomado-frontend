@@ -1,7 +1,7 @@
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
-import { OrderSpecialInstructions } from "@/components/shared/OrderSpecialInstructions";
 import { OrderItemLines } from "@/components/shared/OrderItemLines";
+import { useAdmin } from "@/context/AdminContext";
 import { formatCOP, useOrders } from "@/context/OrderContext";
 import { useKitchenOrderSla } from "@/hooks/useKitchenOrderSla";
 import { slaCardBorderClass } from "@/lib/kitchenSla";
@@ -22,7 +22,9 @@ export function KitchenOrderCard({
   onAdvance,
   compact = false,
 }: KitchenOrderCardProps) {
-  const { menu } = useOrders();
+  const { menu: adminMenu } = useAdmin();
+  const { menu: clientMenu } = useOrders();
+  const menu = adminMenu.length > 0 ? adminMenu : clientMenu;
   const { now, level, isDelayed } = useKitchenOrderSla(order);
   const [metaOpen, setMetaOpen] = useState(false);
   const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
@@ -39,13 +41,13 @@ export function KitchenOrderCard({
         <div className="flex min-w-0 items-center gap-2">
           <p
             className={cn(
-              "font-mono text-[11px] font-semibold",
+              "truncate font-mono text-[11px] font-semibold",
               isDelayed ? "text-red-600" : "text-muted-foreground",
             )}
           >
             {order.id}
           </p>
-          <span className="rounded-md bg-secondary px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground md:hidden">
+          <span className="shrink-0 rounded-md bg-secondary px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground md:hidden">
             {itemCount} ítem{itemCount !== 1 ? "s" : ""}
           </span>
         </div>
@@ -59,14 +61,10 @@ export function KitchenOrderCard({
         className={cn("mb-2 sm:mb-3", compact ? "text-sm" : "text-sm sm:text-base")}
       />
 
-      {order.notes ? (
-        <OrderSpecialInstructions notes={order.notes} compact={compact} />
-      ) : null}
-
       <button
         type="button"
         onClick={() => setMetaOpen((open) => !open)}
-        className="flex w-full items-center gap-1 py-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
+        className="flex min-h-9 w-full items-center gap-1 py-2 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
         aria-expanded={metaOpen}
       >
         <ChevronDown
@@ -78,7 +76,7 @@ export function KitchenOrderCard({
       {metaOpen ? (
         <div className="mt-1.5 space-y-0.5 border-t border-border/50 pt-2 text-[10px] text-muted-foreground sm:mt-2">
           <p className="font-medium text-foreground">{order.customerName}</p>
-          <p className="leading-relaxed">{order.address}</p>
+          <p className="min-w-0 break-words leading-relaxed">{order.address}</p>
           <p>{order.createdAt}</p>
         </div>
       ) : null}

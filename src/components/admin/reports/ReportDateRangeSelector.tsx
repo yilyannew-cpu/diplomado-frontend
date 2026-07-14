@@ -34,7 +34,7 @@ export function ReportDateRangeSelector({ value, onChange }: ReportDateRangeSele
   }, [value.customFrom, value.customTo]);
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
       <Select
         value={value.preset}
         onValueChange={(preset) =>
@@ -44,7 +44,7 @@ export function ReportDateRangeSelector({ value, onChange }: ReportDateRangeSele
           })
         }
       >
-        <SelectTrigger className="h-9 w-[180px] rounded-xl border-border bg-card text-xs font-medium shadow-sm">
+        <SelectTrigger className="h-10 w-full rounded-xl border-border bg-card text-xs font-medium shadow-sm sm:h-9 sm:w-[180px]">
           <CalendarDays className="mr-2 size-3.5 shrink-0 text-primary" />
           <SelectValue placeholder="Periodo" />
         </SelectTrigger>
@@ -62,12 +62,12 @@ export function ReportDateRangeSelector({ value, onChange }: ReportDateRangeSele
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="h-9 rounded-xl border border-border bg-card px-3 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:bg-secondary"
+              className="h-10 w-full truncate rounded-xl border border-border bg-card px-3 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:bg-secondary sm:h-9 sm:w-auto sm:max-w-[220px]"
             >
               {customSummary}
             </button>
           </PopoverTrigger>
-          <PopoverContent className="w-72 space-y-3" align="end">
+          <PopoverContent className="w-[min(18rem,calc(100vw-2rem))] space-y-3" align="end">
             <div className="space-y-1.5">
               <Label htmlFor="report-from" className="text-xs">
                 Desde

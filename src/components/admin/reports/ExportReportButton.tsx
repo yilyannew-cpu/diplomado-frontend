@@ -11,7 +11,7 @@ export function ExportReportButton({ months }: ExportReportButtonProps) {
     <button
       type="button"
       onClick={() => exportFinancialDetailCsv(months)}
-      className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary"
+      className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-semibold text-foreground transition-colors hover:bg-secondary sm:w-auto sm:py-2"
       title="Exportar a CSV"
     >
       <Download className="size-3.5 text-primary" />

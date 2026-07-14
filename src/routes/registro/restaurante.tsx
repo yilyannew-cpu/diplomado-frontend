@@ -4,20 +4,21 @@ import {
   AuthFormAlert,
   AuthFormField,
   AuthFormSelect,
-  AuthFormSelectGrouped,
   AuthInlineLink,
   AuthLayout,
   AuthLinkRow,
   validatePassword,
   validatePhone,
 } from "@/components/auth/AuthLayout";
+import { UseCurrentLocationButton } from "@/components/auth/UseCurrentLocationButton";
 import { authApi } from "@/lib/api/endpoints/auth";
 import { mapApiErrorToForm } from "@/lib/api/mapApiErrorToForm";
 import {
   formatCityZoneLabel,
-  getCitySelectGroups,
-  getZonesForCity,
+  getCitySelectOptions,
 } from "@/lib/data/colombiaLocations";
+import { CUCUTA_COMUNAS } from "@/lib/cucutaComunas";
+import { inferComunaFromAddress } from "@/lib/geolocationAddress";
 
 export const Route = createFileRoute("/registro/restaurante")({
   head: () => ({
@@ -27,7 +28,7 @@ export const Route = createFileRoute("/registro/restaurante")({
 });
 
 function RegisterRestaurantPage() {
-  const cityGroups = useMemo(() => getCitySelectGroups(), []);
+  const cityOptions = useMemo(() => getCitySelectOptions(), []);
 
   const [form, setForm] = useState({
     owner_name: "",
@@ -38,30 +39,22 @@ function RegisterRestaurantPage() {
     restaurant_name: "",
     tagline: "",
     city_id: "",
-    zone: "",
+    comuna: "",
     address: "",
     delivery_minutes: "30",
   });
   const [formError, setFormError] = useState<string | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [locationApprox, setLocationApprox] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const zoneOptions = useMemo(
-    () => (form.city_id ? getZonesForCity(form.city_id) : []),
-    [form.city_id],
-  );
-
   const update = (field: keyof typeof form) => (value: string) => {
-    setForm((prev) => {
-      const next = { ...prev, [field]: value };
-      if (field === "city_id") next.zone = "";
-      return next;
-    });
+    setForm((prev) => ({ ...prev, [field]: value }));
     setFieldErrors((prev) => {
       const next = { ...prev };
       delete next[field];
-      if (field === "city_id") delete next.zone;
       return next;
     });
     setSuccessMessage(null);
@@ -82,7 +75,10 @@ function RegisterRestaurantPage() {
     const phoneError = validatePhone(form.phone);
     if (phoneError) clientErrors.phone = phoneError;
     if (!form.city_id) clientErrors.city_id = "Selecciona una ciudad";
-    if (!form.zone) clientErrors.zone = "Selecciona una zona";
+    if (!form.comuna) clientErrors.comuna = "Selecciona una comuna";
+    if (!form.address.trim()) {
+      clientErrors.address = "Indica la dirección o usa la ubicación actual";
+    }
 
     if (Object.keys(clientErrors).length > 0) {
       setFieldErrors(clientErrors);
@@ -99,7 +95,7 @@ function RegisterRestaurantPage() {
         phone: form.phone.trim(),
         restaurant_name: form.restaurant_name.trim(),
         tagline: form.tagline.trim() || undefined,
-        city: formatCityZoneLabel(form.city_id, form.zone),
+        city: formatCityZoneLabel(form.city_id, form.comuna),
         address: form.address.trim(),
         delivery_minutes: Number(form.delivery_minutes) || 30,
       });
@@ -116,7 +112,7 @@ function RegisterRestaurantPage() {
         restaurant_name: "",
         tagline: "",
         city_id: "",
-        zone: "",
+        comuna: "",
         address: "",
         delivery_minutes: "30",
       });
@@ -207,49 +203,110 @@ function RegisterRestaurantPage() {
           onChange={update("tagline")}
           error={fieldErrors.tagline}
         />
-        <AuthFormSelectGrouped
+        <AuthFormSelect
           label="Ciudad"
           name="city_id"
           value={form.city_id}
           onChange={update("city_id")}
-          groups={cityGroups}
+          optionItems={cityOptions}
           placeholder="Selecciona una ciudad"
           error={fieldErrors.city_id}
           required
-          hint={`${cityGroups.reduce((n, g) => n + g.options.length, 0)} municipios en Colombia`}
         />
-        {zoneOptions.length > 0 ? (
-          <AuthFormSelect
-            label="Zona / barrio"
-            name="zone"
-            value={form.zone}
-            onChange={update("zone")}
-            options={zoneOptions}
-            placeholder={form.city_id ? "Selecciona una zona" : "Primero elige una ciudad"}
-            error={fieldErrors.zone}
+        <div>
+          <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+            <label htmlFor="address" className="text-xs font-medium">
+              Dirección de la sede
+            </label>
+            <UseCurrentLocationButton
+              label="Usar ubicación del local"
+              onResolved={(loc) => {
+                const fromAddress = inferComunaFromAddress(loc.address);
+                setForm((prev) => ({
+                  ...prev,
+                  address: loc.address,
+                  comuna: loc.comuna ?? fromAddress ?? prev.comuna,
+                  city_id: loc.cityId ?? prev.city_id,
+                }));
+                setFieldErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.address;
+                  if (loc.comuna || fromAddress) delete next.comuna;
+                  if (loc.cityId) delete next.city_id;
+                  return next;
+                });
+                setLocationApprox(loc.approximate);
+                setLocationError(null);
+                setFormError(null);
+                setSuccessMessage(null);
+              }}
+              onError={(message) => {
+                setLocationError(message || null);
+                setLocationApprox(false);
+                if (message) setFormError(message);
+              }}
+            />
+          </div>
+          <input
+            id="address"
+            name="address"
+            value={form.address}
             required
-            disabled={!form.city_id}
+            onChange={(e) => {
+              const value = e.target.value;
+              const inferred = inferComunaFromAddress(value);
+              setForm((prev) => ({
+                ...prev,
+                address: value,
+                ...(inferred ? { comuna: inferred } : {}),
+              }));
+              setLocationError(null);
+              setLocationApprox(false);
+              setFieldErrors((prev) => {
+                const next = { ...prev };
+                delete next.address;
+                if (inferred) delete next.comuna;
+                return next;
+              });
+              setSuccessMessage(null);
+            }}
+            placeholder="Ej. Av. 1 Este #17-25 Los Caobos, Cúcuta"
+            className={`w-full rounded-xl border bg-card px-4 py-3 text-sm outline-none transition-shadow focus:ring-2 focus:ring-primary/20 ${
+              fieldErrors.address || locationError ? "border-destructive" : "border-border"
+            }`}
           />
-        ) : (
-          <AuthFormField
-            label="Zona / barrio"
-            name="zone"
-            value={form.zone}
-            onChange={update("zone")}
-            placeholder={form.city_id ? "Ej. Centro, barrio o localidad" : "Primero elige una ciudad"}
-            error={fieldErrors.zone}
-            required
-            disabled={!form.city_id}
-          />
-        )}
-        <AuthFormField
-          label="Dirección de la sede"
-          name="address"
-          value={form.address}
-          onChange={update("address")}
-          error={fieldErrors.address}
+          {locationError ? (
+            <p className="mt-1 text-xs text-destructive">{locationError}</p>
+          ) : locationApprox && form.address ? (
+            <p className="mt-1 text-[11px] text-amber-700">
+              Zona aproximada. Completa la dirección exacta del local (calle y número).
+            </p>
+          ) : form.address ? (
+            <p className="mt-1 text-[11px] text-emerald-700">
+              Dirección detectada: puedes editarla si hace falta.
+              {form.comuna ? ` Comuna sugerida: ${form.comuna}.` : ""}
+            </p>
+          ) : fieldErrors.address ? (
+            <p className="mt-1 text-xs text-destructive">{fieldErrors.address}</p>
+          ) : (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Si escribes el barrio (ej. Los Caobos), la comuna se sugiere sola. También puedes usar el botón de ubicación.
+            </p>
+          )}
+        </div>
+        <AuthFormSelect
+          label="Comuna"
+          name="comuna"
+          value={form.comuna}
+          onChange={update("comuna")}
+          optionItems={[...CUCUTA_COMUNAS]}
+          placeholder="Selecciona una comuna"
+          error={fieldErrors.comuna}
           required
         />
+        <p className="-mt-2 text-[11px] text-muted-foreground">
+          Se rellena al usar ubicación o al reconocer el barrio en la dirección; puedes cambiarla.
+        </p>
         <AuthFormField
           label="Tiempo estimado de domicilio (min)"
           name="delivery_minutes"

@@ -1,5 +1,6 @@
 import { AlertCircle, ChevronDown } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useAdmin } from "@/context/AdminContext";
 import { useOrders } from "@/context/OrderContext";
 import { useKitchenMonitorSla } from "@/hooks/useKitchenOrderSla";
 import { buildDelayedStationGroups } from "@/lib/kitchenConsolidation";
@@ -11,7 +12,9 @@ interface KitchenConsolidationBarProps {
 }
 
 export function KitchenConsolidationBar({ monitorOrders }: KitchenConsolidationBarProps) {
-  const { menu } = useOrders();
+  const { menu: adminMenu } = useAdmin();
+  const { menu: clientMenu } = useOrders();
+  const menu = adminMenu.length > 0 ? adminMenu : clientMenu;
   const { now, delayedOrders } = useKitchenMonitorSla(monitorOrders);
   const [expanded, setExpanded] = useState(false);
 
@@ -77,7 +80,7 @@ export function KitchenConsolidationBar({ monitorOrders }: KitchenConsolidationB
               <div key={group.station}>
                 <p className="text-[10px] font-medium text-red-600/90">{group.subtitle}</p>
 
-                <p className="mt-0.5 font-mono text-[10px] text-red-700/70">
+                <p className="mt-0.5 break-all font-mono text-[10px] text-red-700/70">
                   {group.orders.map((o) => o.id).join(" · ")}
                 </p>
 

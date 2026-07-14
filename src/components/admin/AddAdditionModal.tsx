@@ -10,6 +10,10 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { ADDITION_CATEGORY } from "@/mocks/menuMock";
+import {
+  formatThousandsInput,
+  parseThousandsInput,
+} from "@/lib/formatThousandsInput";
 
 const PLACEHOLDER_IMAGE =
   "https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?auto=format&fit=crop&w=800&q=80";
@@ -74,7 +78,7 @@ export function AddAdditionModal({ open, onClose, onSave }: AddAdditionModalProp
     e.preventDefault();
     const trimmedName = name.trim();
     const trimmedDesc = description.trim();
-    const parsedValue = Number(additionalValue);
+    const parsedValue = parseThousandsInput(additionalValue);
 
     if (!trimmedName) {
       setError("El nombre es obligatorio.");
@@ -84,7 +88,7 @@ export function AddAdditionModal({ open, onClose, onSave }: AddAdditionModalProp
       setError("La descripción es obligatoria.");
       return;
     }
-    if (!additionalValue || parsedValue <= 0) {
+    if (parsedValue == null || parsedValue <= 0) {
       setError("Ingresa un valor adicional válido mayor a cero.");
       return;
     }
@@ -101,8 +105,8 @@ export function AddAdditionModal({ open, onClose, onSave }: AddAdditionModalProp
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
-      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto rounded-3xl sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent className="max-h-[min(100dvh,var(--vv-height,100dvh))] w-[calc(100%-1rem)] max-w-lg overflow-y-auto rounded-2xl p-4 sm:max-h-[90vh] sm:rounded-3xl sm:p-6">
+        <DialogHeader className="pr-10">
           <DialogTitle className="font-display text-xl">Nueva adición</DialogTitle>
           <DialogDescription>
             Complemento extra para el menú. Se guardará en la categoría{" "}
@@ -120,7 +124,7 @@ export function AddAdditionModal({ open, onClose, onSave }: AddAdditionModalProp
 
           <div>
             <Label className="text-xs font-medium">Imagen</Label>
-            <div className="mt-2 flex items-start gap-4">
+            <div className="mt-2 flex min-w-0 items-start gap-3 sm:gap-4">
               <div className="relative size-24 shrink-0 overflow-hidden rounded-2xl border border-border bg-secondary/40">
                 <img
                   src={image || PLACEHOLDER_IMAGE}
@@ -128,7 +132,7 @@ export function AddAdditionModal({ open, onClose, onSave }: AddAdditionModalProp
                   className="size-full object-cover"
                 />
               </div>
-              <div className="flex-1">
+              <div className="min-w-0 flex-1">
                 <input
                   ref={fileRef}
                   type="file"
@@ -139,9 +143,9 @@ export function AddAdditionModal({ open, onClose, onSave }: AddAdditionModalProp
                 />
                 <label
                   htmlFor="addition-image"
-                  className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-border px-4 py-3 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
+                  className="inline-flex max-w-full cursor-pointer items-center gap-2 rounded-xl border border-dashed border-border px-3 py-3 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground sm:px-4"
                 >
-                  <ImagePlus className="size-4" />
+                  <ImagePlus className="size-4 shrink-0" />
                   Subir imagen
                 </label>
                 <p className="mt-2 text-[11px] text-muted-foreground">
@@ -185,13 +189,12 @@ export function AddAdditionModal({ open, onClose, onSave }: AddAdditionModalProp
             </Label>
             <input
               id="addition-value"
-              type="number"
-              min={1}
-              step={1}
+              type="text"
+              inputMode="numeric"
               value={additionalValue}
-              onChange={(e) => setAdditionalValue(e.target.value)}
-              placeholder="3500"
-              className={inputClass}
+              onChange={(e) => setAdditionalValue(formatThousandsInput(e.target.value))}
+              placeholder="3.500"
+              className={`${inputClass} font-mono tabular-nums`}
             />
             <p className="mt-1.5 text-[11px] text-muted-foreground">
               Precio que se suma al pedido cuando el cliente la elige.
