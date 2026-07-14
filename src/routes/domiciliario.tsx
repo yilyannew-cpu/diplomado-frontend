@@ -34,7 +34,7 @@ import {
 } from "lucide-react";
 import { CourierDeliveryMap } from "@/components/domiciliario/CourierDeliveryMap";
 import { CourierAvatarRequiredModal } from "@/components/domiciliario/CourierAvatarRequiredModal";
-import { useAuth } from "@/context/AuthContext";
+
 
 export const Route = createFileRoute("/domiciliario")({
   head: () => ({
