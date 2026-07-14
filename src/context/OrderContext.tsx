@@ -43,6 +43,7 @@ interface OrderState {
   cartTotal: number;
   confirmCart: (customer: { name: string; address: string; phone: string }) => Promise<Order>;
   updateOrderStatus: (id: string, status: OrderStatus) => void;
+  takeOrder: (orderId: string, deliveryPersonId: string) => void;
   assignDeliveryPerson: (orderId: string, deliveryPersonId: string) => void;
   assignDeliveryPersonBatch: (orderIds: string[], deliveryPersonId: string) => void;
   assignCourierOnlyBatch: (orderIds: string[], deliveryPersonId: string) => void;
@@ -173,6 +174,21 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  const takeOrder = (orderId: string, deliveryPersonId: string) => {
+    setOrders((o) => {
+      const existing = o.find(or => or.id === orderId);
+      if (!existing || existing.deliveryPersonId || existing.status !== "Listo") {
+        return o; // Ya no está disponible
+      }
+      return o.map(or => or.id === orderId ? { 
+        ...or, 
+        deliveryPersonId, 
+        status: "En Camino", 
+        statusEnteredAt: Date.now() 
+      } : or);
+    });
+  };
+
   const assignDeliveryPerson = (orderId: string, deliveryPersonId: string) => {
     assignDeliveryPersonBatch([orderId], deliveryPersonId);
   };
@@ -301,6 +317,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
         cartTotal,
         confirmCart,
         updateOrderStatus,
+        takeOrder,
         assignDeliveryPerson,
         assignDeliveryPersonBatch,
         assignCourierOnlyBatch,

@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "../context/AuthContext";
 import { OrderProvider } from "../context/OrderContext";
+import { CourierApplicationsProvider } from "../context/CourierApplicationsContext";
 import { Toaster } from "../components/ui/sonner";
 import { MobileKeyboardAvoidance } from "../components/shared/MobileKeyboardAvoidance";
 
@@ -135,10 +136,12 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <OrderProvider>
-          <MobileKeyboardAvoidance />
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
-          <Toaster richColors position="top-center" />
+          <CourierApplicationsProvider>
+            <MobileKeyboardAvoidance />
+            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+            <Outlet />
+            <Toaster richColors position="top-center" />
+          </CourierApplicationsProvider>
         </OrderProvider>
       </AuthProvider>
     </QueryClientProvider>

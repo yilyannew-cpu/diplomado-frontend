@@ -20,6 +20,7 @@ export interface User {
   /** Logo del restaurante asociado (admins). */
   restaurant_logo?: string | null;
   created_at?: string;
+  is_available?: boolean;
 }
 
 export interface LoginResponse {

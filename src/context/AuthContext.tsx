@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { authApi } from "@/lib/api/endpoints/auth";
+import { courierApplicationsApi } from "@/lib/api/endpoints/courierApplications";
 import { setToken, getToken } from "@/lib/api/client";
 import { persistClientComuna, resolveClientComuna } from "@/lib/clientComunaStorage";
 import type { User } from "@/lib/api/types";
@@ -20,6 +21,7 @@ interface AuthState {
   logout: () => Promise<void>;
   refreshUser: (options?: { force?: boolean }) => Promise<User | null>;
   setSession: (token: string, user: User) => void;
+  toggleAvailability: (isAvailable: boolean) => void;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -147,6 +149,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [clearSession]);
 
+  const toggleAvailability = useCallback((isAvailable: boolean) => {
+    // Actualización optimista: cambiamos la UI de inmediato
+    setUser((prev) => (prev ? { ...prev, is_available: isAvailable } : null));
+
+    // Persistimos en el backend
+    courierApplicationsApi.toggleAvailability(isAvailable).catch((err) => {
+      console.error("[Auth] Error toggling availability:", err);
+      // Revertir si falla
+      setUser((prev) => (prev ? { ...prev, is_available: !isAvailable } : null));
+    });
+  }, []);
+
   const value = useMemo<AuthState>(
     () => ({
       user,
@@ -156,8 +170,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       refreshUser,
       setSession,
+      toggleAvailability,
     }),
-    [user, isLoading, login, logout, refreshUser, setSession],
+    [user, isLoading, login, logout, refreshUser, setSession, toggleAvailability],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
