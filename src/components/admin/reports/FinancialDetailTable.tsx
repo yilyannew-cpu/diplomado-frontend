@@ -43,32 +43,32 @@ export function FinancialDetailTable({ months }: FinancialDetailTableProps) {
               key={month.monthKey}
               className="rounded-xl border border-border/60 bg-background/50 p-3"
             >
-              <div className="flex items-start justify-between gap-2">
-                <p className="font-medium leading-snug">{month.label}</p>
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
+                <p className="min-w-0 font-medium leading-snug">{month.label}</p>
                 <p className="shrink-0 font-mono text-sm font-semibold tabular-nums text-chart-2">
                   {formatCOP(month.netProfit)}
                 </p>
               </div>
-              <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]">
-                <div>
+              <dl className="mt-2 grid grid-cols-1 gap-y-1.5 text-[11px] min-[400px]:grid-cols-2 min-[400px]:gap-x-3">
+                <div className="min-w-0">
                   <dt className="text-muted-foreground">Bruta</dt>
-                  <dd className="font-mono tabular-nums">{formatCOP(month.grossSales)}</dd>
+                  <dd className="break-all font-mono tabular-nums">{formatCOP(month.grossSales)}</dd>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <dt className="text-muted-foreground">Domicilios</dt>
-                  <dd className="font-mono tabular-nums text-chart-4">
+                  <dd className="break-all font-mono tabular-nums text-chart-4">
                     {formatCOP(month.courierPayout)}
                   </dd>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <dt className="text-muted-foreground">Comisiones</dt>
-                  <dd className="font-mono tabular-nums text-amber-brand">
+                  <dd className="break-all font-mono tabular-nums text-amber-brand">
                     {formatCOP(month.appCommissions)}
                   </dd>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <dt className="text-muted-foreground">Neta</dt>
-                  <dd className="font-mono font-semibold tabular-nums text-chart-2">
+                  <dd className="break-all font-mono font-semibold tabular-nums text-chart-2">
                     {formatCOP(month.netProfit)}
                   </dd>
                 </div>
@@ -142,7 +142,7 @@ export function FinancialDetailTable({ months }: FinancialDetailTableProps) {
       <Dialog open={!!selectedMonth} onOpenChange={(open) => !open && setSelectedMonth(null)}>
         {selectedMonth ? (
           <DialogContent className="w-[calc(100%-1rem)] max-w-md rounded-2xl p-4 sm:p-6">
-            <DialogHeader>
+            <DialogHeader className="pr-10">
               <DialogTitle>Detalle — {selectedMonth.label}</DialogTitle>
             </DialogHeader>
             <dl className="space-y-3 text-sm">
@@ -190,8 +190,10 @@ function DetailRow({
 }) {
   return (
     <div className="flex items-start justify-between gap-3 border-b border-border/50 pb-2 last:border-0 sm:items-center sm:gap-4">
-      <dt className="text-xs text-muted-foreground sm:text-sm">{label}</dt>
-      <dd className={`shrink-0 font-mono text-sm tabular-nums ${valueClass ?? ""}`}>{value}</dd>
+      <dt className="min-w-0 flex-1 text-xs text-muted-foreground text-pretty sm:text-sm">{label}</dt>
+      <dd className={`max-w-[48%] shrink-0 break-all text-right font-mono text-sm tabular-nums ${valueClass ?? ""}`}>
+        {value}
+      </dd>
     </div>
   );
 }

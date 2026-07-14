@@ -120,15 +120,15 @@ export function SalesReportsPanel({
           hint="Ventas totales incl. domicilio"
           accent="muted"
         />
-        <div className="rounded-2xl border border-border bg-card p-3.5 shadow-sm sm:p-5">
+        <div className="min-w-0 rounded-2xl border border-border bg-card p-3.5 shadow-sm sm:p-5">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground sm:text-[11px]">
             Acumulado año
           </p>
           <div className="mt-2 flex items-end justify-between gap-3 sm:mt-3">
-            <p className="font-display text-xl font-semibold tabular-nums text-primary sm:text-3xl">
+            <p className="min-w-0 break-words font-display text-xl font-semibold tabular-nums text-primary sm:text-3xl">
               {formatReportAmount(ytdRealNetProfit)}
             </p>
-            <TrendingUp className="size-4 text-emerald-600 sm:size-5" />
+            <TrendingUp className="size-4 shrink-0 text-emerald-600 sm:size-5" />
           </div>
           <p className="mt-2 text-[10px] leading-snug text-muted-foreground text-pretty sm:text-[11px]">
             Domiciliarios: {formatReportAmount(ytdCourierPayout)}

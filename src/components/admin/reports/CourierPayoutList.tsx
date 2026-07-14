@@ -2,6 +2,7 @@ import { Bike } from "lucide-react";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { CourierRatingBadge } from "@/components/shared/CourierRatingBadge";
 import { formatCOP } from "@/context/OrderContext";
+import { resolveLogoUrl } from "@/lib/mediaUrl";
 import type { CourierPayoutRow } from "@/lib/salesReports";
 
 interface CourierPayoutListProps {
@@ -41,7 +42,7 @@ export function CourierPayoutList({ couriers, periodLabel }: CourierPayoutListPr
               <div className="flex min-w-0 flex-1 items-center gap-3">
                 <UserAvatar
                   name={row.courierName}
-                  src={row.courierAvatar}
+                  src={resolveLogoUrl(row.courierAvatar) ?? row.courierAvatar}
                   className="size-10 shrink-0"
                 />
                 <div className="min-w-0 flex-1">
@@ -72,7 +73,7 @@ export function CourierPayoutList({ couriers, periodLabel }: CourierPayoutListPr
                     <p className="font-mono text-sm font-semibold tabular-nums text-amber-brand">
                       {formatCOP(row.pendingAmount)}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="mt-1.5 text-[10px] leading-snug text-muted-foreground text-pretty break-words">
                       pendiente · {formatCOP(row.settledAmount)} pagado
                     </p>
                   </>

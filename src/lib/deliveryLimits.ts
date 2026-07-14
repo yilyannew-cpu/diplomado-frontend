@@ -1,8 +1,16 @@
 import type { Order, OrderStatus } from "@/mocks/ordersMock";
 
+/**
+ * Tope operativo: hasta 3 pedidos del mismo restaurante y la misma zona
+ * mientras el domiciliario sigue en sede (aún no En Camino).
+ */
 export const MAX_ORDERS_PER_COURIER = 3;
 
-export const ACTIVE_DELIVERY_STATUSES = new Set<OrderStatus>(["En Camino", "Recogido"]);
+/** Pedidos con los que ya salió del restaurante (bloquean nuevas asignaciones). */
+export const IN_TRANSIT_STATUSES = new Set<OrderStatus>(["En Camino", "Recogido"]);
+
+/** @deprecated Usar IN_TRANSIT_STATUSES — el cupo en sede usa Listo asignado aparte. */
+export const ACTIVE_DELIVERY_STATUSES = IN_TRANSIT_STATUSES;
 
 export function countActiveCourierOrders(
   orders: Order[],
@@ -13,7 +21,7 @@ export function countActiveCourierOrders(
     (o) =>
       !excludeOrderIds.has(o.id) &&
       o.deliveryPersonId === courierId &&
-      ACTIVE_DELIVERY_STATUSES.has(o.status),
+      IN_TRANSIT_STATUSES.has(o.status),
   ).length;
 }
 

@@ -1,4 +1,6 @@
 import { type User, type Role } from "@/lib/api/types";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { resolveLogoUrl } from "@/lib/mediaUrl";
 
 const roleLabel: Record<Role, string> = {
   cliente: "Cliente",
@@ -82,9 +84,21 @@ export function UsersTable({
               <tr key={u.id} className="hover:bg-secondary/30">
                 <td className="px-5 py-3">
                   <div className="flex items-center gap-3">
-                    <div className="grid size-9 place-items-center rounded-full bg-ink text-xs font-semibold text-cream">
-                      {u.name.split(" ").map((p) => p[0]).slice(0, 2).join("")}
-                    </div>
+                    <UserAvatar
+                      name={
+                        u.role === "admin"
+                          ? (u.restaurant_name?.trim() || u.name)
+                          : u.name
+                      }
+                      src={
+                        u.role === "admin"
+                          ? (resolveLogoUrl(u.restaurant_logo) ??
+                            u.restaurant_logo ??
+                            undefined)
+                          : (resolveLogoUrl(u.avatar) ?? u.avatar ?? undefined)
+                      }
+                      className="size-9"
+                    />
                     <div>
                       <p className="font-medium">{u.name}</p>
                       <p className="text-[11px] text-muted-foreground">{u.email}</p>

@@ -174,7 +174,7 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
       if (isClient && comuna.trim()) {
         persistClientComuna(user.id, comuna.trim());
       }
-      const refreshed = await refreshUser();
+      const refreshed = await refreshUser({ force: true });
       // refreshUser puede venir sin comuna del API; reaplicar la local.
       if (isClient && comuna.trim()) {
         const token = getToken();
@@ -196,7 +196,7 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-h-[min(100dvh,var(--vv-height,100dvh))] max-w-md overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Configuración</DialogTitle>
           <DialogDescription>

@@ -88,6 +88,63 @@ export function getActivePromotedProducts(
   );
 }
 
+export type ActivePromotionGroup = {
+  promotion: Promotion;
+  restaurantId: string;
+  restaurantName: string;
+  products: { product: MenuItem; pricing: ProductPricing }[];
+};
+
+/** Agrupa promociones activas (todas las sedes) por campaña. */
+export function groupActivePromotions(
+  menu: MenuItem[],
+  promotions: Promotion[],
+  restaurants: Array<{ id: string; name: string }>,
+  reference = new Date(),
+): ActivePromotionGroup[] {
+  const productById = new Map(menu.map((p) => [p.id, p]));
+  const restaurantNameById = new Map(restaurants.map((r) => [r.id, r.name]));
+  const groups: ActivePromotionGroup[] = [];
+
+  const active = promotions
+    .filter((promo) => isPromotionActive(promo, reference))
+    .sort((a, b) => b.discountPercent - a.discountPercent || a.name.localeCompare(b.name, "es"));
+
+  for (const promotion of active) {
+    const products: ActivePromotionGroup["products"] = [];
+    for (const productId of promotion.productIds) {
+      const product = productById.get(productId);
+      if (!product?.available) continue;
+      const salePrice = Math.round(product.price * (1 - promotion.discountPercent / 100));
+      products.push({
+        product,
+        pricing: {
+          originalPrice: product.price,
+          salePrice,
+          discountPercent: promotion.discountPercent,
+          hasPromotion: true,
+          promotionName: promotion.name,
+        },
+      });
+    }
+    if (products.length === 0) continue;
+
+    const restaurantId =
+      promotion.restaurantId ??
+      products[0]?.product.restaurantId ??
+      "";
+
+    groups.push({
+      promotion,
+      restaurantId,
+      restaurantName: restaurantNameById.get(restaurantId) ?? "Restaurante",
+      products,
+    });
+  }
+
+  return groups;
+}
+
 export function promotionStatusLabel(status: PromotionStatus): string {
   switch (status) {
     case "active":

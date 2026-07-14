@@ -10,6 +10,8 @@ export interface Restaurant {
   accent: string; // tailwind utility-ready hex for ring/badge
   initials: string;
   logo?: string | null;
+  /** Imagen de portada (vista ficha del restaurante). */
+  coverImage?: string | null;
 }
 
 export const restaurantsMock: Restaurant[] = [

@@ -1,7 +1,9 @@
-import { Building2, Bike, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { useMemo, useState } from "react";
+import { UserAvatar } from "@/components/shared/UserAvatar";
 import type { PendingUser } from "@/lib/api/types";
 import { usePendingApprovals, type PendingApprovalsState } from "@/hooks/usePendingApprovals";
+import { resolveLogoUrl } from "@/lib/mediaUrl";
 import { cn } from "@/lib/utils";
 
 type ApprovalFilter = "todos" | "admin" | "domiciliario";
@@ -168,14 +170,23 @@ function ApprovalCard({
   return (
     <article className="flex h-full flex-col rounded-2xl border border-border bg-card p-5 shadow-sm">
       <div className="flex items-start gap-3">
-        <div
-          className={cn(
-            "grid size-11 shrink-0 place-items-center rounded-xl",
-            isRestaurant ? "bg-primary/10 text-primary" : "bg-amber-brand/15 text-amber-brand",
-          )}
-        >
-          {isRestaurant ? <Building2 className="size-5" /> : <Bike className="size-5" />}
-        </div>
+        {isRestaurant ? (
+          <UserAvatar
+            name={user.restaurant?.name ?? user.name}
+            src={
+              resolveLogoUrl(user.restaurant?.logo) ??
+              user.restaurant?.logo ??
+              undefined
+            }
+            className="size-11 shrink-0"
+          />
+        ) : (
+          <UserAvatar
+            name={user.name}
+            src={resolveLogoUrl(user.avatar) ?? user.avatar ?? undefined}
+            className="size-11 shrink-0"
+          />
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-display text-base font-semibold">{user.name}</h3>

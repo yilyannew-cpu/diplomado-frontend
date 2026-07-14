@@ -7,6 +7,11 @@ import { RankinPanel } from "@/components/cliente/RankinPanel";
 import { OrderTrackingPanel } from "@/components/cliente/OrderTrackingPanel";
 import { BRAND_SLOGAN } from "@/components/shared/BrandLogo";
 import { RoleGuard, TopBar } from "@/components/shared/RoleShell";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+} from "@/components/ui/carousel";
 import { ClienteProvider, useCliente } from "@/context/ClienteContext";
 import { useAuth } from "@/context/AuthContext";
 import { resolveClientComuna } from "@/lib/clientComunaStorage";
@@ -18,8 +23,11 @@ import {
 } from "@/lib/restaurantProximity";
 import { DiscountBadge, ProductPriceDisplay } from "@/components/shared/ProductPriceDisplay";
 import { ProductDetailModal } from "@/components/cliente/ProductDetailModal";
+import { RestaurantDetailView } from "@/components/cliente/RestaurantDetailView";
 import { ProductImage } from "@/components/shared/ProductImage";
 import type { MenuItem } from "@/mocks/menuMock";
+import type { Restaurant } from "@/mocks/restaurantsMock";
+import { cn } from "@/lib/utils";
 
 function normalizeSearch(value: string): string {
   return value
@@ -35,6 +43,94 @@ function productMatchesQuery(product: MenuItem, query: string): boolean {
     [product.name, product.description, product.category].filter(Boolean).join(" "),
   );
   return query.split(/\s+/).every((token) => haystack.includes(token));
+}
+
+function InicioProductCard({
+  product,
+  brand,
+  onSelectRestaurant,
+  onAdd,
+}: {
+  product: MenuItem;
+  brand?: Restaurant;
+  onSelectRestaurant: (id: string) => void;
+  onAdd: (item: MenuItem) => void;
+}) {
+  const { promotions } = useCliente();
+  const pricing = getProductPricing(product, promotions);
+
+  return (
+    <article
+      className={cn(
+        "group flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-ink/5",
+        !product.available && "opacity-60",
+      )}
+    >
+      <div className="relative aspect-[16/10] overflow-hidden bg-secondary sm:aspect-[4/3]">
+        <ProductImage
+          src={product.image}
+          alt={product.name}
+          className="size-full object-cover transition-transform duration-700 group-hover:scale-105"
+        />
+        {pricing.hasPromotion ? (
+          <span className="absolute right-3 top-3">
+            <DiscountBadge percent={pricing.discountPercent} />
+          </span>
+        ) : null}
+        {!product.available && (
+          <span className="absolute right-3 top-3 rounded-full bg-ink/85 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-cream">
+            Agotado
+          </span>
+        )}
+        <span className="absolute left-3 top-3 rounded-full bg-cream/90 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-foreground">
+          {product.category}
+        </span>
+      </div>
+      <div className="flex flex-1 flex-col p-4 sm:p-5">
+        {brand && (
+          <button
+            type="button"
+            onClick={() => onSelectRestaurant(brand.id)}
+            className="mb-2 inline-flex w-fit max-w-full items-center gap-2 rounded-full border border-border bg-secondary/60 py-1 pl-1 pr-2.5 text-[11px] font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
+            title={`Ver más de ${brand.name}`}
+          >
+            <span
+              className="grid size-5 place-items-center overflow-hidden rounded-full text-[9px] font-bold text-white"
+              style={{ backgroundColor: brand.accent }}
+            >
+              {brand.logo ? (
+                <img src={brand.logo} alt="" className="size-full object-cover" />
+              ) : (
+                brand.initials
+              )}
+            </span>
+            <span className="truncate">{brand.name}</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="text-amber-brand">★ {brand.rating.toFixed(1)}</span>
+          </button>
+        )}
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="font-display text-lg font-semibold leading-tight">{product.name}</h3>
+          <ProductPriceDisplay pricing={pricing} />
+        </div>
+        <p className="mt-2 line-clamp-2 flex-1 text-sm text-muted-foreground text-pretty sm:line-clamp-none">
+          {product.description}
+        </p>
+        <button
+          type="button"
+          disabled={!product.available}
+          onClick={() => onAdd(product)}
+          className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-ink py-2.5 text-xs font-semibold uppercase tracking-wider text-cream transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:bg-secondary disabled:text-muted-foreground"
+        >
+          {product.available
+            ? isCustomizableMainDish(product)
+              ? "Personalizar"
+              : "+ Añadir a la orden"
+            : "No disponible"}
+        </button>
+      </div>
+    </article>
+  );
 }
 
 export const Route = createFileRoute("/cliente")({
@@ -66,7 +162,8 @@ function ClienteView() {
     promotions,
     restaurants,
     activeRestaurantId,
-    setActiveRestaurantId,
+    restaurantDetailOpen,
+    openRestaurantDetail,
     refreshCatalog,
     ensureAllMenus,
     isLoadingAllMenus,
@@ -94,8 +191,13 @@ function ClienteView() {
   const catalogSource = isGlobalSearch ? allMenus : menu;
 
   const categories = useMemo(() => {
-    const cats = new Set(catalogSource.map((m) => m.category));
-    return ["Todo", ...Array.from(cats).sort()];
+    const present = new Set(catalogSource.map((m) => m.category));
+    const preferred = ["Entradas", "Platos principales", "Bebidas", "Adiciones"];
+    const ordered = preferred.filter((name) => present.has(name));
+    const extras = Array.from(present)
+      .filter((name) => !preferred.includes(name))
+      .sort((a, b) => a.localeCompare(b, "es"));
+    return [...ordered, ...extras, "Todo"];
   }, [catalogSource]);
 
   const filtered = useMemo(() => {
@@ -201,9 +303,11 @@ function ClienteView() {
         {clientTab === "tracking" ? (
           <OrderTrackingPanel />
         ) : clientModule === "promociones" ? (
-          <PromocionesPanel menu={menu} onAdd={handleAddProduct} />
+          <PromocionesPanel onAdd={handleAddProduct} />
         ) : clientModule === "rankin" ? (
           <RankinPanel />
+        ) : restaurantDetailOpen ? (
+          <RestaurantDetailView />
         ) : (
         <section>
           <div className="mb-6 flex flex-col gap-2 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
@@ -279,7 +383,7 @@ function ClienteView() {
                 return (
                   <button
                     key={r.id}
-                    onClick={() => setActiveRestaurantId(r.id)}
+                    onClick={() => openRestaurantDetail(r.id)}
                     className={`group flex w-full items-center gap-3 rounded-2xl border bg-card p-3 text-left transition-all hover:-translate-y-0.5 hover:shadow-md sm:p-3.5 ${
                       isActive ? "border-primary/60 ring-2 ring-primary/20" : "border-border"
                     }`}
@@ -337,95 +441,46 @@ function ClienteView() {
             ))}
           </div>
 
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((p) => (
-              (() => {
-                const brand = restaurantById[p.restaurantId];
-                const pricing = getProductPricing(p, promotions);
-                return (
-              <article
-                key={p.id}
-                className={`group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-ink/5 ${
-                  !p.available ? "opacity-60" : ""
-                }`}
-              >
-                <div className="relative aspect-[4/3] overflow-hidden bg-secondary">
-                  <ProductImage
-                    src={p.image}
-                    alt={p.name}
-                    className="size-full object-cover transition-transform duration-700 group-hover:scale-105"
+          {filtered.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-border bg-card/50 py-12 text-center text-sm text-muted-foreground">
+              {normalizedQuery
+                ? `No hay productos que coincidan con “${searchQuery.trim()}”.`
+                : "No hay productos con estos filtros."}
+            </p>
+          ) : (
+            <>
+              {/* Móvil: carrusel al deslizar (sin botones), igual que promociones */}
+              <div className="sm:hidden">
+                <Carousel opts={{ align: "start", dragFree: true }} className="w-full">
+                  <CarouselContent className="-ml-3">
+                    {filtered.map((p) => (
+                      <CarouselItem key={p.id} className="basis-[85%] pl-3">
+                        <InicioProductCard
+                          product={p}
+                          brand={restaurantById[p.restaurantId]}
+                          onSelectRestaurant={openRestaurantDetail}
+                          onAdd={handleAddProduct}
+                        />
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                </Carousel>
+              </div>
+
+              {/* Tablet / desktop: grid */}
+              <div className="hidden gap-6 sm:grid sm:grid-cols-2 lg:grid-cols-3">
+                {filtered.map((p) => (
+                  <InicioProductCard
+                    key={p.id}
+                    product={p}
+                    brand={restaurantById[p.restaurantId]}
+                    onSelectRestaurant={openRestaurantDetail}
+                    onAdd={handleAddProduct}
                   />
-                  {pricing.hasPromotion ? (
-                    <span className="absolute right-3 top-3">
-                      <DiscountBadge percent={pricing.discountPercent} />
-                    </span>
-                  ) : null}
-                  {!p.available && (
-                    <span className="absolute right-3 top-3 rounded-full bg-ink/85 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-cream">
-                      Agotado
-                    </span>
-                  )}
-                  <span className="absolute left-3 top-3 rounded-full bg-cream/90 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-foreground">
-                    {p.category}
-                  </span>
-                </div>
-                <div className="flex flex-1 flex-col p-4 sm:p-5">
-                  {brand && (
-                    <button
-                      type="button"
-                      onClick={() => setActiveRestaurantId(brand.id)}
-                      className="mb-2 inline-flex w-fit items-center gap-2 rounded-full border border-border bg-secondary/60 py-1 pl-1 pr-2.5 text-[11px] font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
-                      title={`Ver más de ${brand.name}`}
-                    >
-                      <span
-                        className="grid size-5 place-items-center overflow-hidden rounded-full text-[9px] font-bold text-white"
-                        style={{ backgroundColor: brand.accent }}
-                      >
-                        {brand.logo ? (
-                          <img src={brand.logo} alt="" className="size-full object-cover" />
-                        ) : (
-                          brand.initials
-                        )}
-                      </span>
-                      <span className="truncate">{brand.name}</span>
-                      <span className="text-muted-foreground">·</span>
-                      <span className="text-amber-brand">★ {brand.rating.toFixed(1)}</span>
-                    </button>
-                  )}
-                  <div className="flex items-start justify-between gap-3">
-                    <h3 className="font-display text-lg font-semibold leading-tight">
-                      {p.name}
-                    </h3>
-                    <ProductPriceDisplay pricing={pricing} />
-                  </div>
-                  <p className="mt-2 flex-1 text-sm text-muted-foreground text-pretty">
-                    {p.description}
-                  </p>
-                  <button
-                    type="button"
-                    disabled={!p.available}
-                    onClick={() => handleAddProduct(p)}
-                    className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-ink py-2.5 text-xs font-semibold uppercase tracking-wider text-cream transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:bg-secondary disabled:text-muted-foreground"
-                  >
-                    {p.available
-                      ? isCustomizableMainDish(p)
-                        ? "Personalizar"
-                        : "+ Añadir a la orden"
-                      : "No disponible"}
-                  </button>
-                </div>
-              </article>
-                );
-              })()
-            ))}
-            {filtered.length === 0 && (
-              <p className="col-span-full rounded-2xl border border-dashed border-border bg-card/50 py-12 text-center text-sm text-muted-foreground">
-                {normalizedQuery
-                  ? `No hay productos que coincidan con “${searchQuery.trim()}”.`
-                  : "No hay productos con estos filtros."}
-              </p>
-            )}
-          </div>
+                ))}
+              </div>
+            </>
+          )}
         </section>
         )}
       </main>

@@ -17,6 +17,8 @@ export interface User {
   status: UserStatus;
   restaurant_id?: string | null;
   restaurant_name?: string | null;
+  /** Logo del restaurante asociado (admins). */
+  restaurant_logo?: string | null;
   created_at?: string;
 }
 
@@ -74,6 +76,7 @@ export interface RestaurantSummary {
   city: string;
   address: string;
   status: string;
+  logo?: string | null;
 }
 
 export interface PendingUser extends User {

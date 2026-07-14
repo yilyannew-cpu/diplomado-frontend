@@ -8,7 +8,7 @@ import {
 } from "@/lib/restaurantProximity";
 
 export function RankinPanel() {
-  const { restaurants } = useCliente();
+  const { restaurants, openRestaurantDetail } = useCliente();
   const { user } = useAuth();
   const clientComuna = resolveClientComuna(user);
 
@@ -44,7 +44,16 @@ export function RankinPanel() {
           return (
             <li
               key={r.id}
-              className="flex items-center gap-4 rounded-2xl border border-border bg-card p-4 transition-shadow hover:shadow-md"
+              className="flex cursor-pointer items-center gap-4 rounded-2xl border border-border bg-card p-4 transition-shadow hover:shadow-md"
+              onClick={() => openRestaurantDetail(r.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  openRestaurantDetail(r.id);
+                }
+              }}
+              role="button"
+              tabIndex={0}
             >
               <span
                 className={`grid size-10 shrink-0 place-items-center rounded-xl font-display text-lg font-bold ${

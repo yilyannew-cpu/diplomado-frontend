@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Bike, Building2, Clock, Mail, Phone, RefreshCw, Store } from "lucide-react";
+import { Building2, Clock, Mail, Phone, RefreshCw } from "lucide-react";
+import { UserAvatar } from "@/components/shared/UserAvatar";
 import type { ApprovalHistoryFilter } from "@/hooks/useApprovalHistory";
 import { useApprovalHistory } from "@/hooks/useApprovalHistory";
 import type { User } from "@/lib/api/types";
+import { resolveLogoUrl } from "@/lib/mediaUrl";
 import { cn } from "@/lib/utils";
 
 const HISTORY_FILTERS: Array<{ id: ApprovalHistoryFilter; label: string }> = [
@@ -91,20 +93,28 @@ export function ApprovalHistoryPanel() {
 
 function HistoryRow({ user }: { user: User }) {
   const isRestaurant = user.role === "admin";
-  const RoleIcon = isRestaurant ? Store : Bike;
   const isApproved = user.status === "Activo";
 
   return (
     <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
       <div className="flex items-start gap-3">
-        <div
-          className={cn(
-            "grid size-10 shrink-0 place-items-center rounded-xl",
-            isRestaurant ? "bg-primary/10 text-primary" : "bg-emerald-500/10 text-emerald-600",
-          )}
-        >
-          <RoleIcon className="size-5" />
-        </div>
+        {isRestaurant ? (
+          <UserAvatar
+            name={user.restaurant_name?.trim() || user.name}
+            src={
+              resolveLogoUrl(user.restaurant_logo) ??
+              user.restaurant_logo ??
+              undefined
+            }
+            className="size-10 shrink-0"
+          />
+        ) : (
+          <UserAvatar
+            name={user.name}
+            src={resolveLogoUrl(user.avatar) ?? user.avatar ?? undefined}
+            className="size-10 shrink-0"
+          />
+        )}
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <p className="font-semibold text-sm">{user.name}</p>

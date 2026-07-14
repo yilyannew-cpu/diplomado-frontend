@@ -41,13 +41,13 @@ export function KitchenOrderCard({
         <div className="flex min-w-0 items-center gap-2">
           <p
             className={cn(
-              "font-mono text-[11px] font-semibold",
+              "truncate font-mono text-[11px] font-semibold",
               isDelayed ? "text-red-600" : "text-muted-foreground",
             )}
           >
             {order.id}
           </p>
-          <span className="rounded-md bg-secondary px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground md:hidden">
+          <span className="shrink-0 rounded-md bg-secondary px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground md:hidden">
             {itemCount} ítem{itemCount !== 1 ? "s" : ""}
           </span>
         </div>
@@ -76,7 +76,7 @@ export function KitchenOrderCard({
       {metaOpen ? (
         <div className="mt-1.5 space-y-0.5 border-t border-border/50 pt-2 text-[10px] text-muted-foreground sm:mt-2">
           <p className="font-medium text-foreground">{order.customerName}</p>
-          <p className="leading-relaxed">{order.address}</p>
+          <p className="min-w-0 break-words leading-relaxed">{order.address}</p>
           <p>{order.createdAt}</p>
         </div>
       ) : null}
