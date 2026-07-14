@@ -33,6 +33,7 @@ export const restaurantsApi = {
       daily_goal: number | null;
       accent: string;
       logo: string | null;
+      cover_image: string | null;
     }>,
   ): Promise<ApiRestaurantProfile> {
     return apiClient(`/restaurants/${restaurantId}`, { method: "PATCH", body, auth: true });
@@ -40,6 +41,10 @@ export const restaurantsApi = {
 
   uploadLogo(restaurantId: string, file: File): Promise<ApiRestaurantProfile> {
     return apiUpload(`/restaurants/${restaurantId}/logo`, file, { auth: true });
+  },
+
+  uploadCover(restaurantId: string, file: File): Promise<ApiRestaurantProfile> {
+    return apiUpload(`/restaurants/${restaurantId}/cover`, file, { auth: true });
   },
 
   /**
@@ -55,6 +60,43 @@ export const restaurantsApi = {
       501,
       "LOGO_NOT_SUPPORTED",
       "El backend en producción aún no guarda logos. Sube y redespliega diplomado-backend (migración logo) y vuelve a intentar.",
+    );
+  },
+
+  /**
+   * Guarda la portada. Prefiere multipart (más fiable con imágenes grandes a través del proxy).
+   */
+  async saveCoverImage(
+    restaurantId: string,
+    input: string | File,
+  ): Promise<ApiRestaurantProfile> {
+    if (input instanceof File) {
+      const updated = await this.uploadCover(restaurantId, input);
+      if (updated.cover_image) return updated;
+      throw new ApiError(
+        502,
+        "COVER_SAVE_FAILED",
+        "No se pudo guardar la portada. Intenta con una imagen más liviana (JPG/WebP).",
+      );
+    }
+
+    const updated = await this.updateProfile(restaurantId, { cover_image: input });
+    if (updated.cover_image) return updated;
+
+    // Fallback multipart desde data URL (por si el PATCH JSON se trunca en el proxy).
+    try {
+      const blob = await (await fetch(input)).blob();
+      const file = new File([blob], "cover.jpg", { type: blob.type || "image/jpeg" });
+      const viaUpload = await this.uploadCover(restaurantId, file);
+      if (viaUpload.cover_image) return viaUpload;
+    } catch {
+      /* usa error de abajo */
+    }
+
+    throw new ApiError(
+      501,
+      "COVER_NOT_SUPPORTED",
+      "No se guardó cover_image. Confirma que el API en Render ya desplegó la ruta POST /cover e intenta de nuevo.",
     );
   },
 
@@ -165,9 +207,13 @@ export const restaurantsApi = {
   listAvailableCouriers(
     restaurantId: string,
     batchSize: number,
+    zone?: string,
   ): Promise<{ data: ApiAvailableCourier[] }> {
     return apiClient(
-      `/restaurants/${restaurantId}/couriers/available${buildQuery({ batch_size: batchSize })}`,
+      `/restaurants/${restaurantId}/couriers/available${buildQuery({
+        batch_size: batchSize,
+        zone,
+      })}`,
       { auth: true },
     );
   },

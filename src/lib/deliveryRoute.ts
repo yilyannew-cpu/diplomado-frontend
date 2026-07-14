@@ -42,6 +42,8 @@ const CUCUTA_BBOX = {
 
 const geocodeCache = new Map<string, LatLng>();
 const routeCache = new Map<string, DeliveryRouteResult>();
+const geocodeInflight = new Map<string, Promise<LatLng>>();
+const routeInflight = new Map<string, Promise<DeliveryRouteResult>>();
 
 function normalizeKey(value: string): string {
   return value
@@ -49,6 +51,16 @@ function normalizeKey(value: string): string {
     .replace(/\p{M}/gu, "")
     .toLowerCase()
     .trim();
+}
+
+/** ~11 m de precisión: evita cache miss en cada tick GPS. */
+function roundCoord(value: number, decimals = 4): number {
+  const f = 10 ** decimals;
+  return Math.round(value * f) / f;
+}
+
+function coordsCacheKey(coords: LatLng): string {
+  return `coords:${roundCoord(coords.lat)},${roundCoord(coords.lng)}`;
 }
 
 type PhotonProps = {
@@ -362,29 +374,39 @@ export async function geocodeAddress(query: string): Promise<LatLng> {
   const cached = geocodeCache.get(key);
   if (cached) return cached;
 
-  const { queries, barrioHint, streetHints } = buildGeocodeCandidates(query);
-  const ctx = { barrioHint, streetHints };
+  const pending = geocodeInflight.get(key);
+  if (pending) return pending;
 
-  try {
-    const photonHit = await geocodeWithPhotonScored(queries, ctx);
-    if (photonHit) {
-      geocodeCache.set(key, photonHit);
-      return photonHit;
-    }
+  const request = (async () => {
+    const { queries, barrioHint, streetHints } = buildGeocodeCandidates(query);
+    const ctx = { barrioHint, streetHints };
 
-    for (const q of queries.slice(0, 3)) {
-      const nominatimHit = await geocodeWithNominatim(q);
-      if (nominatimHit) {
-        geocodeCache.set(key, nominatimHit);
-        return nominatimHit;
+    try {
+      const photonHit = await geocodeWithPhotonScored(queries, ctx);
+      if (photonHit) {
+        geocodeCache.set(key, photonHit);
+        return photonHit;
       }
-    }
-  } catch {
-    /* fallback por zona */
-  }
 
-  // Último recurso: centroide del barrio (mejor que un POI incorrecto).
-  return coordsFromAreaHint(query);
+      for (const q of queries.slice(0, 3)) {
+        const nominatimHit = await geocodeWithNominatim(q);
+        if (nominatimHit) {
+          geocodeCache.set(key, nominatimHit);
+          return nominatimHit;
+        }
+      }
+    } catch {
+      /* fallback por zona */
+    }
+
+    // Último recurso: centroide del barrio (mejor que un POI incorrecto).
+    return coordsFromAreaHint(query);
+  })().finally(() => {
+    geocodeInflight.delete(key);
+  });
+
+  geocodeInflight.set(key, request);
+  return request;
 }
 
 export async function fetchDrivingRoute(
@@ -431,42 +453,52 @@ export async function resolveDeliveryRoute(input: {
   destinationCoords?: LatLng | null;
 }): Promise<DeliveryRouteResult> {
   const originKey = input.originCoords
-    ? `coords:${input.originCoords.lat},${input.originCoords.lng}`
+    ? coordsCacheKey(input.originCoords)
     : normalizeKey(input.originQuery);
   const destKey = input.destinationCoords
-    ? `coords:${input.destinationCoords.lat},${input.destinationCoords.lng}`
+    ? coordsCacheKey(input.destinationCoords)
     : normalizeKey(input.destinationQuery);
   const cacheKey = `${originKey}→${destKey}`;
   const cached = routeCache.get(cacheKey);
   if (cached) return cached;
 
-  const [origin, destination] = await Promise.all([
-    input.originCoords
-      ? Promise.resolve(input.originCoords)
-      : geocodeAddress(input.originQuery),
-    input.destinationCoords
-      ? Promise.resolve(input.destinationCoords)
-      : geocodeAddress(input.destinationQuery),
-  ]);
+  const pending = routeInflight.get(cacheKey);
+  if (pending) return pending;
 
-  const routed = await fetchDrivingRoute(origin, destination).catch(() => null);
+  const request = (async () => {
+    const [origin, destination] = await Promise.all([
+      input.originCoords
+        ? Promise.resolve(input.originCoords)
+        : geocodeAddress(input.originQuery),
+      input.destinationCoords
+        ? Promise.resolve(input.destinationCoords)
+        : geocodeAddress(input.destinationQuery),
+    ]);
 
-  const result: DeliveryRouteResult =
-    routed != null
-      ? { origin, destination, ...routed }
-      : {
-          origin,
-          destination,
-          path: [
-            [origin.lat, origin.lng],
-            [destination.lat, destination.lng],
-          ],
-          durationSeconds: estimateStraightDuration(origin, destination),
-          distanceMeters: haversineMeters(origin, destination),
-        };
+    const routed = await fetchDrivingRoute(origin, destination).catch(() => null);
 
-  routeCache.set(cacheKey, result);
-  return result;
+    const result: DeliveryRouteResult =
+      routed != null
+        ? { origin, destination, ...routed }
+        : {
+            origin,
+            destination,
+            path: [
+              [origin.lat, origin.lng],
+              [destination.lat, destination.lng],
+            ],
+            durationSeconds: estimateStraightDuration(origin, destination),
+            distanceMeters: haversineMeters(origin, destination),
+          };
+
+    routeCache.set(cacheKey, result);
+    return result;
+  })().finally(() => {
+    routeInflight.delete(cacheKey);
+  });
+
+  routeInflight.set(cacheKey, request);
+  return request;
 }
 
 function haversineMeters(a: LatLng, b: LatLng): number {

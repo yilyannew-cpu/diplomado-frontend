@@ -71,8 +71,9 @@ export async function fetchRestaurantsCached(options?: {
   if (!options?.force) {
     const hit = peekCachedRestaurants();
     if (hit) return hit;
-    if (restaurantsInflight) return restaurantsInflight;
   }
+  // Con force se salta el peek, pero se sigue compartiendo inflight.
+  if (restaurantsInflight) return restaurantsInflight;
 
   const request = clienteApi
     .listRestaurants()
@@ -96,9 +97,9 @@ export async function fetchRestaurantProductsCached(
   if (!options?.force) {
     const hit = peekCachedProducts(restaurantId);
     if (hit) return hit;
-    const pending = productsInflight.get(restaurantId);
-    if (pending) return pending;
   }
+  const pending = productsInflight.get(restaurantId);
+  if (pending) return pending;
 
   const request = productsApi
     .list({ restaurantId, available: true })
@@ -151,14 +152,16 @@ export async function fetchPromotionsCached(
   if (!options?.force) {
     const hit = peekCachedPromotions(restaurantId);
     if (hit) return hit;
-    const pending = promotionsInflight.get(restaurantId);
-    if (pending) return pending;
   }
+  const pending = promotionsInflight.get(restaurantId);
+  if (pending) return pending;
 
   const request = clienteApi
     .listActivePromotions(restaurantId)
     .then((raw) => {
-      const mapped = mapApiPromotions(raw);
+      const mapped = mapApiPromotions(raw).map((promo) =>
+        promo.restaurantId ? promo : { ...promo, restaurantId },
+      );
       promotionsCache.set(restaurantId, { data: mapped, fetchedAt: Date.now() });
       return mapped;
     })
@@ -172,6 +175,29 @@ export async function fetchPromotionsCached(
 
   promotionsInflight.set(restaurantId, request);
   return request;
+}
+
+/** Promociones activas de todos los restaurantes (módulo Promociones). */
+export async function fetchAllPromotionsCached(
+  restaurantIds: string[],
+  options?: { force?: boolean },
+): Promise<Promotion[]> {
+  if (restaurantIds.length === 0) return [];
+  const chunks = await Promise.all(
+    restaurantIds.map((id) => fetchPromotionsCached(id, options)),
+  );
+  return chunks.flat();
+}
+
+export function peekAllCachedPromotions(restaurantIds: string[]): Promotion[] | null {
+  if (restaurantIds.length === 0) return [];
+  const chunks: Promotion[][] = [];
+  for (const id of restaurantIds) {
+    const hit = peekCachedPromotions(id);
+    if (!hit) return null;
+    chunks.push(hit);
+  }
+  return chunks.flat();
 }
 
 export function patchCachedRestaurant(

@@ -23,8 +23,8 @@ import {
   resolveImageUrl,
   uploadProductDataImage,
 } from "@/lib/api/admin/mappers";
-import { PLACEHOLDER_IMAGE } from "@/lib/mediaUrl";
-import { dedupeAsync } from "@/lib/api/admin/dedupeAsync";
+import { PLACEHOLDER_IMAGE, resolveLogoUrl } from "@/lib/mediaUrl";
+import { dedupeAsync, invalidateDedupeCache } from "@/lib/api/admin/dedupeAsync";
 import { reportRangeLabel, reportRangeToDates, reportRangeToQuery } from "@/lib/api/admin/reportDates";
 import { mapHistoryPeriodToApi } from "@/lib/api/admin/historyPeriod";
 import { adminOrdersApi } from "@/lib/api/endpoints/adminOrders";
@@ -131,7 +131,7 @@ interface AdminContextValue {
   refreshDashboard: () => Promise<void>;
   refreshActiveDeliveries: () => Promise<void>;
   refreshDispatchHistory: (period?: HistoryPeriod) => Promise<void>;
-  fetchAvailableCouriers: (batchSize: number) => Promise<ApiAvailableCourier[]>;
+  fetchAvailableCouriers: (batchSize: number, zone?: string) => Promise<ApiAvailableCourier[]>;
   updateOrderStatus: (order: Order, next: OrderStatus) => Promise<void>;
   assignCourierBatch: (orders: Order[], courierId: string) => Promise<void>;
   dispatchBatch: (orders: Order[]) => Promise<void>;
@@ -199,73 +199,95 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     toast.error(message);
   }, []);
 
-  const refreshDashboard = useCallback(async () => {
+  const refreshDashboard = useCallback(async (force = false) => {
     if (!restaurantId) return;
-    const result = await dedupeAsync(`admin:dashboard:${restaurantId}`, async () => {
-      const [profile, dash, reviewsPage] = await Promise.all([
-        dedupeAsync(`admin:profile:${restaurantId}`, () => restaurantsApi.getProfile(restaurantId)),
-        restaurantsApi.getDashboard(restaurantId),
-        restaurantsApi.listReviews(restaurantId, { limit: 10, offset: 0 }),
-      ]);
-      return { profile, dash, reviews: reviewsPage.data };
-    });
+    const result = await dedupeAsync(
+      `admin:dashboard:${restaurantId}`,
+      async () => {
+        const [profile, dash, reviewsPage] = await Promise.all([
+          dedupeAsync(
+            `admin:profile:${restaurantId}`,
+            () => restaurantsApi.getProfile(restaurantId),
+            { ttlMs: 60_000, force },
+          ),
+          restaurantsApi.getDashboard(restaurantId),
+          restaurantsApi.listReviews(restaurantId, { limit: 10, offset: 0 }),
+        ]);
+        return { profile, dash, reviews: reviewsPage.data };
+      },
+      { ttlMs: 20_000, force },
+    );
     setRestaurant(result.profile);
     setDashboard(result.dash);
     setReviews(result.reviews);
   }, [restaurantId]);
 
-  const refreshKitchenOrders = useCallback(async () => {
+  const refreshKitchenOrders = useCallback(async (force = false) => {
     if (!restaurantId) return;
-    const raw = await dedupeAsync(`admin:kitchen:${restaurantId}`, () =>
-      adminOrdersApi.listKitchenOrders(restaurantId),
+    const raw = await dedupeAsync(
+      `admin:kitchen:${restaurantId}`,
+      () => adminOrdersApi.listKitchenOrders(restaurantId),
+      { ttlMs: 8_000, force },
     );
     setKitchenOrders(mapApiOrders(raw));
   }, [restaurantId]);
 
-  const refreshMenu = useCallback(async () => {
+  const refreshMenu = useCallback(async (force = false) => {
     if (!restaurantId) return;
-    await dedupeAsync(`admin:menu:${restaurantId}`, async () => {
-      let cats = await restaurantsApi.listCategories(restaurantId);
-      if (cats.length === 0) {
-        cats = await Promise.all(
-          [...CATEGORIES].map((name, position) =>
-            restaurantsApi.createCategory(restaurantId, { name, position }),
-          ),
-        );
-      }
-      const products = await productsApi.list({ restaurantId }, { auth: true });
-      setCategories(cats);
-      setMenu(mapApiProducts(products));
-    });
+    await dedupeAsync(
+      `admin:menu:${restaurantId}`,
+      async () => {
+        let cats = await restaurantsApi.listCategories(restaurantId);
+        if (cats.length === 0) {
+          cats = await Promise.all(
+            [...CATEGORIES].map((name, position) =>
+              restaurantsApi.createCategory(restaurantId, { name, position }),
+            ),
+          );
+        }
+        const products = await productsApi.list({ restaurantId }, { auth: true });
+        setCategories(cats);
+        setMenu(mapApiProducts(products));
+      },
+      { ttlMs: 45_000, force },
+    );
   }, [restaurantId]);
 
-  const refreshPromotions = useCallback(async () => {
+  const refreshPromotions = useCallback(async (force = false) => {
     if (!restaurantId) return;
-    const raw = await dedupeAsync(`admin:promos:${restaurantId}`, () =>
-      restaurantsApi.listPromotions(restaurantId),
+    const raw = await dedupeAsync(
+      `admin:promos:${restaurantId}`,
+      () => restaurantsApi.listPromotions(restaurantId),
+      { ttlMs: 30_000, force },
     );
     setPromotions(mapApiPromotions(raw));
   }, [restaurantId]);
 
-  const refreshActiveDeliveries = useCallback(async () => {
+  const refreshActiveDeliveries = useCallback(async (force = false) => {
     if (!restaurantId) return;
-    const res = await dedupeAsync(`admin:deliveries:${restaurantId}`, () =>
-      restaurantsApi.getActiveDeliveries(restaurantId),
+    const res = await dedupeAsync(
+      `admin:deliveries:${restaurantId}`,
+      () => restaurantsApi.getActiveDeliveries(restaurantId),
+      { ttlMs: 12_000, force },
     );
     setActiveDeliveries(res.data);
   }, [restaurantId]);
 
   const refreshDispatchHistory = useCallback(
-    async (period: HistoryPeriod = "month") => {
+    async (period: HistoryPeriod = "month", force = false) => {
       if (!restaurantId) return;
       const apiPeriod = mapHistoryPeriodToApi(period);
-      const result = await dedupeAsync(`admin:history:${restaurantId}:${apiPeriod}`, async () => {
-        const [records, summary] = await Promise.all([
-          restaurantsApi.listDispatches(restaurantId, { period: apiPeriod }),
-          restaurantsApi.getDispatchSummary(restaurantId, apiPeriod),
-        ]);
-        return { records: records.data, summary };
-      });
+      const result = await dedupeAsync(
+        `admin:history:${restaurantId}:${apiPeriod}`,
+        async () => {
+          const [records, summary] = await Promise.all([
+            restaurantsApi.listDispatches(restaurantId, { period: apiPeriod }),
+            restaurantsApi.getDispatchSummary(restaurantId, apiPeriod),
+          ]);
+          return { records: records.data, summary };
+        },
+        { ttlMs: 20_000, force },
+      );
       setDispatchRecords(result.records);
       setDispatchSummary(result.summary);
     },
@@ -287,22 +309,22 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       const run = (async () => {
         switch (tab) {
           case "dashboard":
-            await refreshDashboard();
+            await refreshDashboard(force);
             break;
           case "comandas":
-            await refreshKitchenOrders();
+            await refreshKitchenOrders(force);
             break;
           case "menu":
-            await refreshMenu();
+            await refreshMenu(force);
             break;
           case "promociones":
-            await Promise.all([refreshPromotions(), refreshMenu()]);
+            await Promise.all([refreshPromotions(force), refreshMenu(force)]);
             break;
           case "domicilios":
-            await refreshActiveDeliveries();
+            await refreshActiveDeliveries(force);
             break;
           case "historial":
-            await refreshDispatchHistory("month");
+            await refreshDispatchHistory("month", force);
             break;
           case "configuracion":
           case "reportes":
@@ -337,6 +359,11 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const loadAllPanelData = useCallback(async () => {
     if (!restaurantId) return;
 
+    // Marca tabs como en carga para que ensureTabData no dispare un segundo round.
+    for (const tab of PRELOAD_TABS) {
+      loadedTabsRef.current.add(tab);
+    }
+
     await Promise.all([
       refreshDashboard(),
       refreshKitchenOrders(),
@@ -345,10 +372,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       refreshActiveDeliveries(),
       refreshDispatchHistory("month"),
     ]);
-
-    for (const tab of PRELOAD_TABS) {
-      loadedTabsRef.current.add(tab);
-    }
   }, [
     restaurantId,
     refreshDashboard,
@@ -367,13 +390,18 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
     let cancelled = false;
     loadedTabsRef.current.clear();
+    invalidateDedupeCache(`admin:`);
     setLoading(true);
     setError(null);
 
-    // Precarga todos los módulos; dedupeAsync evita duplicados (Strict Mode / tabs).
+    // Precarga todos los módulos; dedupeAsync+TTL evita duplicados (Strict Mode / tabs).
     void loadAllPanelData()
       .catch((err) => {
-        if (!cancelled) handleApiError(err, "Error al cargar el panel");
+        if (!cancelled) {
+          // Si falló la precarga, permitir reintento por pestaña.
+          loadedTabsRef.current.clear();
+          handleApiError(err, "Error al cargar el panel");
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -407,6 +435,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       setKitchenOrders((current) => mergeKitchenOrder(current, order));
     };
 
+    let socketRefreshTimer = 0;
     const onStatusChanged = (payload: unknown) => {
       if (Array.isArray(payload)) {
         setKitchenOrders((current) => mergeKitchenOrders(current, mapApiOrders(payload as Parameters<typeof mapApiOrders>[0])));
@@ -414,14 +443,19 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         const order = mapApiOrder(payload as Parameters<typeof mapApiOrder>[0]);
         setKitchenOrders((current) => mergeKitchenOrder(current, order));
       }
-      void refreshActiveDeliveries();
-      void refreshDispatchHistory("month");
+      // Debounce: muchos eventos de cocina no deben martillar /active + historial.
+      window.clearTimeout(socketRefreshTimer);
+      socketRefreshTimer = window.setTimeout(() => {
+        void refreshActiveDeliveries(true);
+        void refreshDispatchHistory("month", true);
+      }, 900);
     };
 
     socket.on("new_order", onNewOrder);
     socket.on("order_status_changed", onStatusChanged);
 
     return () => {
+      window.clearTimeout(socketRefreshTimer);
       socket.off("new_order", onNewOrder);
       socket.off("order_status_changed", onStatusChanged);
       socket.disconnect();
@@ -430,9 +464,9 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   }, [restaurantId, refreshActiveDeliveries, refreshDispatchHistory]);
 
   const fetchAvailableCouriers = useCallback(
-    async (batchSize: number) => {
+    async (batchSize: number, zone?: string) => {
       if (!restaurantId) return [];
-      const res = await restaurantsApi.listAvailableCouriers(restaurantId, batchSize);
+      const res = await restaurantsApi.listAvailableCouriers(restaurantId, batchSize, zone);
       return res.data;
     },
     [restaurantId],
@@ -483,7 +517,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         setKitchenOrders((current) =>
           current.filter((o) => !orders.some((x) => getOrderApiId(x) === getOrderApiId(o))),
         );
-        await Promise.all([refreshActiveDeliveries(), refreshDispatchHistory("month")]);
+        await Promise.all([refreshActiveDeliveries(true), refreshDispatchHistory("month", true)]);
         toast.success("Pedidos despachados");
       } catch (err) {
         handleApiError(err, "No se pudo despachar el lote");
@@ -712,6 +746,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         const courierPayouts: CourierPayoutRow[] = courierRes.data.map((row) => ({
           courierId: row.courier_id,
           courierName: row.courier_name,
+          courierAvatar: resolveLogoUrl(row.courier_avatar) ?? row.courier_avatar ?? undefined,
           deliveries: row.orders_delivered,
           settledAmount: row.total_payout,
           pendingAmount: 0,
@@ -768,7 +803,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
           monthly_goal: goals.monthlyGoal,
         });
         setRestaurant(updated);
-        await refreshDashboard();
+        await refreshDashboard(true);
       } catch (err) {
         handleApiError(err, "No se pudieron guardar las metas");
         throw err;

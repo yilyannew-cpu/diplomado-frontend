@@ -131,7 +131,7 @@ export function RestaurantSettingsPanel() {
               placeholder="Ej. 800.000"
               className="w-full rounded-xl border border-border bg-background px-3 py-2.5 font-mono text-sm tabular-nums outline-none ring-primary/30 focus:ring-2"
             />
-            <span className="text-[11px] text-muted-foreground">
+            <span className="block text-[11px] text-muted-foreground text-pretty break-words">
               {dailyGoal != null
                 ? `Hoy · ${formatCOP(dailyGoal)} → mes ${formatCOP(monthlyGoalFromDaily(dailyGoal))}`
                 : "Sin meta diaria"}
@@ -148,7 +148,7 @@ export function RestaurantSettingsPanel() {
               placeholder="Ej. 18.000.000"
               className="w-full rounded-xl border border-border bg-background px-3 py-2.5 font-mono text-sm tabular-nums outline-none ring-primary/30 focus:ring-2"
             />
-            <span className="text-[11px] text-muted-foreground">
+            <span className="block text-[11px] text-muted-foreground text-pretty break-words">
               {monthlyGoal != null
                 ? `Mes · ${formatCOP(monthlyGoal)} → día ${formatCOP(dailyGoalFromMonthly(monthlyGoal))}`
                 : "Sin meta mensual"}

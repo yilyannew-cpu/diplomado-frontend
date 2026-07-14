@@ -69,12 +69,14 @@ export function PromotionsPanel() {
           {rows.map(({ promo, status, products }) => (
             <article
               key={promo.id}
-              className="rounded-2xl border border-border bg-card p-3.5 shadow-sm transition-all duration-300 sm:p-5"
+              className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card p-3.5 shadow-sm transition-all duration-300 sm:p-5"
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-display text-base font-semibold sm:text-lg">{promo.name}</h3>
+                    <h3 className="min-w-0 break-words font-display text-base font-semibold sm:text-lg">
+                      {promo.name}
+                    </h3>
                     <span
                       className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${promotionStatusClass(status)}`}
                     >
@@ -95,7 +97,7 @@ export function PromotionsPanel() {
                   <button
                     type="button"
                     onClick={() => setEditing(promo)}
-                    className="inline-flex min-h-10 items-center rounded-lg border border-border px-3 text-xs font-medium text-primary hover:bg-primary/10"
+                    className="inline-flex min-h-10 shrink-0 items-center rounded-lg border border-border px-3 text-xs font-medium text-primary hover:bg-primary/10"
                   >
                     Editar
                   </button>
@@ -108,22 +110,22 @@ export function PromotionsPanel() {
                   return (
                     <li
                       key={product.id}
-                      className="flex items-center gap-2.5 rounded-xl border border-border/60 bg-background/50 p-2.5 sm:gap-3 sm:p-3"
+                      className="flex min-w-0 items-center gap-2.5 overflow-hidden rounded-xl border border-border/60 bg-background/50 p-2.5 sm:gap-3 sm:p-3"
                     >
                       <img
                         src={product.image}
                         alt=""
-                        className="size-10 rounded-lg object-cover sm:size-12"
+                        className="size-10 shrink-0 rounded-lg object-cover sm:size-12"
                       />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{product.name}</p>
-                        <p className="text-[11px] text-muted-foreground">{product.category}</p>
+                        <p className="truncate text-[11px] text-muted-foreground">{product.category}</p>
                       </div>
-                      <div className="shrink-0 text-right">
+                      <div className="shrink-0 whitespace-nowrap text-right">
                         <p className="text-[10px] text-muted-foreground line-through">
                           {formatCOP(pricing.originalPrice)}
                         </p>
-                        <p className="font-mono text-sm font-semibold tabular-nums text-primary">
+                        <p className="font-mono text-xs font-semibold tabular-nums text-primary sm:text-sm">
                           {formatCOP(pricing.salePrice)}
                         </p>
                       </div>

@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState, useEffect } from "react";
+import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import { RoleGuard, TopBar } from "@/components/shared/RoleShell";
 import { toast } from "sonner";
 
 // API
+import { clienteApi } from "@/lib/api/endpoints/cliente";
 import { usersApi } from "@/lib/api/endpoints/users";
 import { type User, type PendingUser, type Role } from "@/lib/api/types";
 
@@ -22,15 +23,43 @@ import { SystemStatus } from "@/components/superadmin/SystemStatus";
 import { OperationsPanel } from "@/components/superadmin/OperationsPanel";
 import { useSuperadminDashboard } from "@/hooks/useSuperadminDashboard";
 
-// import { usersMock, type MockUser } from "@/mocks/usersMock";
+/** Une logos reales de restaurantes (GET /restaurants) a admins del listado de usuarios. */
+function enrichUsersWithRestaurantLogos(
+  users: User[],
+  logosByRestaurantId: Map<string, string>,
+): User[] {
+  if (logosByRestaurantId.size === 0) return users;
+  return users.map((user) => {
+    if (user.role !== "admin" || !user.restaurant_id) return user;
+    if (user.restaurant_logo) return user;
+    const logo = logosByRestaurantId.get(user.restaurant_id);
+    return logo ? { ...user, restaurant_logo: logo } : user;
+  });
+}
 
-// ...
+function enrichPendingWithRestaurantLogos(
+  pending: PendingUser[],
+  logosByRestaurantId: Map<string, string>,
+): PendingUser[] {
+  if (logosByRestaurantId.size === 0) return pending;
+  return pending.map((user) => {
+    if (user.role !== "admin" || !user.restaurant?.id) return user;
+    if (user.restaurant.logo) return user;
+    const logo = logosByRestaurantId.get(user.restaurant.id);
+    return logo
+      ? { ...user, restaurant: { ...user.restaurant, logo } }
+      : user;
+  });
+}
 
 export const Route = createFileRoute("/superadmin")({
   head: () => ({
     meta: [
-      { title: "Superadmin · BurgerCore" },
-      { name: "description", content: "Gobernanza global: métricas, gestión de usuarios y registro corporativo." },
+      { title: "Superadmin · FFCore" },
+      {
+        name: "description",
+        content: "Gobernanza global: métricas, gestión de usuarios y registro corporativo.",
+      },
     ],
   }),
   component: () => (
@@ -40,49 +69,64 @@ export const Route = createFileRoute("/superadmin")({
   ),
 });
 
-
 function SuperadminView() {
   const dashboard = useSuperadminDashboard();
 
-  // Estado global de usuarios
   const [users, setUsers] = useState<User[]>([]);
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
-  
-  // Navigation State
   const [activeModule, setActiveModule] = useState<SuperadminModule>("dashboard");
-
-  // Estado para la tabla de usuarios
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<Role | "todos">("todos");
+  const loadInflightRef = useRef<Promise<void> | null>(null);
 
-  const loadData = async () => {
-    const [pendingResult, usersResult] = await Promise.allSettled([
-      usersApi.listPending(),
-      usersApi.list(),
-    ]);
+  const loadData = useCallback(async () => {
+    if (loadInflightRef.current) return loadInflightRef.current;
 
-    if (pendingResult.status === "fulfilled") {
-      setPendingUsers(
-        pendingResult.value.filter(
-          (user) =>
-            (user.role === "admin" || user.role === "domiciliario") &&
-            user.status === "Pendiente",
-        ),
-      );
-    } else {
-      toast.error("Error al cargar solicitudes pendientes");
-    }
+    const run = (async () => {
+      const [pendingResult, usersResult, restaurantsResult] = await Promise.allSettled([
+        usersApi.listPending(),
+        usersApi.list(),
+        clienteApi.listRestaurants(),
+      ]);
 
-    if (usersResult.status === "fulfilled") {
-      setUsers(usersResult.value);
-    } else {
-      toast.error("Error al cargar la lista de usuarios");
-    }
-  };
+      const logosByRestaurantId = new Map<string, string>();
+      if (restaurantsResult.status === "fulfilled") {
+        for (const restaurant of restaurantsResult.value) {
+          if (restaurant.logo) logosByRestaurantId.set(restaurant.id, restaurant.logo);
+        }
+      }
+
+      if (pendingResult.status === "fulfilled") {
+        setPendingUsers(
+          enrichPendingWithRestaurantLogos(
+            pendingResult.value.filter(
+              (user) =>
+                (user.role === "admin" || user.role === "domiciliario") &&
+                user.status === "Pendiente",
+            ),
+            logosByRestaurantId,
+          ),
+        );
+      } else {
+        toast.error("Error al cargar solicitudes pendientes");
+      }
+
+      if (usersResult.status === "fulfilled") {
+        setUsers(enrichUsersWithRestaurantLogos(usersResult.value, logosByRestaurantId));
+      } else {
+        toast.error("Error al cargar la lista de usuarios");
+      }
+    })().finally(() => {
+      loadInflightRef.current = null;
+    });
+
+    loadInflightRef.current = run;
+    return run;
+  }, []);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    void loadData();
+  }, [loadData]);
 
   const clientCount = useMemo(
     () => users.filter((u) => u.role === "cliente").length,
@@ -110,18 +154,18 @@ function SuperadminView() {
   }, [dashboard.error]);
 
   const toggleStatus = async (id: string) => {
-    const user = users.find(u => u.id === id);
+    const user = users.find((u) => u.id === id);
     if (!user) return;
-    
+
     const newStatus = user.status === "Activo" ? "Suspendido" : "Activo";
-    setUsers((arr) => arr.map((u) => u.id === id ? { ...u, status: newStatus } : u));
+    setUsers((arr) => arr.map((u) => (u.id === id ? { ...u, status: newStatus } : u)));
 
     try {
       await usersApi.update(id, { status: newStatus });
       toast.success(`Estado actualizado a ${newStatus}`);
-    } catch (error: any) {
+    } catch {
       toast.error("Error al cambiar estado");
-      loadData();
+      void loadData();
     }
   };
 
@@ -129,19 +173,19 @@ function SuperadminView() {
     try {
       await usersApi.approve(id);
       toast.success("Usuario aprobado exitosamente");
-      loadData();
-    } catch (error: any) {
-      toast.error(error.message || "Error al aprobar usuario");
+      void loadData();
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Error al aprobar usuario");
     }
   };
-    
+
   const rejectUser = async (id: string) => {
     try {
       await usersApi.reject(id, "Rechazado por el administrador");
       toast.success("Usuario rechazado exitosamente");
-      loadData();
-    } catch (error: any) {
-      toast.error(error.message || "Error al rechazar usuario");
+      void loadData();
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Error al rechazar usuario");
     }
   };
 
@@ -165,7 +209,7 @@ function SuperadminView() {
             />
             <div className="min-w-0 flex-1">
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary sm:tracking-[0.25em]">
-                BurgerCore
+                FFCore
               </p>
               <h1 className="mt-1 font-display text-xl font-semibold leading-tight tracking-tight sm:mt-2 sm:text-2xl lg:text-3xl">
                 {getSuperadminPageTitle(activeModule)}
@@ -174,45 +218,45 @@ function SuperadminView() {
           </div>
 
           <div className="space-y-8">
-          {activeModule === "dashboard" && (
-            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <SuperadminMetrics
-                metrics={dashboard.metrics}
-                clientCount={clientCount}
-                loading={dashboard.loading}
+            {activeModule === "dashboard" && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <SuperadminMetrics
+                  metrics={dashboard.metrics}
+                  clientCount={clientCount}
+                  loading={dashboard.loading}
+                />
+                <SystemStatus system={dashboard.system} loading={dashboard.loading} />
+              </div>
+            )}
+
+            {activeModule === "approvals" && (
+              <ApprovalsModule
+                pendingUsers={pendingUsers}
+                approveUser={approveUser}
+                rejectUser={rejectUser}
               />
-              <SystemStatus system={dashboard.system} loading={dashboard.loading} />
-            </div>
-          )}
+            )}
 
-          {activeModule === "approvals" && (
-            <ApprovalsModule
-              pendingUsers={pendingUsers}
-              approveUser={approveUser}
-              rejectUser={rejectUser}
-            />
-          )}
+            {activeModule === "users" && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <UsersTable
+                  users={users}
+                  query={query}
+                  setQuery={setQuery}
+                  roleFilter={roleFilter}
+                  setRoleFilter={setRoleFilter}
+                  toggleStatus={toggleStatus}
+                />
+              </div>
+            )}
 
-          {activeModule === "users" && (
-            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <UsersTable 
-                users={users}
-                query={query}
-                setQuery={setQuery}
-                roleFilter={roleFilter}
-                setRoleFilter={setRoleFilter}
-                toggleStatus={toggleStatus}
-              />
-            </div>
-          )}
+            {activeModule === "register" && (
+              <div className="max-w-md animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <NewUserForm onUserCreated={loadData} />
+              </div>
+            )}
 
-          {activeModule === "register" && (
-            <div className="max-w-md animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <NewUserForm onUserCreated={loadData} />
-            </div>
-          )}
-
-          {activeModule === "operations" && <OperationsPanel />}
+            {activeModule === "operations" && <OperationsPanel />}
           </div>
         </main>
       </div>

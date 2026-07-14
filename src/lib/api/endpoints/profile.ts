@@ -1,4 +1,4 @@
-import { apiClient } from "@/lib/api/client";
+import { apiClient, apiUpload } from "@/lib/api/client";
 import type {
   ChangePasswordBody,
   ChangePasswordResponse,
@@ -19,6 +19,13 @@ export const profileApi = {
       auth: true,
       body,
     }).then((res) => res.user);
+  },
+
+  /** Sube y guarda avatar (domiciliario / cliente). */
+  uploadAvatar(file: File): Promise<UserProfile> {
+    return apiUpload<{ user: UserProfile }>("/auth/me/avatar", file, { auth: true }).then(
+      (res) => res.user,
+    );
   },
 
   changePassword(body: ChangePasswordBody): Promise<ChangePasswordResponse> {

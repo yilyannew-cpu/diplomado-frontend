@@ -1,5 +1,5 @@
-import { ChevronDown, Home, Tag, Trophy, type LucideIcon } from "lucide-react";
-import { useState } from "react";
+import { ChevronDown, Home, Menu, Tag, Trophy, type LucideIcon } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import { BrandLogo } from "@/components/shared/BrandLogo";
 import {
   Popover,
@@ -76,22 +76,55 @@ function ModuleNavGrid({
   );
 }
 
-/** Web: flecha bajo el logo → popover con módulos */
-export function ClientModuleNavDesktop() {
+/** Popover con Inicio / Promociones / Rankin — reutilizable (logo o botón Menu). */
+export function ClientModulesPopover({
+  open,
+  onOpenChange,
+  trigger,
+  align = "start",
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  trigger: ReactNode;
+  align?: "start" | "center" | "end";
+}) {
   const { clientModule, setClientModule, setClientTab } = useCliente();
-  const [open, setOpen] = useState(false);
 
   const handleSelect = (id: ClientModule) => {
     setClientModule(id);
     setClientTab("menu");
-    setOpen(false);
+    onOpenChange(false);
   };
+
+  return (
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      <PopoverContent align={align} className="w-auto p-3" sideOffset={8}>
+        <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+          Módulos
+        </p>
+        <ModuleNavGrid
+          active={clientModule}
+          onSelect={handleSelect}
+          layout="horizontal"
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** Web: flecha bajo el logo → popover con módulos */
+export function ClientModuleNavDesktop() {
+  const [open, setOpen] = useState(false);
 
   return (
     <div className="hidden shrink-0 flex-col items-center gap-0.5 md:flex">
       <BrandLogo size="md" linkTo="/" />
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
+      <ClientModulesPopover
+        open={open}
+        onOpenChange={setOpen}
+        align="start"
+        trigger={
           <button
             type="button"
             className="grid size-7 place-items-center rounded-lg border border-border bg-background text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
@@ -101,18 +134,8 @@ export function ClientModuleNavDesktop() {
               className={cn("size-4 transition-transform", open && "rotate-180")}
             />
           </button>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-auto p-3" sideOffset={8}>
-          <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-            Módulos
-          </p>
-          <ModuleNavGrid
-            active={clientModule}
-            onSelect={handleSelect}
-            layout="horizontal"
-          />
-        </PopoverContent>
-      </Popover>
+        }
+      />
     </div>
   );
 }
@@ -146,9 +169,10 @@ export function ClientModuleNavMobile({
       </button>
       <SheetContent side="left" className="w-[min(100%,280px)] p-0">
         <SheetHeader className="border-b border-border px-5 py-5 text-left">
-          <SheetTitle className="font-display text-lg">FFCore</SheetTitle>
+          <SheetTitle className="sr-only">FFCore</SheetTitle>
+          <BrandLogo size="md" linkTo={null} />
           {slogan && subtitle && (
-            <p className="text-xs font-medium text-primary">{subtitle}</p>
+            <p className="mt-2 text-xs font-medium text-primary">{subtitle}</p>
           )}
         </SheetHeader>
         <div className="p-4">
@@ -163,5 +187,45 @@ export function ClientModuleNavMobile({
         </div>
       </SheetContent>
     </Sheet>
+  );
+}
+
+/** Botón “Menu” de la barra de tabs → mismas 3 opciones del logo. */
+export function ClientMenuModulesButton({
+  className,
+}: {
+  className?: string;
+}) {
+  const { clientTab } = useCliente();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <ClientModulesPopover
+      open={open}
+      onOpenChange={setOpen}
+      align="center"
+      trigger={
+        <button
+          type="button"
+          className={cn(
+            "flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-xs font-medium transition-all sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm",
+            className,
+            clientTab === "menu"
+              ? "bg-blue-600 text-white shadow-md"
+              : "text-gray-600 hover:bg-blue-100 hover:text-blue-700",
+          )}
+          aria-label="Abrir menú: Inicio, Promociones y Rankin"
+        >
+          <Menu className="size-3.5 sm:size-4" />
+          Menu
+          <ChevronDown
+            className={cn(
+              "size-3.5 opacity-80 transition-transform sm:size-4",
+              open && "rotate-180",
+            )}
+          />
+        </button>
+      }
+    />
   );
 }

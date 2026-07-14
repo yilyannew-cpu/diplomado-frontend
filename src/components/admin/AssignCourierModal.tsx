@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { formatCOP } from "@/context/OrderContext";
 import { MAX_ORDERS_PER_COURIER } from "@/lib/deliveryLimits";
+import { resolveLogoUrl } from "@/lib/mediaUrl";
 import { getOrderZone } from "@/lib/orderZones";
 import type { ApiAvailableCourier } from "@/lib/api/types/admin";
 import type { Order } from "@/mocks/ordersMock";
@@ -38,8 +39,8 @@ export function AssignCourierModal({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="max-h-[100dvh] w-[calc(100%-1rem)] max-w-md overflow-y-auto rounded-2xl p-4 sm:max-h-[90vh] sm:rounded-3xl sm:p-6">
-        <DialogHeader>
+      <DialogContent className="max-h-[min(100dvh,var(--vv-height,100dvh))] w-[calc(100%-1rem)] max-w-md overflow-y-auto rounded-2xl p-4 sm:max-h-[90vh] sm:rounded-3xl sm:p-6">
+        <DialogHeader className="pr-10">
           <DialogTitle className="font-display text-xl">Asignar domiciliario</DialogTitle>
           <DialogDescription>
             {orders.length === 1 ? (
@@ -57,9 +58,10 @@ export function AssignCourierModal({
         </DialogHeader>
 
         <p className="rounded-xl border border-border bg-secondary/40 px-3 py-2 text-[11px] text-muted-foreground">
-          Cada domiciliario puede llevar máximo{" "}
+          Máximo{" "}
           <span className="font-semibold text-foreground">{MAX_ORDERS_PER_COURIER} pedidos</span>{" "}
-          activos a la vez.
+          del mismo restaurante y zona. Si ya salió a entregar, no aparece disponible hasta
+          completar esos pedidos.
         </p>
 
         <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
@@ -70,7 +72,7 @@ export function AssignCourierModal({
           <ul className="mt-2 max-h-32 space-y-1 overflow-y-auto text-xs">
             {orders.map((order) => (
               <li key={order.id} className="flex justify-between gap-2">
-                <span>
+                <span className="min-w-0 truncate">
                   <span className="font-mono font-medium">{order.id}</span> · {order.customerName}
                 </span>
                 <span className="shrink-0 font-mono text-muted-foreground tabular-nums">
@@ -92,7 +94,7 @@ export function AssignCourierModal({
             grupos más pequeños.
           </p>
         ) : (
-          <p className="text-xs text-muted-foreground">
+          <p className="min-w-0 break-words text-xs text-muted-foreground">
             {orders.length > 1
               ? "Todos los pedidos de este grupo se asignarán al mismo domiciliario."
               : orders[0]?.address}
@@ -102,7 +104,11 @@ export function AssignCourierModal({
         <ul className="max-h-72 space-y-2 overflow-y-auto">
           {couriers.map((courier) => {
             const canAssign = courier.can_take_batch && !batchTooLarge;
-            const remaining = MAX_ORDERS_PER_COURIER - courier.active_orders;
+            const statusLabel = canAssign
+              ? "Disponible"
+              : courier.unavailable_reason
+                ? "No disponible"
+                : "Cupos llenos";
 
             return (
               <li key={courier.id}>
@@ -116,7 +122,11 @@ export function AssignCourierModal({
                       : "border-border bg-card hover:border-primary/30 hover:bg-primary/5"
                   }`}
                 >
-                  <UserAvatar name={courier.name} className="size-10" />
+                  <UserAvatar
+                    name={courier.name}
+                    src={resolveLogoUrl(courier.avatar) ?? courier.avatar ?? undefined}
+                    className="size-10 shrink-0"
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="truncate text-sm font-semibold">{courier.name}</p>
@@ -127,15 +137,13 @@ export function AssignCourierModal({
                             : "bg-amber-brand/15 text-amber-brand"
                         }`}
                       >
-                        {canAssign
-                          ? "Disponible"
-                          : remaining <= 0
-                            ? "Cupos llenos"
-                            : `Solo ${remaining} cupo${remaining !== 1 ? "s" : ""}`}
+                        {statusLabel}
                       </span>
                     </div>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">
-                      {courier.active_orders}/{MAX_ORDERS_PER_COURIER} pedidos en ruta
+                    <p className="mt-0.5 text-[11px] text-muted-foreground text-pretty">
+                      {courier.unavailable_reason
+                        ? courier.unavailable_reason
+                        : `${courier.active_orders}/${MAX_ORDERS_PER_COURIER} pedidos activos (Listo / en camino)`}
                     </p>
                     <CourierRatingBadge
                       averageRating={courier.average_rating}
@@ -163,13 +171,12 @@ export function AssignCourierModal({
             {couriers.length === 0 ? (
               <>
                 No hay domiciliarios con estado <strong className="text-foreground">Activo</strong>.
-                Apruébalos en superadmin (Seguimiento logístico debe mostrarlos como Disponibles).
+                Apruébalos en superadmin.
               </>
             ) : (
               <>
-                Ningún domiciliario tiene cupo para {orders.length} pedido
-                {orders.length !== 1 ? "s" : ""} más. Espera a que liberen entregas o asigna un
-                grupo más pequeño.
+                Ningún domiciliario puede tomar este lote ahora. Quienes ya salieron a entregar o
+                tienen pedidos de otra sede/zona deben completar esa ruta primero.
               </>
             )}
           </p>

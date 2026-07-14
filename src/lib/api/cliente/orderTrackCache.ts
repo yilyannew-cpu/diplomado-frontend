@@ -29,9 +29,10 @@ export async function fetchOrderTrackCached(
   if (!options?.force) {
     const hit = peekTrackedOrder(code);
     if (hit) return hit;
-    const pending = trackInflight.get(code);
-    if (pending) return pending;
   }
+  // Force salta TTL, pero no duplica HTTP mientras hay una en vuelo.
+  const pending = trackInflight.get(code);
+  if (pending) return pending;
 
   const request = clientOrdersApi
     .track(code)

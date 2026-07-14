@@ -37,6 +37,8 @@ export interface OrderItem {
   productId: string;
   /** Nombre del producto al momento del pedido (API). Preferir sobre lookup en menú. */
   productName?: string;
+  /** Imagen del producto (API). */
+  productImage?: string | null;
   quantity: number;
   customizations?: OrderItemCustomizations;
 }
@@ -55,10 +57,14 @@ export interface Order {
   /** Costo de domicilio cobrado al cliente en la factura. */
   deliveryFee: number;
   status: OrderStatus;
+  /** Sede del pedido (API). */
+  restaurantId?: string;
   deliveryPersonId?: string;
   /** Nombre del domiciliario asignado (cuando el pedido está en ruta). */
   courierName?: string;
   courierPhone?: string;
+  /** Foto de perfil del domiciliario. */
+  courierAvatar?: string;
   createdAt: string;
   /** Marca de tiempo (ms) cuando el pedido entró al flujo de cocina. */
   receivedAt?: number;
