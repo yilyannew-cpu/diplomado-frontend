@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { formatCOP } from "@/context/OrderContext";
 import { MAX_ORDERS_PER_COURIER } from "@/lib/deliveryLimits";
+import { resolveLogoUrl } from "@/lib/mediaUrl";
 import { getOrderZone } from "@/lib/orderZones";
 import type { ApiAvailableCourier } from "@/lib/api/types/admin";
 import type { Order } from "@/mocks/ordersMock";
@@ -121,7 +122,11 @@ export function AssignCourierModal({
                       : "border-border bg-card hover:border-primary/30 hover:bg-primary/5"
                   }`}
                 >
-                  <UserAvatar name={courier.name} className="size-10 shrink-0" />
+                  <UserAvatar
+                    name={courier.name}
+                    src={resolveLogoUrl(courier.avatar) ?? courier.avatar ?? undefined}
+                    className="size-10 shrink-0"
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="truncate text-sm font-semibold">{courier.name}</p>

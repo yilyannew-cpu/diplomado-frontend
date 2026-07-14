@@ -2,6 +2,7 @@ import { Bike } from "lucide-react";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { CourierRatingBadge } from "@/components/shared/CourierRatingBadge";
 import { formatCOP } from "@/context/OrderContext";
+import { resolveLogoUrl } from "@/lib/mediaUrl";
 import type { CourierPayoutRow } from "@/lib/salesReports";
 
 interface CourierPayoutListProps {
@@ -41,7 +42,7 @@ export function CourierPayoutList({ couriers, periodLabel }: CourierPayoutListPr
               <div className="flex min-w-0 flex-1 items-center gap-3">
                 <UserAvatar
                   name={row.courierName}
-                  src={row.courierAvatar}
+                  src={resolveLogoUrl(row.courierAvatar) ?? row.courierAvatar}
                   className="size-10 shrink-0"
                 />
                 <div className="min-w-0 flex-1">

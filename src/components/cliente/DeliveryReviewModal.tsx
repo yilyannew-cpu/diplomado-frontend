@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
+import { UserAvatar } from "@/components/shared/UserAvatar";
 import { ApiError } from "@/lib/api/errors";
 import { deliveryReviewsApi } from "@/lib/api/endpoints/deliveryReviews";
+import { resolveLogoUrl } from "@/lib/mediaUrl";
 import { cn } from "@/lib/utils";
 
 function StarPicker({
@@ -47,6 +49,7 @@ export function DeliveryReviewModal({
   orderCode,
   restaurantName,
   courierName,
+  courierAvatar,
   customerName,
   hasCourier,
   onDone,
@@ -56,6 +59,7 @@ export function DeliveryReviewModal({
   orderCode: string;
   restaurantName: string;
   courierName?: string | null;
+  courierAvatar?: string | null;
   customerName?: string;
   hasCourier: boolean;
   onDone: () => void;
@@ -133,11 +137,20 @@ export function DeliveryReviewModal({
 
           {hasCourier ? (
             <>
-              <StarPicker
-                label={`Domiciliario · ${courierName?.trim() || "Repartidor"}`}
-                value={courierRating}
-                onChange={setCourierRating}
-              />
+              <div className="flex items-center gap-3">
+                <UserAvatar
+                  name={courierName?.trim() || "Repartidor"}
+                  src={resolveLogoUrl(courierAvatar) ?? courierAvatar ?? undefined}
+                  className="size-10 shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <StarPicker
+                    label={`Domiciliario · ${courierName?.trim() || "Repartidor"}`}
+                    value={courierRating}
+                    onChange={setCourierRating}
+                  />
+                </div>
+              </div>
               <textarea
                 value={courierComment}
                 onChange={(e) => setCourierComment(e.target.value)}

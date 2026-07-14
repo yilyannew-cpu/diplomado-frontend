@@ -1,12 +1,38 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="FFCore">
-  <rect width="32" height="32" rx="8" fill="#5b4cdb"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="FFCore">
+  <defs>
+    <filter id="ffcore-neon" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2.2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <radialGradient id="ffcore-halo" cx="50%" cy="50%" r="50%">
+      <stop offset="55%" stop-color="#FF4D00" stop-opacity="0"/>
+      <stop offset="78%" stop-color="#FF4D00" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#FF4D00" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="32" cy="32" r="31" fill="url(#ffcore-halo)"/>
+  <circle
+    cx="32"
+    cy="32"
+    r="27.5"
+    fill="none"
+    stroke="#FF4D00"
+    stroke-width="2.25"
+    filter="url(#ffcore-neon)"
+    opacity="0.95"
+  />
+  <circle cx="32" cy="32" r="22" fill="#2563EB"/>
   <text
-    x="16"
-    y="21"
+    x="32"
+    y="38.5"
     text-anchor="middle"
     font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
-    font-size="11"
-    font-weight="700"
-    fill="#fafafa"
+    font-size="18"
+    font-weight="800"
+    letter-spacing="-0.04em"
+    fill="#FFFFFF"
   >FF</text>
 </svg>

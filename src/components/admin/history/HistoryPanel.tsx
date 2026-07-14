@@ -9,6 +9,7 @@ import {
   HISTORY_PERIOD_OPTIONS,
   type HistoryPeriod,
 } from "@/lib/orderHistory";
+import { resolveLogoUrl } from "@/lib/mediaUrl";
 import { cn } from "@/lib/utils";
 
 export function HistoryPanel() {
@@ -127,7 +128,11 @@ export function HistoryPanel() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <UserAvatar name={row.courier_name} className="size-8 shrink-0" />
+                  <UserAvatar
+                    name={row.courier_name}
+                    src={resolveLogoUrl(row.courier_avatar) ?? row.courier_avatar ?? undefined}
+                    className="size-8 shrink-0"
+                  />
                   <div className="min-w-0">
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                       Domiciliario
@@ -149,7 +154,11 @@ export function HistoryPanel() {
               </span>
               <span className="hidden text-sm md:col-span-3 md:block">{row.customer_name}</span>
               <div className="hidden items-center gap-2 md:col-span-2 md:flex">
-                <UserAvatar name={row.courier_name} className="size-8" />
+                <UserAvatar
+                  name={row.courier_name}
+                  src={resolveLogoUrl(row.courier_avatar) ?? row.courier_avatar ?? undefined}
+                  className="size-8"
+                />
                 <span className="truncate text-sm">{row.courier_name}</span>
               </div>
               <span className="hidden font-mono text-sm font-semibold tabular-nums md:col-span-2 md:block md:text-right">

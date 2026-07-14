@@ -2,7 +2,9 @@ export type DrawerView = "mi-cuenta" | "mi-vehiculo" | null;
 
 import { useState } from "react";
 import { User, Bike, Phone, Mail, Shield, FileText, ChevronLeft } from "lucide-react";
+import { UserAvatar } from "@/components/shared/UserAvatar";
 import { useAuth } from "@/context/AuthContext";
+import { resolveLogoUrl } from "@/lib/mediaUrl";
 import type { VehicleType } from "@/mocks/usersMock";
 import {
   Drawer,
@@ -81,13 +83,11 @@ function MiCuentaView() {
     <div className="space-y-4">
       {/* Avatar visual */}
       <div className="flex items-center gap-4">
-        <div className="grid size-16 place-items-center rounded-full bg-ink text-lg font-bold text-cream shrink-0">
-          {user.name
-            .split(" ")
-            .map((p) => p[0])
-            .slice(0, 2)
-            .join("")}
-        </div>
+        <UserAvatar
+          name={user.name}
+          src={resolveLogoUrl(user.avatar) ?? user.avatar ?? undefined}
+          className="size-16 text-lg"
+        />
         <div className="min-w-0">
           <p className="font-display text-lg font-semibold truncate">{user.name}</p>
           <p className="text-xs text-muted-foreground">Domiciliario activo</p>

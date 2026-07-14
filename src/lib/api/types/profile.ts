@@ -18,6 +18,7 @@ export interface UpdateProfileBody {
   email?: string;
   phone?: string;
   comuna?: string;
+  avatar?: string;
 }
 
 export interface ChangePasswordBody {

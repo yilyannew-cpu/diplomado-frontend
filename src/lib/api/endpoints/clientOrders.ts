@@ -1,6 +1,10 @@
 import type { ApiOrder } from "@/lib/api/types/admin";
 import { apiClient } from "@/lib/api/client";
 
+const MY_ACTIVE_TTL_MS = 15_000;
+let myActiveCache: { data: ApiOrder | null; fetchedAt: number } | null = null;
+let myActiveInflight: Promise<ApiOrder | null> | null = null;
+
 export interface CreateOrderExtraIds {
   addition_ids?: string[];
   side_ids?: string[];
@@ -37,6 +41,25 @@ export const clientOrdersApi = {
 
   /** Pedido activo del cliente autenticado (por teléfono de perfil). */
   myActive(): Promise<ApiOrder | null> {
-    return apiClient<ApiOrder | null>("/orders/my-active", { auth: true });
+    if (myActiveInflight) return myActiveInflight;
+    if (myActiveCache && Date.now() - myActiveCache.fetchedAt < MY_ACTIVE_TTL_MS) {
+      return Promise.resolve(myActiveCache.data);
+    }
+
+    myActiveInflight = apiClient<ApiOrder | null>("/orders/my-active", { auth: true })
+      .then((data) => {
+        myActiveCache = { data, fetchedAt: Date.now() };
+        return data;
+      })
+      .finally(() => {
+        myActiveInflight = null;
+      });
+
+    return myActiveInflight;
   },
 };
+
+export function invalidateMyActiveOrderCache(): void {
+  myActiveCache = null;
+  myActiveInflight = null;
+}

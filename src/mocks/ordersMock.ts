@@ -63,6 +63,8 @@ export interface Order {
   /** Nombre del domiciliario asignado (cuando el pedido está en ruta). */
   courierName?: string;
   courierPhone?: string;
+  /** Foto de perfil del domiciliario. */
+  courierAvatar?: string;
   createdAt: string;
   /** Marca de tiempo (ms) cuando el pedido entró al flujo de cocina. */
   receivedAt?: number;

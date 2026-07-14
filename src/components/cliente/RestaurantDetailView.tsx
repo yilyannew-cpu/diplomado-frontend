@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext";
 import { useCliente } from "@/context/ClienteContext";
-import { clienteApi } from "@/lib/api/endpoints/cliente";
+import { fetchReviewCountCached, peekReviewCount } from "@/lib/api/cliente/reviewCountCache";
 import { resolveClientComuna } from "@/lib/clientComunaStorage";
 import {
   getOrderedMenuCategories,
@@ -215,12 +215,17 @@ export function RestaurantDetailView() {
 
   useEffect(() => {
     if (!activeRestaurantId) return;
+    const cached = peekReviewCount(activeRestaurantId);
+    if (cached !== null) {
+      setReviewCount(cached);
+      return;
+    }
+
     let cancelled = false;
     setReviewCount(null);
-    void clienteApi
-      .listReviews(activeRestaurantId, { limit: 1, offset: 0 })
-      .then((page) => {
-        if (!cancelled) setReviewCount(page.total ?? page.data.length);
+    void fetchReviewCountCached(activeRestaurantId)
+      .then((total) => {
+        if (!cancelled) setReviewCount(total);
       })
       .catch(() => {
         if (!cancelled) setReviewCount(null);

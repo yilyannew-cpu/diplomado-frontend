@@ -27,6 +27,8 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { CourierDeliveryMap } from "@/components/domiciliario/CourierDeliveryMap";
+import { CourierAvatarRequiredModal } from "@/components/domiciliario/CourierAvatarRequiredModal";
+import { useAuth } from "@/context/AuthContext";
 
 export const Route = createFileRoute("/domiciliario")({
   head: () => ({
@@ -512,12 +514,18 @@ function OrderDetailView({
    Vista Raíz
    ═════════════════════════════════════════════════ */
 function DomiciliarioView() {
+  const { user } = useAuth();
+  const needsAvatar = Boolean(user && user.role === "domiciliario" && !user.avatar);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   const loadOrders = useCallback(async (opts?: { silent?: boolean; force?: boolean }) => {
+    if (needsAvatar) {
+      setLoading(false);
+      return;
+    }
     const silent = opts?.silent === true;
     if (!silent) setLoading(true);
     try {
@@ -534,7 +542,7 @@ function DomiciliarioView() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [needsAvatar]);
 
   // Carga inicial (una sola vez)
   useEffect(() => {
@@ -543,10 +551,10 @@ function DomiciliarioView() {
 
   // Poll suave solo en el hub; sin listener de focus (generaba ráfagas de /courier/me).
   useEffect(() => {
-    if (selectedOrder) return;
+    if (needsAvatar || selectedOrder) return;
     const id = window.setInterval(() => void loadOrders({ silent: true }), POLL_MS);
     return () => window.clearInterval(id);
-  }, [loadOrders, selectedOrder]);
+  }, [loadOrders, selectedOrder, needsAvatar]);
 
   const handleOrderUpdated = (updated: Order) => {
     setOrders((prev) => {
@@ -566,8 +574,16 @@ function DomiciliarioView() {
         title={selectedOrder ? `Pedido ${selectedOrder.id}` : "Ruta activa"}
         subtitle={selectedOrder ? selectedOrder.customerName : "Pedidos asignados a ti"}
       />
+      <CourierAvatarRequiredModal />
       <main className="mx-auto max-w-lg px-4 py-6 sm:px-6">
-        {selectedOrder ? (
+        {needsAvatar ? (
+          <div className="rounded-2xl border border-dashed border-border bg-card/60 px-5 py-12 text-center">
+            <p className="font-display text-lg font-semibold">Completa tu foto de perfil</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Es obligatorio para que los clientes sepan quién entrega su pedido.
+            </p>
+          </div>
+        ) : selectedOrder ? (
           <OrderDetailView
             order={selectedOrder}
             onBack={() => setSelectedOrder(null)}

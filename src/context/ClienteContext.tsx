@@ -35,7 +35,7 @@ import {
   type ClientModule as SessionClientModule,
   type ClientTab as SessionClientTab,
 } from "@/lib/api/cliente/clientSession";
-import { clientOrdersApi } from "@/lib/api/endpoints/clientOrders";
+import { clientOrdersApi, invalidateMyActiveOrderCache } from "@/lib/api/endpoints/clientOrders";
 import { productsApi } from "@/lib/api/endpoints/products";
 import { mapApiOrder, mapApiProduct } from "@/lib/api/admin/mappers";
 import { isTrackingCycleClosed } from "@/lib/clientDeliveryReviewStorage";
@@ -206,6 +206,12 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
   const catalogRequestRef = useRef(0);
   const allMenusLoadedRef = useRef(false);
   const allPromotionsLoadedRef = useRef(false);
+  const ensureAllMenusInflightRef = useRef<Promise<void> | null>(null);
+  const ensureAllPromosInflightRef = useRef<Promise<void> | null>(null);
+  const restaurantIdsKey = useMemo(
+    () => restaurants.map((r) => r.id).join("|"),
+    [restaurants],
+  );
 
   const loadRestaurantCatalog = useCallback(async (restaurantId: string, force = false) => {
     const requestId = ++catalogRequestRef.current;
@@ -246,7 +252,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const ensureAllMenus = useCallback(async (force = false) => {
-    const ids = restaurants.map((r) => r.id);
+    const ids = restaurantIdsKey ? restaurantIdsKey.split("|") : [];
     if (ids.length === 0) {
       setAllMenus([]);
       return;
@@ -258,21 +264,28 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
         allMenusLoadedRef.current = true;
         return;
       }
-      if (allMenusLoadedRef.current && allMenus.length > 0) return;
+      if (allMenusLoadedRef.current) return;
+      if (ensureAllMenusInflightRef.current) return ensureAllMenusInflightRef.current;
     }
 
-    setIsLoadingAllMenus(true);
-    try {
-      const products = await fetchAllProductsCached(ids, { force });
-      setAllMenus(products);
-      allMenusLoadedRef.current = true;
-    } finally {
-      setIsLoadingAllMenus(false);
-    }
-  }, [restaurants, allMenus.length]);
+    const run = (async () => {
+      setIsLoadingAllMenus(true);
+      try {
+        const products = await fetchAllProductsCached(ids, { force });
+        setAllMenus(products);
+        allMenusLoadedRef.current = true;
+      } finally {
+        setIsLoadingAllMenus(false);
+        ensureAllMenusInflightRef.current = null;
+      }
+    })();
+
+    ensureAllMenusInflightRef.current = run;
+    return run;
+  }, [restaurantIdsKey]);
 
   const ensureAllPromotionsCatalog = useCallback(async (force = false) => {
-    const ids = restaurants.map((r) => r.id);
+    const ids = restaurantIdsKey ? restaurantIdsKey.split("|") : [];
     if (ids.length === 0) {
       setAllMenus([]);
       setAllPromotions([]);
@@ -289,29 +302,32 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
         allPromotionsLoadedRef.current = true;
         return;
       }
-      if (
-        allMenusLoadedRef.current &&
-        allPromotionsLoadedRef.current &&
-        allMenus.length > 0
-      ) {
+      if (allMenusLoadedRef.current && allPromotionsLoadedRef.current) {
         return;
       }
+      if (ensureAllPromosInflightRef.current) return ensureAllPromosInflightRef.current;
     }
 
-    setIsLoadingAllMenus(true);
-    try {
-      const [products, promos] = await Promise.all([
-        fetchAllProductsCached(ids, { force }),
-        fetchAllPromotionsCached(ids, { force }),
-      ]);
-      setAllMenus(products);
-      setAllPromotions(promos);
-      allMenusLoadedRef.current = true;
-      allPromotionsLoadedRef.current = true;
-    } finally {
-      setIsLoadingAllMenus(false);
-    }
-  }, [restaurants, allMenus.length]);
+    const run = (async () => {
+      setIsLoadingAllMenus(true);
+      try {
+        const [products, promos] = await Promise.all([
+          fetchAllProductsCached(ids, { force }),
+          fetchAllPromotionsCached(ids, { force }),
+        ]);
+        setAllMenus(products);
+        setAllPromotions(promos);
+        allMenusLoadedRef.current = true;
+        allPromotionsLoadedRef.current = true;
+      } finally {
+        setIsLoadingAllMenus(false);
+        ensureAllPromosInflightRef.current = null;
+      }
+    })();
+
+    ensureAllPromosInflightRef.current = run;
+    return run;
+  }, [restaurantIdsKey]);
 
   const refreshCatalog = useCallback(async () => {
     invalidateClientCatalogCache();
@@ -470,7 +486,9 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
     });
 
     if (clientTab === "tracking") return;
-    if (clientModule === "rankin") {
+    if (clientModule === "rankin" || clientModule === "promociones") {
+      // Rankin / Promociones no usan el catálogo del restaurante activo;
+      // Promociones carga via ensureAllPromotionsCatalog.
       setIsLoadingMenu(false);
       return;
     }
@@ -732,6 +750,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
     const raw = await clientOrdersApi.create(payload);
     const order = mapApiOrder(raw);
     setTrackedOrderCache(raw);
+    invalidateMyActiveOrderCache();
 
     setTrackedOrder(order);
     setActiveClientOrderId(order.id);

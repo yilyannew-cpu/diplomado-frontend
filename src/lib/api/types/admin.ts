@@ -83,6 +83,7 @@ export interface ApiMonthlySales {
 export interface ApiCourierPayout {
   courier_id: string;
   courier_name: string;
+  courier_avatar?: string | null;
   orders_delivered: number;
   total_payout: number;
 }
@@ -126,6 +127,7 @@ export interface ApiOrder {
   courier_id: string | null;
   courier_name?: string | null;
   courier_phone?: string | null;
+  courier_avatar?: string | null;
   items: ApiOrderItem[];
   received_at: string;
   status_entered_at: string;
@@ -179,6 +181,7 @@ export interface ApiPromotion {
 export interface ApiAvailableCourier {
   id: string;
   name: string;
+  avatar?: string | null;
   vehicle: string | null;
   average_rating: number;
   active_orders: number;
@@ -198,6 +201,7 @@ export interface ApiActiveDeliveryOrder {
 export interface ApiActiveDeliveryGroup {
   courier_id: string;
   courier_name: string;
+  courier_avatar?: string | null;
   vehicle: string | null;
   average_rating: number;
   orders: ApiActiveDeliveryOrder[];
@@ -212,6 +216,7 @@ export interface ApiDispatchRecord {
   delivery_fee: number;
   courier_id: string;
   courier_name: string;
+  courier_avatar?: string | null;
   dispatched_at: string;
 }
 

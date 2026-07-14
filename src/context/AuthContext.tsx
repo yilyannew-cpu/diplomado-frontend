@@ -61,7 +61,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const setSession = useCallback((token: string, nextUser: User) => {
     setToken(token);
-    setUser(withResolvedComuna(nextUser));
+    const resolved = withResolvedComuna(nextUser);
+    meCache = { user: resolved, fetchedAt: Date.now() };
+    setUser(resolved);
   }, []);
 
   const clearSession = useCallback(() => {

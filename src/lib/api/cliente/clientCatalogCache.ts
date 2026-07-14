@@ -71,8 +71,9 @@ export async function fetchRestaurantsCached(options?: {
   if (!options?.force) {
     const hit = peekCachedRestaurants();
     if (hit) return hit;
-    if (restaurantsInflight) return restaurantsInflight;
   }
+  // Con force se salta el peek, pero se sigue compartiendo inflight.
+  if (restaurantsInflight) return restaurantsInflight;
 
   const request = clienteApi
     .listRestaurants()
@@ -96,9 +97,9 @@ export async function fetchRestaurantProductsCached(
   if (!options?.force) {
     const hit = peekCachedProducts(restaurantId);
     if (hit) return hit;
-    const pending = productsInflight.get(restaurantId);
-    if (pending) return pending;
   }
+  const pending = productsInflight.get(restaurantId);
+  if (pending) return pending;
 
   const request = productsApi
     .list({ restaurantId, available: true })
@@ -151,9 +152,9 @@ export async function fetchPromotionsCached(
   if (!options?.force) {
     const hit = peekCachedPromotions(restaurantId);
     if (hit) return hit;
-    const pending = promotionsInflight.get(restaurantId);
-    if (pending) return pending;
   }
+  const pending = promotionsInflight.get(restaurantId);
+  if (pending) return pending;
 
   const request = clienteApi
     .listActivePromotions(restaurantId)

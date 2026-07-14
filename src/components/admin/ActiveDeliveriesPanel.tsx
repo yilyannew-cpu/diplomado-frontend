@@ -4,6 +4,7 @@ import { CourierRatingBadge } from "@/components/shared/CourierRatingBadge";
 import { useAdmin } from "@/context/AdminContext";
 import { formatCOP } from "@/context/OrderContext";
 import { mapApiStatusToFrontend } from "@/lib/api/admin/mappers";
+import { resolveLogoUrl } from "@/lib/mediaUrl";
 import type { OrderStatus } from "@/mocks/ordersMock";
 
 function statusBadgeClass(status: OrderStatus): string {
@@ -50,7 +51,11 @@ export function ActiveDeliveriesPanel() {
           <div key={row.courier_id} className="border-b border-border last:border-b-0">
             <div className="space-y-3 p-3 sm:p-4 lg:hidden">
               <div className="flex items-start gap-3">
-                <UserAvatar name={row.courier_name} className="size-10 shrink-0" />
+                <UserAvatar
+                  name={row.courier_name}
+                  src={resolveLogoUrl(row.courier_avatar) ?? row.courier_avatar ?? undefined}
+                  className="size-10 shrink-0"
+                />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
                     <p className="min-w-0 truncate font-semibold" title={row.courier_name}>
@@ -98,7 +103,11 @@ export function ActiveDeliveriesPanel() {
 
             <div className="hidden items-start gap-3 px-5 py-4 lg:grid lg:grid-cols-12">
               <div className="col-span-2 flex items-center gap-3">
-                <UserAvatar name={row.courier_name} className="size-10 shrink-0" />
+                <UserAvatar
+                  name={row.courier_name}
+                  src={resolveLogoUrl(row.courier_avatar) ?? row.courier_avatar ?? undefined}
+                  className="size-10 shrink-0"
+                />
                 <div className="min-w-0">
                   <p className="truncate font-semibold">{row.courier_name}</p>
                   <p className="truncate text-[11px] text-muted-foreground">

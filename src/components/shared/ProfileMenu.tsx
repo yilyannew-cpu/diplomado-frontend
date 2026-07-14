@@ -80,7 +80,8 @@ export function ProfileMenu() {
   if (!user) return null;
 
   const isDomi = user.role === "domiciliario";
-  const avatarSrc = restaurantLogoUrl ?? adminLogo ?? user.avatar ?? undefined;
+  const avatarSrc =
+    restaurantLogoUrl ?? adminLogo ?? resolveLogoUrl(user.avatar) ?? user.avatar ?? undefined;
 
   const handleLogout = () => {
     navigate({ to: "/" });

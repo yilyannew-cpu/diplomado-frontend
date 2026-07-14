@@ -4,6 +4,7 @@ import { DeliveryReviewModal } from "@/components/cliente/DeliveryReviewModal";
 import { DeliveryRouteMap } from "@/components/cliente/DeliveryRouteMap";
 import { StatusStepIcon } from "@/components/cliente/StatusStepIcon";
 import { OrderItemLines } from "@/components/shared/OrderItemLines";
+import { UserAvatar } from "@/components/shared/UserAvatar";
 import { useAuth } from "@/context/AuthContext";
 import { formatCOP, useCliente } from "@/context/ClienteContext";
 import { deliveryReviewsApi } from "@/lib/api/endpoints/deliveryReviews";
@@ -14,6 +15,7 @@ import {
 } from "@/lib/clientDeliveryReviewStorage";
 import { readClientAddress, readClientAddressCoords } from "@/lib/clientAddressStorage";
 import { getOrderDeliveryFee, getOrderProductSales } from "@/lib/deliveryFees";
+import { resolveLogoUrl } from "@/lib/mediaUrl";
 import { CLIENT_STATUS_FLOW } from "@/mocks/ordersMock";
 import { cn } from "@/lib/utils";
 
@@ -357,9 +359,17 @@ export function OrderTrackingPanel() {
                 </p>
                 {order.courierName || order.deliveryPersonId ? (
                   <div className="flex items-start gap-3">
-                    <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
-                      <Bike className="size-5" />
-                    </span>
+                    {order.courierAvatar ? (
+                      <UserAvatar
+                        name={order.courierName ?? "Domiciliario"}
+                        src={resolveLogoUrl(order.courierAvatar) ?? order.courierAvatar}
+                        className="size-11 ring-2 ring-primary/30"
+                      />
+                    ) : (
+                      <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+                        <Bike className="size-5" />
+                      </span>
+                    )}
                     <div className="min-w-0">
                       <p className="font-display text-base font-semibold text-foreground">
                         {order.courierName ?? "Domiciliario asignado"}
@@ -455,6 +465,7 @@ export function OrderTrackingPanel() {
           orderCode={order.id}
           restaurantName={restaurant?.name ?? "Restaurante"}
           courierName={order.courierName}
+          courierAvatar={order.courierAvatar}
           customerName={order.customerName || user?.name}
           hasCourier={Boolean(order.deliveryPersonId || order.courierName)}
           onDone={() => {

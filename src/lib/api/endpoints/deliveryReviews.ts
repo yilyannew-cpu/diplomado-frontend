@@ -10,6 +10,7 @@ export type DeliveryReviewStatus = {
   restaurant_id: string;
   courier_id: string | null;
   courier_name: string | null;
+  courier_avatar?: string | null;
 };
 
 export const deliveryReviewsApi = {

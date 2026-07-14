@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Bike, Package, RefreshCw, Truck } from "lucide-react";
+import { UserAvatar } from "@/components/shared/UserAvatar";
 import { formatCOP } from "@/context/OrderContext";
 import type { OrderFilter } from "@/hooks/useOperationsTracking";
 import { useOperationsTracking } from "@/hooks/useOperationsTracking";
 import type { CourierAvailability } from "@/lib/api/types/operations";
 import { ORDER_STATUS_LABEL } from "@/lib/api/types/operations";
+import { resolveLogoUrl } from "@/lib/mediaUrl";
 import { cn } from "@/lib/utils";
 
 const ORDER_FILTERS: Array<{ id: OrderFilter; label: string }> = [
@@ -118,11 +120,28 @@ export function OperationsPanel() {
                     <p className="mt-1 truncate text-xs text-muted-foreground">
                       {order.customer_name} · {order.restaurant_name}
                     </p>
-                    <p className="truncate text-[11px] text-muted-foreground/80">
-                      {order.courier_name
-                        ? `Domiciliario: ${order.courier_name}`
-                        : "Sin domiciliario asignado"}
-                    </p>
+                    <div className="mt-1.5 flex min-w-0 items-center gap-2">
+                      {order.courier_name ? (
+                        <>
+                          <UserAvatar
+                            name={order.courier_name}
+                            src={
+                              resolveLogoUrl(order.courier_avatar) ??
+                              order.courier_avatar ??
+                              undefined
+                            }
+                            className="size-6 shrink-0"
+                          />
+                          <p className="truncate text-[11px] text-muted-foreground/80">
+                            Domiciliario: {order.courier_name}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="truncate text-[11px] text-muted-foreground/80">
+                          Sin domiciliario asignado
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <div className="shrink-0 text-right text-xs">
                     <p className="font-semibold tabular-nums">{formatCOP(order.total_cop)}</p>
@@ -153,9 +172,16 @@ export function OperationsPanel() {
               {couriers.map((courier) => (
                 <div key={courier.id} className="px-4 py-4">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{courier.name}</p>
-                      <p className="truncate text-xs text-muted-foreground">{courier.email}</p>
+                    <div className="flex min-w-0 items-start gap-3">
+                      <UserAvatar
+                        name={courier.name}
+                        src={resolveLogoUrl(courier.avatar) ?? courier.avatar ?? undefined}
+                        className="size-9 shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{courier.name}</p>
+                        <p className="truncate text-xs text-muted-foreground">{courier.email}</p>
+                      </div>
                     </div>
                     <span
                       className={cn(

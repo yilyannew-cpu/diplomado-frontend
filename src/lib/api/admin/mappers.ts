@@ -92,6 +92,7 @@ export function mapApiOrder(raw: ApiOrder): Order {
     deliveryPersonId: raw.courier_id ?? undefined,
     courierName: raw.courier_name ?? undefined,
     courierPhone: raw.courier_phone ?? undefined,
+    courierAvatar: raw.courier_avatar ?? undefined,
     createdAt: formatOrderTime(raw.received_at),
     receivedAt: new Date(raw.received_at).getTime(),
     statusEnteredAt: new Date(raw.status_entered_at).getTime(),
