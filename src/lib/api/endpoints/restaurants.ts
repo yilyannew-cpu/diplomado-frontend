@@ -15,7 +15,25 @@ import type {
 } from "@/lib/api/types/admin";
 import { apiClient, apiDownload, buildQuery } from "@/lib/api/client";
 
+export interface ApiRestaurantSummary {
+  id: string;
+  name: string;
+  tagline: string | null;
+  city: string;
+  address: string;
+  rating: number;
+  deliveryMinutes: number;
+  accent: string;
+  initials: string;
+  status: string;
+}
+
 export const restaurantsApi = {
+  /** Lista todos los restaurantes (endpoint público, sin auth). */
+  listAll(): Promise<ApiRestaurantSummary[]> {
+    return apiClient("/restaurants");
+  },
+
   getProfile(restaurantId: string): Promise<ApiRestaurantProfile> {
     return apiClient(`/restaurants/${restaurantId}`, { auth: true });
   },

@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { authApi } from "@/lib/api/endpoints/auth";
+import { courierApplicationsApi } from "@/lib/api/endpoints/courierApplications";
 import { setToken, getToken } from "@/lib/api/client";
 import type { User } from "@/lib/api/types";
 
@@ -108,7 +109,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [clearSession]);
 
   const toggleAvailability = useCallback((isAvailable: boolean) => {
+    // Actualización optimista: cambiamos la UI de inmediato
     setUser((prev) => (prev ? { ...prev, is_available: isAvailable } : null));
+
+    // Persistimos en el backend
+    courierApplicationsApi.toggleAvailability(isAvailable).catch((err) => {
+      console.error("[Auth] Error toggling availability:", err);
+      // Revertir si falla
+      setUser((prev) => (prev ? { ...prev, is_available: !isAvailable } : null));
+    });
   }, []);
 
   const value = useMemo<AuthState>(

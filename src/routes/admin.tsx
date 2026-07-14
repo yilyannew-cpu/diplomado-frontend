@@ -23,6 +23,7 @@ import {
 } from "@/components/admin/MenuFilters";
 import { RoleGuard, TopBar } from "@/components/shared/RoleShell";
 import { AdminProvider, useAdmin } from "@/context/AdminContext";
+import { useCourierApplications } from "@/context/CourierApplicationsContext";
 import { formatCOP } from "@/context/OrderContext";
 import type { MenuItem } from "@/mocks/menuMock";
 import { ADDITION_CATEGORY } from "@/mocks/menuMock";
@@ -64,6 +65,9 @@ function AdminView() {
     addAddition,
     fetchAvailableCouriers,
   } = useAdmin();
+
+  const { applications } = useCourierApplications();
+  const pendingCouriersCount = applications.filter(app => app.status === "PENDING").length;
 
   const [tab, setTab] = useState<AdminTab>("dashboard");
   const [editing, setEditing] = useState<MenuItem | null>(null);
@@ -113,7 +117,7 @@ function AdminView() {
     promociones: `${activePromotionsCount} activas`,
     domicilios: `${activeDeliveryCount} en ruta`,
     historial: `${historyMonthCount} despachos este mes`,
-    motorizados: "Postulaciones",
+    motorizados: pendingCouriersCount > 0 ? `${pendingCouriersCount} nuevas solicitudes` : "Postulaciones",
   };
 
   const openAssignModal = async (orders: Order[]) => {
