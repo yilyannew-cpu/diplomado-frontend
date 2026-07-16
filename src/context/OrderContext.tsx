@@ -1,9 +1,27 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
-import { dispatchHistoryMock, type DispatchRecord } from "@/mocks/dispatchHistoryMock";
-import { menuMock, type MenuItem } from "@/mocks/menuMock";
-import { ordersMock, type Order, type OrderItemCustomizations, type OrderStatus } from "@/mocks/ordersMock";
-import { promotionsMock, type Promotion } from "@/mocks/promotionsMock";
-import { restaurantsMock, type Restaurant } from "@/mocks/restaurantsMock";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+
+// ── Tipos (aún desde mocks hasta Fase 3 de centralización) ──────────
+import type { DispatchRecord } from "@/mocks/dispatchHistoryMock";
+import type { MenuItem } from "@/mocks/menuMock";
+import type { Order, OrderItemCustomizations, OrderStatus } from "@/mocks/ordersMock";
+import type { Promotion } from "@/mocks/promotionsMock";
+import type { Restaurant } from "@/mocks/restaurantsMock";
+
+// ── Clientes API reales ─────────────────────────────────────────────
+import { restaurantsApi, type ApiRestaurantSummary } from "@/lib/api/endpoints/restaurants";
+import { productsApi } from "@/lib/api/endpoints/products";
+import { clientOrdersApi, type CreateOrderPayload } from "@/lib/api/endpoints/clientOrders";
+import { mapApiProducts, mapApiPromotions, mapApiOrder } from "@/lib/api/admin/mappers";
+
+// ── Helpers que se mantienen ────────────────────────────────────────
 import { canAssignBatchToCourier } from "@/lib/deliveryLimits";
 import { DEFAULT_DELIVERY_FEE_COP } from "@/lib/deliveryFees";
 import { orderToDispatchRecord } from "@/lib/orderHistory";
@@ -72,21 +90,87 @@ interface OrderState {
 
 const OrderContext = createContext<OrderState | null>(null);
 
+// ── Mapper: convierte ApiRestaurantSummary a Restaurant (frontend) ───
+function mapApiRestaurant(api: ApiRestaurantSummary): Restaurant {
+  return {
+    id: api.id,
+    name: api.name,
+    tagline: api.tagline ?? "",
+    city: api.city,
+    address: api.address,
+    rating: api.rating,
+    deliveryMinutes: api.deliveryMinutes,
+    accent: api.accent,
+    initials: api.initials,
+  };
+}
+
 export function OrderProvider({ children }: { children: ReactNode }) {
-  const [allMenu, setAllMenu] = useState<MenuItem[]>(menuMock);
-  const [orders, setOrders] = useState<Order[]>(ordersMock);
-  const [dispatchHistory, setDispatchHistory] = useState<DispatchRecord[]>(dispatchHistoryMock);
-  const [promotions, setPromotions] = useState<Promotion[]>(promotionsMock);
+  // ── Estado: ahora inicia vacío en lugar de con mocks ──────────────
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [allMenu, setAllMenu] = useState<MenuItem[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [dispatchHistory, setDispatchHistory] = useState<DispatchRecord[]>([]);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
+  const [isLoadingMenu, setIsLoadingMenu] = useState(true);
   const [activeClientOrderId, setActiveClientOrderId] = useState<string | null>(null);
   const [clientTab, setClientTab] = useState<ClientTab>("menu");
   const [clientModule, setClientModule] = useState<ClientModule>("inicio");
-  const [activeRestaurantId, setActiveRestaurantId] = useState<string | null>(
-    restaurantsMock[0]?.id ?? null,
-  );
+  const [activeRestaurantId, setActiveRestaurantId] = useState<string | null>(null);
 
-  const restaurants = restaurantsMock;
+  // ── Cargar restaurantes desde la base de datos (una sola vez) ─────
+  useEffect(() => {
+    restaurantsApi
+      .listAll()
+      .then((data) => {
+        const mapped = data.map(mapApiRestaurant);
+        setRestaurants(mapped);
+        // Seleccionar el primer restaurante por defecto si no hay uno activo
+        if (mapped.length > 0 && !activeRestaurantId) {
+          setActiveRestaurantId(mapped[0].id);
+        }
+      })
+      .catch((err) => {
+        console.error("[OrderContext] Error cargando restaurantes:", err);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Cargar menú y promociones cuando cambia el restaurante activo ─
+  useEffect(() => {
+    if (!activeRestaurantId) {
+      setAllMenu([]);
+      setPromotions([]);
+      setIsLoadingMenu(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoadingMenu(true);
+
+    Promise.all([
+      productsApi.list({ restaurantId: activeRestaurantId }),
+      restaurantsApi.listPromotions(activeRestaurantId).catch(() => []),
+    ])
+      .then(([apiProducts, apiPromotions]) => {
+        if (cancelled) return;
+        setAllMenu(mapApiProducts(apiProducts));
+        setPromotions(mapApiPromotions(apiPromotions));
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("[OrderContext] Error cargando menú/promos:", err);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingMenu(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeRestaurantId]);
 
   const menu = useMemo(
     () =>
@@ -140,33 +224,51 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     [cart, promotions],
   );
 
-  const confirmCart: OrderState["confirmCart"] = async (customer) => {
-    const id = `PED-${(orders.length + 101).toString()}`;
-    const deliveryFee = DEFAULT_DELIVERY_FEE_COP;
-    const order: Order = {
-      id,
-      customerName: customer.name,
-      address: customer.address,
-      phone: customer.phone,
-      items: cart.map((c) => ({
-        lineId: c.id,
-        productId: c.product.id,
-        quantity: c.quantity,
-        ...(c.customizations ? { customizations: c.customizations } : {}),
-      })),
-      total: cartTotal + deliveryFee,
-      deliveryFee,
-      status: "Recibido",
-      createdAt: new Date().toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" }),
-      receivedAt: Date.now(),
-      statusEnteredAt: Date.now(),
-    };
-    setOrders((o) => [order, ...o]);
-    setCart([]);
-    setActiveClientOrderId(order.id);
-    setClientTab("tracking");
-    return order;
-  };
+  // ── confirmCart: ahora envía el pedido al backend real ─────────────
+  const confirmCart: OrderState["confirmCart"] = useCallback(
+    async (customer) => {
+      if (!activeRestaurantId) {
+        throw new Error("No hay restaurante seleccionado");
+      }
+
+      const deliveryFee = DEFAULT_DELIVERY_FEE_COP;
+
+      // Empaquetar el pedido en el formato que espera el backend
+      const payload: CreateOrderPayload = {
+        customer_name: customer.name,
+        address: customer.address,
+        phone: customer.phone,
+        restaurant_id: activeRestaurantId,
+        delivery_fee: deliveryFee,
+        items: cart.map((c) => ({
+          product_id: c.product.id,
+          quantity: c.quantity,
+          customizations: c.customizations
+            ? {
+                addition_ids: c.customizations.additions?.map((a) => a.productId),
+                side_ids: c.customizations.sides?.map((s) => s.productId),
+                drink_ids: c.customizations.drinks?.map((d) => d.productId),
+                special_instructions: c.customizations.specialInstructions,
+                extra_price: c.customizations.extraPrice,
+              }
+            : undefined,
+        })),
+      };
+
+      // Enviar al backend real → POST /api/v1/orders
+      const apiOrder = await clientOrdersApi.create(payload);
+
+      // Mapear la respuesta del API al formato que entiende el frontend
+      const newOrder = mapApiOrder(apiOrder);
+
+      setOrders((prev) => [newOrder, ...prev]);
+      setCart([]);
+      setActiveClientOrderId(newOrder.id);
+      setClientTab("tracking");
+      return newOrder;
+    },
+    [activeRestaurantId, cart],
+  );
 
   const updateOrderStatus = (id: string, status: OrderStatus) => {
     setOrders((o) =>
@@ -298,7 +400,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     <OrderContext.Provider
       value={{
         menu,
-        isLoadingMenu: false,
+        isLoadingMenu,
         orders,
         dispatchHistory,
         promotions,
