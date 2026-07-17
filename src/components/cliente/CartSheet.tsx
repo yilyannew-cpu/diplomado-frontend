@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { CreditCard, LocateFixed, Loader2, ShoppingBag } from "lucide-react";
+import { CreditCard, LocateFixed, Loader2, ShoppingBag, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { formatCOP, useCliente } from "@/context/ClienteContext";
+import { toast } from "sonner";
 import { formatCustomizationLines } from "@/lib/orderCustomizations";
 import {
   calculateDeliveryFeeFromRoute,
@@ -36,6 +37,7 @@ export function CartSheet() {
     cartOpen,
     setCartOpen,
     removeFromCart,
+    clearCart,
     confirmCart,
     promotions,
     restaurants,
@@ -169,7 +171,11 @@ export function CartSheet() {
       });
     } catch (e) {
       console.error("Error creating order:", e);
-      alert("Hubo un error al procesar tu pedido. Intenta nuevamente.");
+      const message =
+        e instanceof Error && e.message
+          ? e.message
+          : "Hubo un error al procesar tu pedido. Intenta nuevamente.";
+      toast.error(message);
       setIsPaying(false);
       return;
     }
@@ -281,13 +287,28 @@ export function CartSheet() {
                   </div>
                 </dl>
 
-                <button
-                  type="button"
-                  onClick={() => setStep("payment")}
-                  className="mt-4 w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-colors hover:bg-primary/90"
-                >
-                  Ir a pagar
-                </button>
+                <div className="mt-4 space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => setStep("payment")}
+                    className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-colors hover:bg-primary/90"
+                  >
+                    Ir a pagar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearCart();
+                      toast.message("Carrito vacío", {
+                        description: "Se eliminaron todos los productos.",
+                      });
+                    }}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  >
+                    <Trash2 className="size-3.5" aria-hidden />
+                    Limpiar carrito
+                  </button>
+                </div>
               </>
             )}
           </div>

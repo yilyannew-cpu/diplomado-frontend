@@ -122,7 +122,7 @@ function BatchActions({
               Repartidor asignado
             </p>
             <p className="truncate text-sm font-semibold">
-              {assignedCourierName ?? "Listo para despachar"}
+              {assignedCourierName ?? "Asignado — esperando salida"}
             </p>
           </div>
         </div>
@@ -135,7 +135,7 @@ function BatchActions({
           className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2.5 text-xs font-semibold text-white transition-all duration-300 active:scale-[0.98] hover:bg-emerald-700 sm:min-h-0 sm:rounded-lg sm:py-2 sm:text-[11px]"
         >
           <Truck className="size-3.5" />
-          Despachar a ruta ({batch.length}) →
+          Entregar al repartidor ({batch.length}) →
         </button>
       ) : (
         <button
