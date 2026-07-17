@@ -66,7 +66,7 @@ function RestaurantMenuProductCard({
   return (
     <article
       className={cn(
-        "flex h-full w-full flex-col overflow-hidden rounded-2xl bg-card",
+        "group flex h-full w-full min-w-0 flex-col",
         !product.available && "opacity-55",
       )}
     >
@@ -74,7 +74,7 @@ function RestaurantMenuProductCard({
         <ProductImage
           src={product.image}
           alt={product.name}
-          className="size-full object-cover"
+          className="size-full object-cover transition-transform duration-300 ease-out group-hover:scale-110"
         />
         <button
           type="button"
@@ -91,9 +91,9 @@ function RestaurantMenuProductCard({
           </span>
         ) : null}
       </div>
-      <div className="flex flex-1 flex-col gap-1 pt-2.5">
+      <div className="flex min-w-0 flex-1 flex-col gap-1 px-0.5 pt-2.5 sm:px-1">
         <ProductPriceDisplay pricing={pricing} size="sm" align="left" />
-        <h3 className="line-clamp-2 text-sm font-medium leading-snug text-foreground">
+        <h3 className="line-clamp-2 break-words text-sm font-medium leading-snug tracking-normal text-foreground">
           {product.name}
         </h3>
       </div>
@@ -124,7 +124,10 @@ function ProductSection({
         <Carousel opts={{ align: "start", dragFree: true }} className="w-full">
           <CarouselContent className="-ml-3">
             {products.map((product) => (
-              <CarouselItem key={product.id} className="basis-[42%] pl-3 min-[400px]:basis-[38%]">
+              <CarouselItem
+                key={product.id}
+                className="basis-[46%] overflow-visible pl-3 min-[400px]:basis-[42%]"
+              >
                 <RestaurantMenuProductCard product={product} onAdd={onAdd} />
               </CarouselItem>
             ))}

@@ -15,6 +15,7 @@ import { AssignCourierModal } from "@/components/admin/AssignCourierModal";
 import { OrderCommandMonitor } from "@/components/admin/kitchen/OrderCommandMonitor";
 import { HistoryPanel } from "@/components/admin/history/HistoryPanel";
 import { PromotionsPanel } from "@/components/admin/promotions/PromotionsPanel";
+import { CourierApplicationsAdminView } from "@/components/admin/CourierApplicationsAdminView";
 import {
   DEFAULT_MENU_FILTERS,
   filterMenuItems,
@@ -24,6 +25,7 @@ import {
 import { RoleGuard, TopBar } from "@/components/shared/RoleShell";
 import { ProductImage } from "@/components/shared/ProductImage";
 import { AdminProvider, useAdmin } from "@/context/AdminContext";
+import { useCourierApplications } from "@/context/CourierApplicationsContext";
 import { formatCOP } from "@/context/OrderContext";
 import { resolveLogoUrl } from "@/lib/mediaUrl";
 import { getOrderZone } from "@/lib/orderZones";
@@ -69,6 +71,9 @@ function AdminView() {
     ensureTabData,
   } = useAdmin();
 
+  const { applications } = useCourierApplications();
+  const pendingCouriersCount = applications.filter(app => app.status === "PENDING").length;
+
   const [tab, setTab] = useState<AdminTab>("dashboard");
   const [editing, setEditing] = useState<MenuItem | null>(null);
   const [customizing, setCustomizing] = useState<MenuItem | null>(null);
@@ -109,6 +114,8 @@ function AdminView() {
               ? "Promociones"
               : tab === "historial"
                 ? "Historial de despachos"
+                : tab === "motorizados"
+                  ? "Gestión de motorizados"
                 : tab === "configuracion"
                   ? "Configuración"
                   : "Domicilios activos";
@@ -121,6 +128,7 @@ function AdminView() {
     promociones: `${activePromotionsCount} activas`,
     domicilios: `${activeDeliveryCount} en ruta`,
     historial: `${historyMonthCount} despachos este mes`,
+    motorizados: pendingCouriersCount > 0 ? `${pendingCouriersCount} nuevas solicitudes` : "Postulaciones",
     configuracion: "Metas de ventas",
   };
 
@@ -355,6 +363,8 @@ function AdminView() {
             <ActiveDeliveriesPanel />
           ) : tab === "historial" ? (
             <HistoryPanel />
+          ) : tab === "motorizados" ? (
+            <CourierApplicationsAdminView />
           ) : tab === "configuracion" ? (
             <RestaurantSettingsPanel />
           ) : null}

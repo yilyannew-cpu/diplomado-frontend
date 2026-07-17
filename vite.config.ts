@@ -6,9 +6,13 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 // Para Vercel: activar nitro con preset "vercel" (ver docs/DEPLOY-VERCEL.md).
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import { loadEnv } from "vite";
+
+// Extraemos las variables del .env forzando la lectura en Node
+const env = loadEnv(process.env.NODE_ENV || 'development', process.cwd(), '');
 
 const API_PROXY_TARGET =
-  process.env.VITE_API_PROXY_TARGET ?? "https://ffcore-api.onrender.com";
+  env.VITE_API_PROXY_TARGET ?? "https://ffcore-api.onrender.com";
 
 export default defineConfig({
   vite: {

@@ -2,7 +2,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { RoleGuard, TopBar } from "@/components/shared/RoleShell";
 import { OrderItemLines } from "@/components/shared/OrderItemLines";
-import { formatCOP } from "@/context/OrderContext";
+import { useAuth } from "@/context/AuthContext";
+import { useOrders, formatCOP } from "@/context/OrderContext";
+import { useCourierApplications } from "@/context/CourierApplicationsContext";
+import { JobBoardView } from "@/components/domiciliario/JobBoardView";
+import { CurrentRestaurantsView } from "@/components/domiciliario/CurrentRestaurantsView";
+import { OrderHistoryView } from "@/components/domiciliario/OrderHistoryView";
+import { CourierMainControls } from "@/components/domiciliario/CourierTopBarControls";
 import { getOrderApiId, mapApiOrder, mapApiOrders } from "@/lib/api/admin/mappers";
 import { fetchRestaurantProductsCached } from "@/lib/api/cliente/clientCatalogCache";
 import { courierOrdersApi } from "@/lib/api/endpoints/courierOrders";
@@ -28,7 +34,7 @@ import {
 } from "lucide-react";
 import { CourierDeliveryMap } from "@/components/domiciliario/CourierDeliveryMap";
 import { CourierAvatarRequiredModal } from "@/components/domiciliario/CourierAvatarRequiredModal";
-import { useAuth } from "@/context/AuthContext";
+
 
 export const Route = createFileRoute("/domiciliario")({
   head: () => ({
@@ -48,11 +54,11 @@ export const Route = createFileRoute("/domiciliario")({
   ),
 });
 
-/** Flujo operativo real (API): Listo → En Camino → Entregado */
+/** Flujo: Listo (asignado) → En Camino → Entregado */
 const NEXT: Partial<Record<OrderStatus, { action: "start" | "complete"; label: string }>> = {
-  Listo: { action: "start", label: "Salir a entregar (en camino)" },
-  Recogido: { action: "start", label: "Salir a entregar (en camino)" },
-  "En Camino": { action: "complete", label: "Marcar como entregado" },
+  Listo: { action: "start", label: "En camino" },
+  Recogido: { action: "start", label: "En camino" },
+  "En Camino": { action: "complete", label: "Entregado" },
 };
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
@@ -163,7 +169,7 @@ function HubView({
           <div className="rounded-2xl border-2 border-dashed border-border py-10 text-center">
             <p className="text-sm text-muted-foreground">No tienes pedidos en ruta</p>
             <p className="mt-1 text-xs text-muted-foreground/60">
-              Aparecerán aquí cuando marques “Salir a entregar”
+              Aparecerán aquí cuando marques “En camino”
             </p>
           </div>
         ) : (
@@ -191,7 +197,7 @@ function HubView({
           <div className="rounded-2xl border-2 border-dashed border-border py-10 text-center">
             <p className="text-sm text-muted-foreground">Sin pedidos en espera</p>
             <p className="mt-1 text-xs text-muted-foreground/60">
-              Cuando el restaurante te asigne un pedido Listo, saldrá aquí
+              Cuando el restaurante te asigne un pedido, entra y marca En camino
             </p>
           </div>
         ) : (
@@ -444,9 +450,9 @@ function OrderDetailView({
                   </p>
                   <p className="mt-0.5 text-sm font-medium">
                     {current.status === "Listo"
-                      ? "Listo para despacho — pásalo a recoger"
+                      ? "Asignado — marca En camino cuando salgas del restaurante"
                       : current.status === "En Camino"
-                        ? "Ya saliste con el pedido"
+                        ? "En ruta — al entregar, marca Entregado"
                         : current.status}
                   </p>
                 </div>
@@ -520,6 +526,27 @@ function DomiciliarioView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const { activeTab } = useCourierApplications();
+
+  let content;
+  let topBarProps = { title: "Ruta activa", subtitle: "Buscar y entregar" };
+
+  if (selectedOrder) {
+    topBarProps = { title: `Pedido ${selectedOrder.id}`, subtitle: selectedOrder.customerName };
+    content = <OrderDetailView order={selectedOrder} onBack={() => setSelectedOrder(null)} onOrderUpdated={handleOrderUpdated} />;
+  } else if (activeTab === "radar") {
+    topBarProps = { title: "Ruta activa", subtitle: "Buscar y entregar" };
+    content = <HubView orders={orders} loading={loading} error={error} onRefresh={() => void loadOrders({ force: true })} onSelectOrder={setSelectedOrder} />;
+  } else if (activeTab === "bolsa") {
+    topBarProps = { title: "Bolsa de Empleo", subtitle: "Restaurantes" };
+    content = <JobBoardView />;
+  } else if (activeTab === "mis-restaurantes") {
+    topBarProps = { title: "Mis Restaurantes", subtitle: "Donde estás activo" };
+    content = <CurrentRestaurantsView />;
+  } else if (activeTab === "historial") {
+    topBarProps = { title: "Historial", subtitle: "Tus ganancias" };
+    content = <OrderHistoryView />;
+  }
 
   const loadOrders = useCallback(async (opts?: { silent?: boolean; force?: boolean }) => {
     if (needsAvatar) {
@@ -570,12 +597,10 @@ function DomiciliarioView() {
 
   return (
     <div className="min-h-screen bg-cream/50 text-foreground">
-      <TopBar
-        title={selectedOrder ? `Pedido ${selectedOrder.id}` : "Ruta activa"}
-        subtitle={selectedOrder ? selectedOrder.customerName : "Pedidos asignados a ti"}
-      />
+      <TopBar {...topBarProps} />
       <CourierAvatarRequiredModal />
       <main className="mx-auto max-w-lg px-4 py-6 sm:px-6">
+        {!selectedOrder && <CourierMainControls />}
         {needsAvatar ? (
           <div className="rounded-2xl border border-dashed border-border bg-card/60 px-5 py-12 text-center">
             <p className="font-display text-lg font-semibold">Completa tu foto de perfil</p>
@@ -583,21 +608,7 @@ function DomiciliarioView() {
               Es obligatorio para que los clientes sepan quién entrega su pedido.
             </p>
           </div>
-        ) : selectedOrder ? (
-          <OrderDetailView
-            order={selectedOrder}
-            onBack={() => setSelectedOrder(null)}
-            onOrderUpdated={handleOrderUpdated}
-          />
-        ) : (
-          <HubView
-            orders={orders}
-            loading={loading}
-            error={error}
-            onRefresh={() => void loadOrders({ force: true })}
-            onSelectOrder={setSelectedOrder}
-          />
-        )}
+        ) : content}
       </main>
     </div>
   );
