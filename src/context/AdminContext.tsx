@@ -518,7 +518,9 @@ export function AdminProvider({ children }: { children: ReactNode }) {
           current.filter((o) => !orders.some((x) => getOrderApiId(x) === getOrderApiId(o))),
         );
         await Promise.all([refreshActiveDeliveries(true), refreshDispatchHistory("month", true)]);
-        toast.success("Pedidos despachados");
+        toast.success(
+          "Entregado al repartidor. Él marcará En camino y luego Entregado.",
+        );
       } catch (err) {
         handleApiError(err, "No se pudo despachar el lote");
         throw err;

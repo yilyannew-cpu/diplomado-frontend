@@ -27,12 +27,16 @@ function PromoProductCard({
   return (
     <article
       className={cn(
-        "flex h-full flex-col overflow-hidden rounded-2xl border border-primary/20 bg-card shadow-sm",
+        "group flex h-full flex-col overflow-hidden rounded-2xl border border-primary/20 bg-card shadow-sm",
         className,
       )}
     >
       <div className="relative aspect-[16/10] overflow-hidden bg-secondary">
-        <ProductImage src={product.image} alt={product.name} className="size-full object-cover" />
+        <ProductImage
+          src={product.image}
+          alt={product.name}
+          className="size-full object-cover transition-transform duration-300 ease-out group-hover:scale-110"
+        />
         <span className="absolute left-3 top-3">
           <DiscountBadge percent={pricing.discountPercent} />
         </span>

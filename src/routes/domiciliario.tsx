@@ -54,11 +54,11 @@ export const Route = createFileRoute("/domiciliario")({
   ),
 });
 
-/** Flujo operativo real (API): Listo → En Camino → Entregado */
+/** Flujo: Listo (asignado) → En Camino → Entregado */
 const NEXT: Partial<Record<OrderStatus, { action: "start" | "complete"; label: string }>> = {
-  Listo: { action: "start", label: "Salir a entregar (en camino)" },
-  Recogido: { action: "start", label: "Salir a entregar (en camino)" },
-  "En Camino": { action: "complete", label: "Marcar como entregado" },
+  Listo: { action: "start", label: "En camino" },
+  Recogido: { action: "start", label: "En camino" },
+  "En Camino": { action: "complete", label: "Entregado" },
 };
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
@@ -169,7 +169,7 @@ function HubView({
           <div className="rounded-2xl border-2 border-dashed border-border py-10 text-center">
             <p className="text-sm text-muted-foreground">No tienes pedidos en ruta</p>
             <p className="mt-1 text-xs text-muted-foreground/60">
-              Aparecerán aquí cuando marques “Salir a entregar”
+              Aparecerán aquí cuando marques “En camino”
             </p>
           </div>
         ) : (
@@ -197,7 +197,7 @@ function HubView({
           <div className="rounded-2xl border-2 border-dashed border-border py-10 text-center">
             <p className="text-sm text-muted-foreground">Sin pedidos en espera</p>
             <p className="mt-1 text-xs text-muted-foreground/60">
-              Cuando el restaurante te asigne un pedido Listo, saldrá aquí
+              Cuando el restaurante te asigne un pedido, entra y marca En camino
             </p>
           </div>
         ) : (
@@ -450,9 +450,9 @@ function OrderDetailView({
                   </p>
                   <p className="mt-0.5 text-sm font-medium">
                     {current.status === "Listo"
-                      ? "Listo para despacho — pásalo a recoger"
+                      ? "Asignado — marca En camino cuando salgas del restaurante"
                       : current.status === "En Camino"
-                        ? "Ya saliste con el pedido"
+                        ? "En ruta — al entregar, marca Entregado"
                         : current.status}
                   </p>
                 </div>

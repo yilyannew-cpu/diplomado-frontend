@@ -113,29 +113,11 @@ export function ClientModulesPopover({
   );
 }
 
-/** Web: flecha bajo el logo → popover con módulos */
+/** Web: logo de marca (navegación de módulos vía botón Menu). */
 export function ClientModuleNavDesktop() {
-  const [open, setOpen] = useState(false);
-
   return (
-    <div className="hidden shrink-0 flex-col items-center gap-0.5 md:flex">
-      <BrandLogo size="md" linkTo="/" />
-      <ClientModulesPopover
-        open={open}
-        onOpenChange={setOpen}
-        align="start"
-        trigger={
-          <button
-            type="button"
-            className="grid size-7 place-items-center rounded-lg border border-border bg-background text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            aria-label="Abrir módulos de navegación"
-          >
-            <ChevronDown
-              className={cn("size-4 transition-transform", open && "rotate-180")}
-            />
-          </button>
-        }
-      />
+    <div className="hidden shrink-0 md:block">
+      <BrandLogo size="lg" linkTo="/" />
     </div>
   );
 }
@@ -165,7 +147,7 @@ export function ClientModuleNavMobile({
         className="flex shrink-0 items-center rounded-lg transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
         aria-label="Abrir menú de módulos"
       >
-        <BrandLogo size="sm" iconOnly={slogan} compact={!slogan} linkTo={null} />
+        <BrandLogo size="md" iconOnly={slogan} compact={!slogan} linkTo={null} />
       </button>
       <SheetContent side="left" className="w-[min(100%,280px)] p-0">
         <SheetHeader className="border-b border-border px-5 py-5 text-left">

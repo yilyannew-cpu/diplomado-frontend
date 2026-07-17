@@ -38,6 +38,7 @@ import {
 import { clientOrdersApi, invalidateMyActiveOrderCache } from "@/lib/api/endpoints/clientOrders";
 import { productsApi } from "@/lib/api/endpoints/products";
 import { mapApiOrder, mapApiProduct } from "@/lib/api/admin/mappers";
+import { clearClientCart, readClientCart, writeClientCart } from "@/lib/clientCartStorage";
 import { isTrackingCycleClosed } from "@/lib/clientDeliveryReviewStorage";
 import { getSocketUrl } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
@@ -185,6 +186,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const [cart, setCart] = useState<CartItem[]>(() => initial?.cart ?? []);
   const [cartOpen, setCartOpen] = useState(false);
+  const cartHydratedForUserRef = useRef<string | null>(null);
   const [activeClientOrderId, setActiveClientOrderId] = useState<string | null>(() => {
     if (initial?.trackedOrder && isTrackingCycleClosed(initial.trackedOrder)) return null;
     return initial?.activeClientOrderId ?? null;
@@ -472,29 +474,45 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
   }, [activeClientOrderId, user?.id]);
 
   // Catálogo del restaurante activo solo en Inicio / Promociones.
+  // El carrito NO se vacía al cambiar de sede: solo se reemplaza si añades
+  // un producto de otro restaurante (ver addToCart).
   useEffect(() => {
     if (!activeRestaurantId) return;
     if (typeof window !== "undefined") {
       window.localStorage.setItem(ACTIVE_RESTAURANT_KEY, activeRestaurantId);
     }
-    setCart((current) => {
-      if (current.length === 0) return current;
-      if (current.every((item) => item.product.restaurantId === activeRestaurantId)) {
-        return current;
-      }
-      return [];
-    });
 
     if (clientTab === "tracking") return;
     if (clientModule === "rankin" || clientModule === "promociones") {
-      // Rankin / Promociones no usan el catálogo del restaurante activo;
-      // Promociones carga via ensureAllPromotionsCatalog.
       setIsLoadingMenu(false);
       return;
     }
 
     void loadRestaurantCatalog(activeRestaurantId);
   }, [activeRestaurantId, clientModule, clientTab, loadRestaurantCatalog]);
+
+  // Restaura el carrito desde localStorage (sobrevive recargas).
+  useEffect(() => {
+    if (!user?.id) {
+      cartHydratedForUserRef.current = null;
+      return;
+    }
+    if (cartHydratedForUserRef.current === user.id) return;
+    const isFirstHydrate = cartHydratedForUserRef.current === null;
+    cartHydratedForUserRef.current = user.id;
+    const stored = readClientCart(user.id);
+    setCart((current) => {
+      // Misma sesión SPA: conservar el carrito en memoria si ya había ítems.
+      if (isFirstHydrate && current.length > 0) return current;
+      return stored;
+    });
+  }, [user?.id]);
+
+  // Persiste el carrito hasta que el usuario lo vacíe o confirme el pedido.
+  useEffect(() => {
+    if (!user?.id || cartHydratedForUserRef.current !== user.id) return;
+    writeClientCart(user.id, cart);
+  }, [cart, user?.id]);
 
   // Track / recuperación del pedido al entrar a Estado.
   useEffect(() => {
@@ -677,6 +695,9 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
       setActiveRestaurantId(product.restaurantId);
       setCart([nextItem]);
       setCartOpen(true);
+      toast.message("Carrito actualizado", {
+        description: "Solo puedes pedir de un restaurante a la vez.",
+      });
       return;
     }
 
@@ -697,7 +718,10 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  const clearCart = () => setCart([]);
+  const clearCart = () => {
+    setCart([]);
+    if (user?.id) clearClientCart(user.id);
+  };
 
   const fetchProductDetail = useCallback(async (productId: string): Promise<MenuItem> => {
     const raw = await productsApi.get(productId);
@@ -751,11 +775,11 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
     const order = mapApiOrder(raw);
     setTrackedOrderCache(raw);
     invalidateMyActiveOrderCache();
+    clearCart();
 
     setTrackedOrder(order);
     setActiveClientOrderId(order.id);
     writeSavedTrackingCode(order.id, user?.id);
-    setCart([]);
     setRestaurantDetailOpen(false);
     setClientTabState("tracking");
     toast.success(`Pedido ${order.id} enviado a cocina`);
