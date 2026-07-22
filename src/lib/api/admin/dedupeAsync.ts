@@ -47,6 +47,13 @@ export function dedupeAsync<T>(
   return request;
 }
 
+/** Escribe en caché sin red (login, toggle, avatar). */
+export function seedDedupeCache<T>(key: string, data: T, ttlMs = 60_000): void {
+  if (ttlMs > 0) {
+    cache.set(key, { data, fetchedAt: Date.now() });
+  }
+}
+
 /** Invalida entradas de cache (todas o por prefijo de key). */
 export function invalidateDedupeCache(prefix?: string): void {
   if (!prefix) {
@@ -54,6 +61,7 @@ export function invalidateDedupeCache(prefix?: string): void {
     return;
   }
   for (const key of [...cache.keys()]) {
-    if (key.startsWith(prefix)) cache.delete(key);
+    if (key.startsWith(prefix) || key === prefix) cache.delete(key);
   }
 }
+

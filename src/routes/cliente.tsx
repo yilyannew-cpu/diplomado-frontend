@@ -4,6 +4,7 @@ import { RefreshCw, Search, X } from "lucide-react";
 import { ClientTabNav } from "@/components/cliente/ClientTabNav";
 import { PromocionesPanel } from "@/components/cliente/PromocionesPanel";
 import { RankinPanel } from "@/components/cliente/RankinPanel";
+import { MisPedidosPanel } from "@/components/cliente/MisPedidosPanel";
 import { OrderTrackingPanel } from "@/components/cliente/OrderTrackingPanel";
 import { BRAND_SLOGAN } from "@/components/shared/BrandLogo";
 import { RoleGuard, TopBar } from "@/components/shared/RoleShell";
@@ -306,6 +307,8 @@ function ClienteView() {
           <PromocionesPanel onAdd={handleAddProduct} />
         ) : clientModule === "rankin" ? (
           <RankinPanel />
+        ) : clientModule === "mis-pedidos" ? (
+          <MisPedidosPanel />
         ) : restaurantDetailOpen ? (
           <RestaurantDetailView />
         ) : (

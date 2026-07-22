@@ -32,6 +32,7 @@ import {
 import {
   readClienteSession,
   writeClienteSession,
+  clearClienteSession,
   type ClientModule as SessionClientModule,
   type ClientTab as SessionClientTab,
 } from "@/lib/api/cliente/clientSession";
@@ -71,25 +72,21 @@ export type ClientModule = SessionClientModule;
 const TRACKING_STORAGE_KEY = "ffcore_client_tracking_code";
 const ACTIVE_RESTAURANT_KEY = "ffcore_client_active_restaurant";
 
-function trackingStorageKey(userId?: string | null): string {
-  return userId ? `${TRACKING_STORAGE_KEY}:${userId}` : TRACKING_STORAGE_KEY;
+function trackingStorageKey(userId: string): string {
+  return `${TRACKING_STORAGE_KEY}:${userId}`;
 }
 
+/** Solo lee el código del usuario autenticado (sin fallback global = fuga entre clientes). */
 function readSavedTrackingCode(userId?: string | null): string | null {
-  if (typeof window === "undefined") return null;
-  if (userId) {
-    const perUser = window.localStorage.getItem(trackingStorageKey(userId));
-    if (perUser) return perUser;
-  }
-  return window.localStorage.getItem(TRACKING_STORAGE_KEY);
+  if (typeof window === "undefined" || !userId) return null;
+  return window.localStorage.getItem(trackingStorageKey(userId));
 }
 
 function writeSavedTrackingCode(code: string, userId?: string | null): void {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(TRACKING_STORAGE_KEY, code);
-  if (userId) {
-    window.localStorage.setItem(trackingStorageKey(userId), code);
-  }
+  if (typeof window === "undefined" || !userId) return;
+  window.localStorage.setItem(trackingStorageKey(userId), code);
+  // Limpia la clave legacy global (heredaba pedidos entre logins del mismo browser).
+  window.localStorage.removeItem(TRACKING_STORAGE_KEY);
 }
 
 function clearSavedTrackingCode(userId?: string | null): void {
@@ -98,6 +95,48 @@ function clearSavedTrackingCode(userId?: string | null): void {
   if (userId) {
     window.localStorage.removeItem(trackingStorageKey(userId));
   }
+}
+
+/** Normaliza teléfono a dígitos (últimos 10) para comparar ownership. */
+function normalizePhoneDigits(value?: string | null): string {
+  const digits = (value ?? "").replace(/\D/g, "");
+  if (digits.length >= 10) return digits.slice(-10);
+  return digits;
+}
+
+function normalizePersonName(value?: string | null): string {
+  return (value ?? "")
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Un cliente solo puede ver sus propios pedidos.
+ * Prioridad: teléfono de perfil; si no hay teléfono, nombre completo.
+ */
+function orderBelongsToClient(
+  order: Order,
+  user: { id: string; name: string; phone?: string | null } | null | undefined,
+): boolean {
+  if (!user?.id) return false;
+
+  const userPhone = normalizePhoneDigits(user.phone);
+  const orderPhone = normalizePhoneDigits(order.phone);
+  if (userPhone && orderPhone) {
+    return userPhone === orderPhone;
+  }
+
+  const userName = normalizePersonName(user.name);
+  const orderName = normalizePersonName(order.customerName);
+  if (userName && orderName) {
+    return userName === orderName;
+  }
+
+  // Sin datos para verificar → no mostrar (privacidad por defecto).
+  return false;
 }
 
 interface ClienteState {
@@ -187,19 +226,14 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>(() => initial?.cart ?? []);
   const [cartOpen, setCartOpen] = useState(false);
   const cartHydratedForUserRef = useRef<string | null>(null);
-  const [activeClientOrderId, setActiveClientOrderId] = useState<string | null>(() => {
-    if (initial?.trackedOrder && isTrackingCycleClosed(initial.trackedOrder)) return null;
-    return initial?.activeClientOrderId ?? null;
-  });
-  const [trackedOrder, setTrackedOrder] = useState<Order | null>(() => {
-    if (initial?.trackedOrder && isTrackingCycleClosed(initial.trackedOrder)) return null;
-    return initial?.trackedOrder ?? null;
-  });
+  const trackingUserRef = useRef<string | null>(null);
+  // No restaurar tracking desde sesión en memoria sin ownership (fuga entre logins).
+  const [activeClientOrderId, setActiveClientOrderId] = useState<string | null>(null);
+  const [trackedOrder, setTrackedOrder] = useState<Order | null>(null);
   const [isTrackingLoading, setIsTrackingLoading] = useState(false);
-  const [clientTab, setClientTabState] = useState<ClientTab>(() => {
-    if (initial?.trackedOrder && isTrackingCycleClosed(initial.trackedOrder)) return "menu";
-    return initial?.clientTab ?? "menu";
-  });
+  const [clientTab, setClientTabState] = useState<ClientTab>(
+    () => (initial?.clientTab === "tracking" ? "menu" : (initial?.clientTab ?? "menu")),
+  );
   const [clientModule, setClientModuleState] = useState<ClientModule>(
     () => initial?.clientModule ?? "inicio",
   );
@@ -357,6 +391,13 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
 
   const applyTrackedOrder = useCallback(
     (order: Order) => {
+      if (!orderBelongsToClient(order, user)) {
+        clearSavedTrackingCode(user?.id);
+        setActiveClientOrderId(null);
+        setTrackedOrder(null);
+        setClientTabState((tab) => (tab === "tracking" ? "menu" : tab));
+        return false;
+      }
       if (isTrackingCycleClosed(order)) {
         clearSavedTrackingCode(user?.id);
         setActiveClientOrderId(null);
@@ -369,7 +410,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
       writeSavedTrackingCode(order.id, user?.id);
       return true;
     },
-    [user?.id],
+    [user],
   );
 
   const refreshTracking = useCallback(async (code?: string) => {
@@ -380,6 +421,13 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
     try {
       const raw = await fetchOrderTrackCached(trackCode, { force: true });
       const order = mapApiOrder(raw);
+      if (!orderBelongsToClient(order, user)) {
+        clearSavedTrackingCode(user?.id);
+        setActiveClientOrderId(null);
+        setTrackedOrder(null);
+        toast.error("Este pedido no pertenece a tu cuenta.");
+        return;
+      }
       setTrackedOrderCache(raw);
       applyTrackedOrder(order);
     } catch (err) {
@@ -389,7 +437,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsTrackingLoading(false);
     }
-  }, [activeClientOrderId, applyTrackedOrder]);
+  }, [activeClientOrderId, applyTrackedOrder, user]);
 
   const cartItemCount = useMemo(
     () => cart.reduce((acc, i) => acc + i.quantity, 0),
@@ -454,16 +502,36 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Restaura el código de pedido sin llamar al API (el track se hace al abrir Estado).
+  // Al cambiar de usuario / logout: limpiar tracking y sesión en memoria.
   useEffect(() => {
+    const prev = trackingUserRef.current;
+    const next = user?.id ?? null;
+    if (prev === next) return;
+
+    if (prev && prev !== next) {
+      clearSavedTrackingCode(prev);
+      clearSavedTrackingCode(null);
+      setTrackedOrder(null);
+      setActiveClientOrderId(null);
+      setClientTabState((tab) => (tab === "tracking" ? "menu" : tab));
+      invalidateMyActiveOrderCache();
+      clearClienteSession();
+    }
+
+    trackingUserRef.current = next;
+  }, [user?.id]);
+
+  // Restaura el código de pedido solo del usuario autenticado (con ownership).
+  useEffect(() => {
+    if (!user?.id) return;
     if (activeClientOrderId) return;
-    const saved = readSavedTrackingCode(user?.id);
+    const saved = readSavedTrackingCode(user.id);
     if (!saved) return;
     const cached = peekTrackedOrder(saved);
     if (cached) {
       const order = mapApiOrder(cached);
-      if (isTrackingCycleClosed(order)) {
-        clearSavedTrackingCode(user?.id);
+      if (!orderBelongsToClient(order, user) || isTrackingCycleClosed(order)) {
+        clearSavedTrackingCode(user.id);
         return;
       }
       setTrackedOrder(order);
@@ -471,7 +539,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
       return;
     }
     setActiveClientOrderId(saved);
-  }, [activeClientOrderId, user?.id]);
+  }, [activeClientOrderId, user]);
 
   // Catálogo del restaurante activo solo en Inicio / Promociones.
   // El carrito NO se vacía al cambiar de sede: solo se reemplaza si añades
@@ -483,7 +551,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
     }
 
     if (clientTab === "tracking") return;
-    if (clientModule === "rankin" || clientModule === "promociones") {
+    if (clientModule === "rankin" || clientModule === "promociones" || clientModule === "mis-pedidos") {
       setIsLoadingMenu(false);
       return;
     }
@@ -517,39 +585,51 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
   // Track / recuperación del pedido al entrar a Estado.
   useEffect(() => {
     if (clientTab !== "tracking") return;
+    if (!user?.id) {
+      setTrackedOrder(null);
+      setIsTrackingLoading(false);
+      return;
+    }
 
     let cancelled = false;
 
     async function loadTracking() {
       setIsTrackingLoading(true);
       try {
-        let code = activeClientOrderId ?? readSavedTrackingCode(user?.id);
-
-        // Si no hay código local, recuperar pedido activo del backend (por teléfono).
-        if (!code && user?.id) {
-          try {
-            const rawActive = await clientOrdersApi.myActive();
-            if (cancelled) return;
-            if (rawActive && typeof rawActive === "object" && "id" in rawActive && rawActive.id) {
+        // 1) Fuente confiable: pedido activo del JWT (no códigos ajenos en localStorage).
+        try {
+          const rawActive = await clientOrdersApi.myActive();
+          if (cancelled) return;
+          if (rawActive && typeof rawActive === "object" && "id" in rawActive && rawActive.id) {
+            const activeOrder = mapApiOrder(rawActive);
+            if (orderBelongsToClient(activeOrder, user)) {
               setTrackedOrderCache(rawActive);
-              applyTrackedOrder(mapApiOrder(rawActive));
+              applyTrackedOrder(activeOrder);
               return;
             }
-          } catch {
-            /* endpoint aún no desplegado o sin pedido */
           }
+        } catch {
+          /* endpoint aún no desplegado o sin pedido */
         }
 
+        // 2) Código guardado SOLO de este userId + ownership.
+        const code = activeClientOrderId ?? readSavedTrackingCode(user.id);
         if (!code) {
-          if (!cancelled) setTrackedOrder(null);
+          if (!cancelled) {
+            setTrackedOrder(null);
+            setActiveClientOrderId(null);
+          }
           return;
         }
 
         const cached = peekTrackedOrder(code);
         if (cached && !cancelled) {
           const cachedOrder = mapApiOrder(cached);
-          if (isTrackingCycleClosed(cachedOrder)) {
-            clearSavedTrackingCode(user?.id);
+          if (
+            !orderBelongsToClient(cachedOrder, user) ||
+            isTrackingCycleClosed(cachedOrder)
+          ) {
+            clearSavedTrackingCode(user.id);
             setActiveClientOrderId(null);
             setTrackedOrder(null);
             setClientTabState("menu");
@@ -560,14 +640,21 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
 
         const raw = await fetchOrderTrackCached(code);
         if (cancelled) return;
+        const order = mapApiOrder(raw);
+        if (!orderBelongsToClient(order, user)) {
+          clearSavedTrackingCode(user.id);
+          setActiveClientOrderId(null);
+          setTrackedOrder(null);
+          toast.error("Este pedido no pertenece a tu cuenta.");
+          return;
+        }
         setTrackedOrderCache(raw);
-        applyTrackedOrder(mapApiOrder(raw));
+        applyTrackedOrder(order);
       } catch (err) {
         if (cancelled) return;
-        // Solo limpiar si el pedido ya no existe (404), no por fallos de red.
         const isNotFound = err instanceof ApiError && err.status === 404;
         if (isNotFound) {
-          clearSavedTrackingCode(user?.id);
+          clearSavedTrackingCode(user.id);
           setActiveClientOrderId(null);
           setTrackedOrder(null);
         }
@@ -580,7 +667,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [clientTab, activeClientOrderId, user?.id, applyTrackedOrder]);
+  }, [clientTab, activeClientOrderId, user, applyTrackedOrder]);
 
   useEffect(() => {
     const onProfileUpdated = (event: Event) => {
@@ -626,6 +713,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     writeClienteSession({
+      userId: user?.id ?? null,
       restaurants,
       activeRestaurantId,
       restaurantDetailOpen,
@@ -639,6 +727,7 @@ export function ClienteProvider({ children }: { children: ReactNode }) {
       trackedOrder,
     });
   }, [
+    user?.id,
     restaurants,
     activeRestaurantId,
     restaurantDetailOpen,

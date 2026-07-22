@@ -88,7 +88,7 @@ export function DeliveryRouteMap({
     return () => {
       cancelled = true;
     };
-  }, [originKey, destinationKey, coordsKey, restaurant, destinationCoords]);
+  }, [originKey, destinationKey, coordsKey]);
 
   if (!mounted) {
     return <MapSkeleton />;
@@ -121,10 +121,11 @@ export function DeliveryRouteMap({
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-primary/15 bg-primary/5 px-3 py-2.5">
           <Clock3 className="size-4 shrink-0 text-primary" />
           <p className="text-sm font-semibold text-foreground">
-            Llegada aproximada del domiciliario · {formatRouteEta(route.durationSeconds)}
+            Llegada estimada · {formatRouteEta(route.durationSeconds)}
           </p>
           <span className="text-xs text-muted-foreground">
-            ({formatRouteDistance(route.distanceMeters)} en moto · ruta estimada, sin GPS en vivo)
+            ({formatRouteDistance(route.distanceMeters)} · solo restaurante → tu casa, sin el
+            tramo del domiciliario al local)
           </span>
         </div>
       ) : null}

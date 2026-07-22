@@ -15,6 +15,7 @@ import type {
 } from "@/lib/api/types/admin";
 import { apiClient, apiDownload, apiUpload, buildQuery } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
+import { dedupeAsync } from "@/lib/api/admin/dedupeAsync";
 
 export interface ApiRestaurantSummary {
   id: string;
@@ -30,9 +31,13 @@ export interface ApiRestaurantSummary {
 }
 
 export const restaurantsApi = {
-  /** Lista todos los restaurantes (endpoint público, sin auth). */
+  /** Lista todos los restaurantes (endpoint público, sin auth). Deduplicado. */
   listAll(): Promise<ApiRestaurantSummary[]> {
-    return apiClient("/restaurants");
+    return dedupeAsync(
+      "restaurants:listAll",
+      () => apiClient<ApiRestaurantSummary[]>("/restaurants"),
+      { ttlMs: 60_000 },
+    );
   },
 
   getProfile(restaurantId: string): Promise<ApiRestaurantProfile> {

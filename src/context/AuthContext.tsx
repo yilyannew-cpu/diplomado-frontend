@@ -9,7 +9,10 @@ import {
 } from "react";
 import { authApi } from "@/lib/api/endpoints/auth";
 import { courierApplicationsApi } from "@/lib/api/endpoints/courierApplications";
+import { invalidateMyActiveOrderCache } from "@/lib/api/endpoints/clientOrders";
+import { clearClienteSession } from "@/lib/api/cliente/clientSession";
 import { setToken, getToken } from "@/lib/api/client";
+import { dedupeAsync, invalidateDedupeCache, seedDedupeCache } from "@/lib/api/admin/dedupeAsync";
 import { persistClientComuna, resolveClientComuna } from "@/lib/clientComunaStorage";
 import type { User } from "@/lib/api/types";
 
@@ -21,31 +24,24 @@ interface AuthState {
   logout: () => Promise<void>;
   refreshUser: (options?: { force?: boolean }) => Promise<User | null>;
   setSession: (token: string, user: User) => void;
-  toggleAvailability: (isAvailable: boolean) => void;
+  toggleAvailability: (isAvailable: boolean) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
 
-let meInflight: Promise<User> | null = null;
-let meCache: { user: User; fetchedAt: number } | null = null;
 const ME_TTL_MS = 60_000;
+const ME_DEDUPE_KEY = "auth:me";
 
 async function fetchMeCached(options?: { force?: boolean }): Promise<User> {
-  if (!options?.force && meCache && Date.now() - meCache.fetchedAt < ME_TTL_MS) {
-    return meCache.user;
-  }
-  if (meInflight) return meInflight;
+  return dedupeAsync(ME_DEDUPE_KEY, () => authApi.me(), {
+    ttlMs: ME_TTL_MS,
+    force: options?.force,
+  });
+}
 
-  meInflight = authApi
-    .me()
-    .then((user) => {
-      meCache = { user, fetchedAt: Date.now() };
-      return user;
-    })
-    .finally(() => {
-      meInflight = null;
-    });
-  return meInflight;
+/** Actualiza la caché de /me sin ir a la red (login, avatar, toggle). */
+function seedMeCache(user: User): void {
+  seedDedupeCache(ME_DEDUPE_KEY, user, ME_TTL_MS);
 }
 
 function withResolvedComuna(nextUser: User): User {
@@ -64,16 +60,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const setSession = useCallback((token: string, nextUser: User) => {
     setToken(token);
     const resolved = withResolvedComuna(nextUser);
-    meCache = { user: resolved, fetchedAt: Date.now() };
+    seedMeCache(resolved);
     setUser(resolved);
   }, []);
 
   const clearSession = useCallback(() => {
     setToken(null);
     setUser(null);
-    meCache = null;
-    // No borramos la comuna local: el API en producción aún puede no
-    // devolverla, y al volver a iniciar sesión hace falta para los avisos.
+    invalidateDedupeCache(ME_DEDUPE_KEY);
+    invalidateMyActiveOrderCache();
+    clearClienteSession();
   }, []);
 
   const refreshUser = useCallback(
@@ -85,7 +81,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        // Por defecto respeta TTL/inflight; force solo tras editar perfil.
         const me = withResolvedComuna(await fetchMeCached(options));
         setUser(me);
         return me;
@@ -149,17 +144,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [clearSession]);
 
-  const toggleAvailability = useCallback((isAvailable: boolean) => {
-    // Actualización optimista: cambiamos la UI de inmediato
-    setUser((prev) => (prev ? { ...prev, is_available: isAvailable } : null));
+  const toggleAvailability = useCallback(
+    async (isAvailable: boolean) => {
+      const previous = user?.is_available ?? false;
+      setUser((prev) => (prev ? { ...prev, is_available: isAvailable } : null));
 
-    // Persistimos en el backend
-    courierApplicationsApi.toggleAvailability(isAvailable).catch((err) => {
-      console.error("[Auth] Error toggling availability:", err);
-      // Revertir si falla
-      setUser((prev) => (prev ? { ...prev, is_available: !isAvailable } : null));
-    });
-  }, []);
+      try {
+        const result = await courierApplicationsApi.toggleAvailability(isAvailable);
+        const nextAvailable = result.is_available ?? isAvailable;
+        setUser((prev) => {
+          if (!prev) return null;
+          const next = { ...prev, is_available: nextAvailable };
+          seedMeCache(next);
+          return next;
+        });
+      } catch (err) {
+        console.error("[Auth] Error toggling availability:", err);
+        setUser((prev) => (prev ? { ...prev, is_available: previous } : null));
+        throw err;
+      }
+    },
+    [user?.is_available],
+  );
 
   const value = useMemo<AuthState>(
     () => ({
