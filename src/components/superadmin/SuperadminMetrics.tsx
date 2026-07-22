@@ -10,8 +10,8 @@ interface SuperadminMetricsProps {
 export function SuperadminMetrics({ metrics, clientCount, loading }: SuperadminMetricsProps) {
   if (loading) {
     return (
-      <section className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 md:grid-cols-4 md:gap-4">
-        {Array.from({ length: 4 }).map((_, i) => (
+      <section className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 md:grid-cols-4 md:gap-4 xl:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="h-28 animate-pulse rounded-2xl border border-border bg-muted/40" />
         ))}
       </section>
@@ -22,13 +22,26 @@ export function SuperadminMetrics({ metrics, clientCount, loading }: SuperadminM
     ? `${metrics.sales_delta_percent >= 0 ? "+" : ""}${metrics.sales_delta_percent}% vs ayer`
     : "—";
 
+  const commissionToday = metrics?.platform_commission_today_cop ?? 0;
+  const productSalesToday = metrics?.product_sales_today_cop ?? 0;
+
   return (
-    <section className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 md:grid-cols-4 md:gap-4">
+    <section className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 md:grid-cols-3 md:gap-4 xl:grid-cols-5">
       <MetricCard
         label="Ventas hoy"
         value={formatCOP(metrics?.sales_today_cop ?? 0)}
         delta={salesDelta}
         tone="primary"
+      />
+      <MetricCard
+        label="Comisión plataforma"
+        value={formatCOP(commissionToday)}
+        delta={
+          productSalesToday > 0
+            ? `5% de ${formatCOP(productSalesToday)} (productos)`
+            : "5% sobre ventas de productos"
+        }
+        tone="amber"
       />
       <MetricCard
         label="Clientes registrados"
@@ -73,7 +86,7 @@ function MetricCard({
         {label}
       </p>
       <p className="mt-2 font-display text-xl font-semibold tabular-nums sm:text-2xl">{value}</p>
-      {delta && <p className="mt-1 text-[11px] text-muted-foreground">{delta}</p>}
+      {delta && <p className="mt-1 text-[11px] text-muted-foreground text-pretty">{delta}</p>}
     </div>
   );
 }

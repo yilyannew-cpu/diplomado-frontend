@@ -1,8 +1,10 @@
-import { MapPin, Truck } from "lucide-react";
+import { MapPin, Motorbike, Truck } from "lucide-react";
 import { useMemo } from "react";
 import { KitchenOrderCard } from "@/components/admin/kitchen/KitchenOrderCard";
 import { UserAvatar } from "@/components/shared/UserAvatar";
+import { formatCOP } from "@/context/OrderContext";
 import { chunkOrders, MAX_ORDERS_PER_COURIER } from "@/lib/deliveryLimits";
+import { getOrderDeliveryFee } from "@/lib/deliveryFees";
 import { resolveLogoUrl } from "@/lib/mediaUrl";
 import { groupOrdersByZone } from "@/lib/orderZones";
 import type { Order } from "@/mocks/ordersMock";
@@ -50,8 +52,33 @@ export function ReadyDispatchColumn({
 
           <div className="space-y-2">
             {zoneOrders.map((order) => (
-              <div key={order.id} className="transition-all duration-300">
+              <div key={order.id} className="space-y-2 transition-all duration-300">
+                {order.deliveryPersonId ? (
+                  <div className="relative overflow-hidden rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] px-3 py-2">
+                    <span className="absolute inset-y-0 left-0 w-1 animate-pulse bg-emerald-500" />
+                    <div className="flex items-center gap-2 pl-1.5">
+                      <span className="relative grid size-7 shrink-0 place-items-center rounded-full border-2 border-amber-brand/50 bg-amber-brand/10">
+                        <Motorbike className="size-3.5 animate-order-icon-delivery text-amber-brand" />
+                        <span className="absolute inset-0 rounded-full border border-amber-brand/40 animate-ping" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="animate-order-dot-blink text-[10px] font-semibold uppercase tracking-widest text-amber-brand">
+                          Estado · Asignado
+                        </p>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">
+                          Esperando que el repartidor marque En camino
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
                 <KitchenOrderCard order={order} compact />
+                <div className="flex items-center justify-between gap-2 rounded-lg border border-emerald-500/15 bg-card/80 px-2.5 py-1.5 text-[11px]">
+                  <span className="text-muted-foreground">Domicilio</span>
+                  <span className="font-mono font-semibold tabular-nums text-emerald-700">
+                    {formatCOP(getOrderDeliveryFee(order))}
+                  </span>
+                </div>
               </div>
             ))}
           </div>

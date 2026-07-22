@@ -22,9 +22,14 @@ export interface DashboardMetrics {
   sales_today_cop: number;
   sales_yesterday_cop: number;
   sales_delta_percent: number;
+  /** Ventas de productos hoy (total − domicilio). */
+  product_sales_today_cop: number;
+  /** Comisión plataforma hoy (5% sobre productos). */
+  platform_commission_today_cop: number;
   orders_today: number;
   active_couriers: number;
   active_restaurants: number;
+  registered_clients?: number;
 }
 
 export interface SystemServiceStatus {

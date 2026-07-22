@@ -76,7 +76,11 @@ export function KitchenOrderCard({
       {metaOpen ? (
         <div className="mt-1.5 space-y-0.5 border-t border-border/50 pt-2 text-[10px] text-muted-foreground sm:mt-2">
           <p className="font-medium text-foreground">{order.customerName}</p>
+          {order.phone ? <p>{order.phone}</p> : null}
           <p className="min-w-0 break-words leading-relaxed">{order.address}</p>
+          {order.notes ? (
+            <p className="min-w-0 break-words text-amber-brand/90">Nota: {order.notes}</p>
+          ) : null}
           <p>{order.createdAt}</p>
         </div>
       ) : null}
