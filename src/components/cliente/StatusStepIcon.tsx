@@ -1,9 +1,9 @@
 import {
   BellRing,
   ChefHat,
+  Motorbike,
   PackageCheck,
   ThumbsUp,
-  Truck,
   type LucideIcon,
 } from "lucide-react";
 import type { OrderStatus } from "@/mocks/ordersMock";
@@ -16,7 +16,7 @@ const STATUS_ICON_CONFIG: Record<
   Recibido: { Icon: ThumbsUp, activeAnimation: "animate-order-icon-thumbs" },
   "En Cocina": { Icon: ChefHat, activeAnimation: "animate-order-icon-cook" },
   Listo: { Icon: BellRing, activeAnimation: "animate-order-icon-bell" },
-  "En Camino": { Icon: Truck, activeAnimation: "animate-order-icon-delivery" },
+  "En Camino": { Icon: Motorbike, activeAnimation: "animate-order-icon-delivery" },
   Entregado: { Icon: PackageCheck, activeAnimation: "animate-order-icon-delivered" },
 };
 

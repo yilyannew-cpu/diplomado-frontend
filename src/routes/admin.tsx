@@ -6,6 +6,7 @@ import type { ReportDateRange } from "@/lib/salesReports";
 import { RestaurantDashboard } from "@/components/admin/RestaurantDashboard";
 import { RestaurantSettingsPanel } from "@/components/admin/RestaurantSettingsPanel";
 import { ActiveDeliveriesPanel } from "@/components/admin/ActiveDeliveriesPanel";
+import { DispatchedOrdersPanel } from "@/components/admin/DispatchedOrdersPanel";
 import { AdminNavMobile, AdminNavSidebar, type AdminTab } from "@/components/admin/AdminNav";
 import { AddAdditionModal } from "@/components/admin/AddAdditionModal";
 import { AddProductModal } from "@/components/admin/AddProductModal";
@@ -55,6 +56,7 @@ function AdminView() {
   const {
     restaurant,
     kitchenOrders,
+    enRouteOrders,
     menu,
     promotions,
     activeDeliveries,
@@ -94,6 +96,13 @@ function AdminView() {
   );
 
   const activeDeliveryCount = activeDeliveries.length;
+  const assignedReadyCount = kitchenOrders.filter(
+    (o) => o.status === "Listo" && Boolean(o.deliveryPersonId),
+  ).length;
+  const comandasCount = kitchenOrders.filter(
+    (o) => !(o.status === "Listo" && o.deliveryPersonId),
+  ).length;
+  const despachadosCount = assignedReadyCount + enRouteOrders.length;
   const activePromotionsCount = useMemo(
     () => promotions.filter((promo) => isPromotionActive(promo)).length,
     [promotions],
@@ -112,20 +121,23 @@ function AdminView() {
             ? "Gestor de menú"
             : tab === "promociones"
               ? "Promociones"
-              : tab === "historial"
-                ? "Historial de despachos"
-                : tab === "motorizados"
-                  ? "Gestión de motorizados"
-                : tab === "configuracion"
-                  ? "Configuración"
-                  : "Domicilios activos";
+              : tab === "despachados"
+                ? "Pedidos despachados"
+                : tab === "historial"
+                  ? "Historial de despachos"
+                  : tab === "motorizados"
+                    ? "Gestión de motorizados"
+                    : tab === "configuracion"
+                      ? "Configuración"
+                      : "Domicilios activos";
 
   const navHints: Partial<Record<AdminTab, string>> = {
     dashboard: "Ventas y reseñas",
     reportes: "Ganancias y domicilios",
-    comandas: `${kitchenOrders.length} activas`,
+    comandas: `${comandasCount} activas`,
     menu: `${menu.length} productos`,
     promociones: `${activePromotionsCount} activas`,
+    despachados: `${despachadosCount} en control`,
     domicilios: `${activeDeliveryCount} en ruta`,
     historial: `${historyMonthCount} despachos este mes`,
     motorizados: pendingCouriersCount > 0 ? `${pendingCouriersCount} nuevas solicitudes` : "Postulaciones",
@@ -359,6 +371,8 @@ function AdminView() {
             </div>
           ) : tab === "promociones" ? (
             <PromotionsPanel />
+          ) : tab === "despachados" ? (
+            <DispatchedOrdersPanel onDispatchBatch={(orders) => void dispatchBatch(orders)} />
           ) : tab === "domicilios" ? (
             <ActiveDeliveriesPanel />
           ) : tab === "historial" ? (

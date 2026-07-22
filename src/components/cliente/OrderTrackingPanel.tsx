@@ -1,4 +1,4 @@
-import { Bike, Clock3, MapPin, Package, RefreshCw, UserRound } from "lucide-react";
+import { Clock3, MapPin, Motorbike, Package, RefreshCw, UserRound } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { DeliveryReviewModal } from "@/components/cliente/DeliveryReviewModal";
 import { DeliveryRouteMap } from "@/components/cliente/DeliveryRouteMap";
@@ -367,7 +367,12 @@ export function OrderTrackingPanel() {
                       />
                     ) : (
                       <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
-                        <Bike className="size-5" />
+                        <Motorbike
+                          className={cn(
+                            "size-5",
+                            isOnTheWay && "animate-order-icon-delivery",
+                          )}
+                        />
                       </span>
                     )}
                     <div className="min-w-0">
