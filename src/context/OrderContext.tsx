@@ -21,6 +21,7 @@ import { productsApi } from "@/lib/api/endpoints/products";
 import { clienteApi } from "@/lib/api/endpoints/cliente";
 import { clientOrdersApi, type CreateOrderPayload } from "@/lib/api/endpoints/clientOrders";
 import { mapApiProducts, mapApiPromotions, mapApiOrder } from "@/lib/api/admin/mappers";
+import { useAuth } from "@/context/AuthContext";
 
 // ── Helpers que se mantienen ────────────────────────────────────────
 import { canAssignBatchToCourier } from "@/lib/deliveryLimits";
@@ -107,6 +108,12 @@ function mapApiRestaurant(api: ApiRestaurantSummary): Restaurant {
 }
 
 export function OrderProvider({ children }: { children: ReactNode }) {
+  const { user, isLoading: authLoading } = useAuth();
+  // Catálogo (restaurantes/menú/promos) solo para paneles que lo consumen.
+  // En domiciliario/gobernanza no debe disparar /restaurants + /products + /active.
+  const needsCatalog =
+    !authLoading && (user?.role === "cliente" || user?.role === "admin");
+
   // ── Estado: ahora inicia vacío en lugar de con mocks ──────────────
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [allMenu, setAllMenu] = useState<MenuItem[]>([]);
@@ -121,27 +128,38 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const [clientModule, setClientModule] = useState<ClientModule>("inicio");
   const [activeRestaurantId, setActiveRestaurantId] = useState<string | null>(null);
 
-  // ── Cargar restaurantes desde la base de datos (una sola vez) ─────
+  // ── Cargar restaurantes desde la base de datos (solo cliente/admin) ─
   useEffect(() => {
+    if (!needsCatalog) {
+      setRestaurants([]);
+      setActiveRestaurantId(null);
+      setIsLoadingMenu(false);
+      return;
+    }
+
+    let cancelled = false;
     restaurantsApi
       .listAll()
       .then((data) => {
+        if (cancelled) return;
         const mapped = data.map(mapApiRestaurant);
         setRestaurants(mapped);
-        // Seleccionar el primer restaurante por defecto si no hay uno activo
-        if (mapped.length > 0 && !activeRestaurantId) {
-          setActiveRestaurantId(mapped[0].id);
+        if (mapped.length > 0) {
+          setActiveRestaurantId((prev) => prev ?? mapped[0]!.id);
         }
       })
       .catch((err) => {
         console.error("[OrderContext] Error cargando restaurantes:", err);
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [needsCatalog]);
 
   // ── Cargar menú y promociones cuando cambia el restaurante activo ─
   useEffect(() => {
-    if (!activeRestaurantId) {
+    if (!needsCatalog || !activeRestaurantId) {
       setAllMenu([]);
       setPromotions([]);
       setIsLoadingMenu(false);
@@ -172,7 +190,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [activeRestaurantId]);
+  }, [needsCatalog, activeRestaurantId]);
 
   const menu = useMemo(
     () =>

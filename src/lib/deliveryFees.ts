@@ -5,8 +5,8 @@ import type { Order } from "@/mocks/ordersMock";
  * Sin GPS en vivo del domiciliario: el costo se cierra antes del pago.
  *
  * Reglas:
- * 1. ≤ 2.0 km → tarifa base $4.500
- * 2. > 2.0 km → base $4.500 + cada km extra (o fracción) × $1.200
+ * 1. ≤ 2.0 km → tarifa base $6.000
+ * 2. > 2.0 km → base $6.000 + cada km extra (o fracción) × $1.500
  * 3. Si tiempo_mapa > (distancia_km × 3) + 10 min → recargo tráfico $2.000
  * 4. total redondeado a la centena más cercana
  */
@@ -15,10 +15,10 @@ import type { Order } from "@/mocks/ordersMock";
 export const DELIVERY_INCLUDED_KM = 2;
 
 /** Tarifa fija por los primeros 2 km (o menos). */
-export const DELIVERY_BASE_FEE_COP = 4_500;
+export const DELIVERY_BASE_FEE_COP = 6_000;
 
 /** Cobro por cada km adicional o fracción. */
-export const DELIVERY_EXTRA_KM_FEE_COP = 1_200;
+export const DELIVERY_EXTRA_KM_FEE_COP = 1_500;
 
 /** Minutos teóricos por km en condiciones normales. */
 export const DELIVERY_MINUTES_PER_KM = 3;
@@ -51,9 +51,9 @@ export type DeliveryFeeBreakdown = {
   tiempo_estimado_minutos: number;
   /** Tiempo teórico normal: distancia_km × 3. */
   tiempo_base_minutos: number;
-  /** Siempre $4.500 si hay distancia válida. */
+  /** Siempre $6.000 si hay distancia válida. */
   tarifa_base: number;
-  /** Suma de km extras (fracción redondeada hacia arriba × $1.200). */
+  /** Suma de km extras (fracción redondeada hacia arriba × $1.500). */
   valor_km_adicionales: number;
   /** $2.000 o $0 según umbral de tráfico. */
   recargo_trafico: number;
