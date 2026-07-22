@@ -197,13 +197,18 @@ export function CourierDeliveryMap({
 
     let cancelled = false;
     const destination: LatLng = { lat: destLat, lng: destLng };
+    let lastRouted: LatLng | null = null;
 
-    const loadLiveRoute = () => {
-      const live = liveRef.current;
-      if (!live) {
-        setLivePath(null);
+    const loadLiveRoute = (live: LatLng) => {
+      // No recalcular OSRM si el GPS apenas se movió (~40 m).
+      if (
+        lastRouted &&
+        Math.abs(lastRouted.lat - live.lat) < 0.0004 &&
+        Math.abs(lastRouted.lng - live.lng) < 0.0004
+      ) {
         return;
       }
+      lastRouted = live;
       void resolveDeliveryRoute({
         originQuery: "courier-live",
         destinationQuery: destinationKey,
@@ -223,14 +228,23 @@ export function CourierDeliveryMap({
         });
     };
 
-    if (livePosition) loadLiveRoute();
-    const timer = window.setInterval(loadLiveRoute, 45_000);
+    // Debounce: espera GPS estable; evita 2–3 OSRM al montar.
+    const initialTimer = window.setTimeout(() => {
+      const live = liveRef.current;
+      if (live) loadLiveRoute(live);
+    }, 1_200);
+
+    const timer = window.setInterval(() => {
+      const live = liveRef.current;
+      if (live) loadLiveRoute(live);
+    }, 60_000);
 
     return () => {
       cancelled = true;
+      window.clearTimeout(initialTimer);
       window.clearInterval(timer);
     };
-  }, [Boolean(livePosition), destLat, destLng, destinationKey]);
+  }, [destLat, destLng, destinationKey]);
 
   const navigation = useMemo(() => {
     const dest = route?.destination;

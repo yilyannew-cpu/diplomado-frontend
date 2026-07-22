@@ -120,7 +120,7 @@ export function CartSheet() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [address, restaurant, cart.length, user?.id]);
+  }, [address, restaurant?.name, restaurant?.city, restaurant?.address, cart.length, user?.id]);
 
   const appliedDeliveryFee = cart.length > 0 ? deliveryFee : 0;
   const total = cartTotal + appliedDeliveryFee;

@@ -1,9 +1,15 @@
 import type { ApiOrder } from "@/lib/api/types/admin";
-import { apiClient } from "@/lib/api/client";
+import { apiClient, getToken } from "@/lib/api/client";
 
 const MY_ACTIVE_TTL_MS = 15_000;
-let myActiveCache: { data: ApiOrder | null; fetchedAt: number } | null = null;
-let myActiveInflight: Promise<ApiOrder | null> | null = null;
+let myActiveCache: { userKey: string; data: ApiOrder | null; fetchedAt: number } | null =
+  null;
+let myActiveInflight: { userKey: string; promise: Promise<ApiOrder | null> } | null = null;
+
+function currentUserKey(): string {
+  // Evita reutilizar el pedido activo de otro login en el mismo tab.
+  return getToken() ?? "anonymous";
+}
 
 export interface CreateOrderExtraIds {
   addition_ids?: string[];
@@ -39,23 +45,38 @@ export const clientOrdersApi = {
     return apiClient(`/orders/track/${encodeURIComponent(code)}`);
   },
 
-  /** Pedido activo del cliente autenticado (por teléfono de perfil). */
+  /** Pedido activo del cliente autenticado. Caché scopeada por token. */
   myActive(): Promise<ApiOrder | null> {
-    if (myActiveInflight) return myActiveInflight;
-    if (myActiveCache && Date.now() - myActiveCache.fetchedAt < MY_ACTIVE_TTL_MS) {
+    const userKey = currentUserKey();
+    if (myActiveInflight && myActiveInflight.userKey === userKey) {
+      return myActiveInflight.promise;
+    }
+    if (
+      myActiveCache &&
+      myActiveCache.userKey === userKey &&
+      Date.now() - myActiveCache.fetchedAt < MY_ACTIVE_TTL_MS
+    ) {
       return Promise.resolve(myActiveCache.data);
     }
 
-    myActiveInflight = apiClient<ApiOrder | null>("/orders/my-active", { auth: true })
+    const promise = apiClient<ApiOrder | null>("/orders/my-active", { auth: true })
       .then((data) => {
-        myActiveCache = { data, fetchedAt: Date.now() };
+        myActiveCache = { userKey, data, fetchedAt: Date.now() };
         return data;
       })
       .finally(() => {
-        myActiveInflight = null;
+        if (myActiveInflight?.promise === promise) myActiveInflight = null;
       });
 
-    return myActiveInflight;
+    myActiveInflight = { userKey, promise };
+    return promise;
+  },
+
+  /** Historial de pedidos del cliente autenticado (solo los suyos). */
+  myHistory(limit = 40): Promise<ApiOrder[]> {
+    return apiClient<ApiOrder[]>(`/orders/my-history?limit=${limit}`, { auth: true }).then(
+      (data) => (Array.isArray(data) ? data : []),
+    );
   },
 };
 

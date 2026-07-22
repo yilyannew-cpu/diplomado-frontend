@@ -169,7 +169,7 @@ export default function DeliveryRouteMapInner({
         <span className="pointer-events-auto rounded-xl border border-border/80 bg-card/95 px-3 py-2 text-xs font-semibold text-foreground shadow-lg backdrop-blur-sm">
           {bannerMode === "courier"
             ? `Ruta restaurante → entrega · ${formatRouteEta(route.durationSeconds)}`
-            : `Tiempo estimado de ruta · ${formatRouteEta(route.durationSeconds)}`}
+            : `Tiempo de ruta (restaurante → casa) · ${formatRouteEta(route.durationSeconds)}`}
         </span>
         <span className="pointer-events-auto rounded-xl border border-border/80 bg-card/95 px-3 py-2 text-xs font-medium text-muted-foreground shadow-lg backdrop-blur-sm">
           {formatRouteDistance(route.distanceMeters)}
@@ -177,7 +177,7 @@ export default function DeliveryRouteMapInner({
             ? livePosition
               ? " · punto naranja = tú"
               : " · activa GPS para verte en el mapa"
-            : " · restaurante → tu dirección"}
+            : " · no incluye llegada del domi al restaurante"}
         </span>
       </div>
     </div>

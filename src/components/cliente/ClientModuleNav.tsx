@@ -1,4 +1,4 @@
-import { ChevronDown, Home, Menu, Tag, Trophy, type LucideIcon } from "lucide-react";
+import { ChevronDown, ClipboardList, Home, Menu, Tag, Trophy, type LucideIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { BrandLogo } from "@/components/shared/BrandLogo";
 import {
@@ -23,6 +23,7 @@ export const CLIENT_MODULES: Array<{
   { id: "inicio", label: "Inicio", icon: Home },
   { id: "promociones", label: "Promociones", icon: Tag },
   { id: "rankin", label: "Rankin", icon: Trophy },
+  { id: "mis-pedidos", label: "Mis pedidos", icon: ClipboardList },
 ];
 
 function ModuleNavGrid({
@@ -38,7 +39,7 @@ function ModuleNavGrid({
     <div
       className={cn(
         layout === "horizontal"
-          ? "grid grid-cols-3 gap-2"
+          ? "grid grid-cols-2 gap-2 sm:grid-cols-4"
           : "flex flex-col gap-2",
       )}
     >
@@ -196,7 +197,7 @@ export function ClientMenuModulesButton({
               ? "bg-blue-600 text-white shadow-md"
               : "text-gray-600 hover:bg-blue-100 hover:text-blue-700",
           )}
-          aria-label="Abrir menú: Inicio, Promociones y Rankin"
+          aria-label="Abrir menú: Inicio, Promociones, Rankin y Mis pedidos"
         >
           <Menu className="size-3.5 sm:size-4" />
           Menu
