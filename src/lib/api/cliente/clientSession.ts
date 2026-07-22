@@ -5,7 +5,7 @@ import type { Promotion } from "@/mocks/promotionsMock";
 import type { Restaurant } from "@/mocks/restaurantsMock";
 
 export type ClientTab = "menu" | "tracking";
-export type ClientModule = "inicio" | "promociones" | "rankin";
+export type ClientModule = "inicio" | "promociones" | "rankin" | "mis-pedidos";
 
 export interface ClienteSessionCartItem {
   id: string;
@@ -16,6 +16,8 @@ export interface ClienteSessionCartItem {
 
 /** Estado de UI del panel cliente que sobrevive al desmontar la ruta. */
 export interface ClienteSessionState {
+  /** Dueño de la sesión; si cambia el login, se descarta el tracking. */
+  userId: string | null;
   restaurants: Restaurant[];
   activeRestaurantId: string | null;
   /** Vista ficha del restaurante (estilo Uber Eats / menú por sede). */

@@ -9,6 +9,8 @@ import {
 } from "react";
 import { authApi } from "@/lib/api/endpoints/auth";
 import { courierApplicationsApi } from "@/lib/api/endpoints/courierApplications";
+import { invalidateMyActiveOrderCache } from "@/lib/api/endpoints/clientOrders";
+import { clearClienteSession } from "@/lib/api/cliente/clientSession";
 import { setToken, getToken } from "@/lib/api/client";
 import { dedupeAsync, invalidateDedupeCache, seedDedupeCache } from "@/lib/api/admin/dedupeAsync";
 import { persistClientComuna, resolveClientComuna } from "@/lib/clientComunaStorage";
@@ -66,6 +68,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
     setUser(null);
     invalidateDedupeCache(ME_DEDUPE_KEY);
+    invalidateMyActiveOrderCache();
+    clearClienteSession();
   }, []);
 
   const refreshUser = useCallback(

@@ -40,7 +40,7 @@ export interface CartItem {
 
 export type ClientTab = "menu" | "tracking";
 
-export type ClientModule = "inicio" | "promociones" | "rankin";
+export type ClientModule = "inicio" | "promociones" | "rankin" | "mis-pedidos";
 
 interface OrderState {
   menu: MenuItem[];
