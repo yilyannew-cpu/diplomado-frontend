@@ -21,7 +21,7 @@ interface AuthState {
   logout: () => Promise<void>;
   refreshUser: (options?: { force?: boolean }) => Promise<User | null>;
   setSession: (token: string, user: User) => void;
-  toggleAvailability: (isAvailable: boolean) => void;
+  toggleAvailability: (isAvailable: boolean) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -149,17 +149,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [clearSession]);
 
-  const toggleAvailability = useCallback((isAvailable: boolean) => {
-    // Actualización optimista: cambiamos la UI de inmediato
+  const toggleAvailability = useCallback(async (isAvailable: boolean) => {
+    const previous = user?.is_available ?? false;
+    // Actualización optimista
     setUser((prev) => (prev ? { ...prev, is_available: isAvailable } : null));
 
-    // Persistimos en el backend
-    courierApplicationsApi.toggleAvailability(isAvailable).catch((err) => {
+    try {
+      const result = await courierApplicationsApi.toggleAvailability(isAvailable);
+      const nextAvailable = result.is_available ?? isAvailable;
+      setUser((prev) => {
+        if (!prev) return null;
+        const next = { ...prev, is_available: nextAvailable };
+        meCache = { user: next, fetchedAt: Date.now() };
+        return next;
+      });
+    } catch (err) {
       console.error("[Auth] Error toggling availability:", err);
-      // Revertir si falla
-      setUser((prev) => (prev ? { ...prev, is_available: !isAvailable } : null));
-    });
-  }, []);
+      setUser((prev) => (prev ? { ...prev, is_available: previous } : null));
+      throw err;
+    }
+  }, [user?.is_available]);
 
   const value = useMemo<AuthState>(
     () => ({

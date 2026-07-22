@@ -18,6 +18,7 @@ import type { Restaurant } from "@/mocks/restaurantsMock";
 // ── Clientes API reales ─────────────────────────────────────────────
 import { restaurantsApi, type ApiRestaurantSummary } from "@/lib/api/endpoints/restaurants";
 import { productsApi } from "@/lib/api/endpoints/products";
+import { clienteApi } from "@/lib/api/endpoints/cliente";
 import { clientOrdersApi, type CreateOrderPayload } from "@/lib/api/endpoints/clientOrders";
 import { mapApiProducts, mapApiPromotions, mapApiOrder } from "@/lib/api/admin/mappers";
 
@@ -150,9 +151,10 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     setIsLoadingMenu(true);
 
+    // Endpoint público: el listado admin exige rol de restaurante (FORBIDDEN en panel cliente).
     Promise.all([
       productsApi.list({ restaurantId: activeRestaurantId }),
-      restaurantsApi.listPromotions(activeRestaurantId).catch(() => []),
+      clienteApi.listActivePromotions(activeRestaurantId).catch(() => []),
     ])
       .then(([apiProducts, apiPromotions]) => {
         if (cancelled) return;

@@ -520,7 +520,7 @@ function OrderDetailView({
    Vista Raíz
    ═════════════════════════════════════════════════ */
 function DomiciliarioView() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const needsAvatar = Boolean(user && user.role === "domiciliario" && !user.avatar);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -528,25 +528,7 @@ function DomiciliarioView() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const { activeTab } = useCourierApplications();
 
-  let content;
-  let topBarProps = { title: "Ruta activa", subtitle: "Buscar y entregar" };
-
-  if (selectedOrder) {
-    topBarProps = { title: `Pedido ${selectedOrder.id}`, subtitle: selectedOrder.customerName };
-    content = <OrderDetailView order={selectedOrder} onBack={() => setSelectedOrder(null)} onOrderUpdated={handleOrderUpdated} />;
-  } else if (activeTab === "radar") {
-    topBarProps = { title: "Ruta activa", subtitle: "Buscar y entregar" };
-    content = <HubView orders={orders} loading={loading} error={error} onRefresh={() => void loadOrders({ force: true })} onSelectOrder={setSelectedOrder} />;
-  } else if (activeTab === "bolsa") {
-    topBarProps = { title: "Bolsa de Empleo", subtitle: "Restaurantes" };
-    content = <JobBoardView />;
-  } else if (activeTab === "mis-restaurantes") {
-    topBarProps = { title: "Mis Restaurantes", subtitle: "Donde estás activo" };
-    content = <CurrentRestaurantsView />;
-  } else if (activeTab === "historial") {
-    topBarProps = { title: "Historial", subtitle: "Tus ganancias" };
-    content = <OrderHistoryView />;
-  }
+  const activeDeliveryCount = orders.filter((o) => o.status === "En Camino").length;
 
   const loadOrders = useCallback(async (opts?: { silent?: boolean; force?: boolean }) => {
     if (needsAvatar) {
@@ -557,7 +539,6 @@ function DomiciliarioView() {
     if (!silent) setLoading(true);
     try {
       const mapped = await fetchCourierOrdersCached({ force: opts?.force === true });
-      // Panel operativo: ocultar entregados del hub
       setOrders(mapped.filter((o) => o.status !== "Entregado"));
       setError(null);
     } catch (err) {
@@ -571,36 +552,74 @@ function DomiciliarioView() {
     }
   }, [needsAvatar]);
 
-  // Carga inicial (una sola vez)
   useEffect(() => {
     void loadOrders();
   }, [loadOrders]);
 
-  // Poll suave solo en el hub; sin listener de focus (generaba ráfagas de /courier/me).
   useEffect(() => {
     if (needsAvatar || selectedOrder) return;
     const id = window.setInterval(() => void loadOrders({ silent: true }), POLL_MS);
     return () => window.clearInterval(id);
   }, [loadOrders, selectedOrder, needsAvatar]);
 
-  const handleOrderUpdated = (updated: Order) => {
-    setOrders((prev) => {
-      if (updated.status === "Entregado") {
-        return prev.filter((o) => getOrderApiId(o) !== getOrderApiId(updated));
+  const handleOrderUpdated = useCallback(
+    (updated: Order) => {
+      setOrders((prev) => {
+        if (updated.status === "Entregado") {
+          return prev.filter((o) => getOrderApiId(o) !== getOrderApiId(updated));
+        }
+        return mergeOrder(prev, updated);
+      });
+      setSelectedOrder((current) =>
+        current && getOrderApiId(current) === getOrderApiId(updated) ? updated : current,
+      );
+      if (updated.status === "En Camino" || updated.status === "Entregado") {
+        void refreshUser({ force: true });
       }
-      return mergeOrder(prev, updated);
-    });
-    setSelectedOrder((current) =>
-      current && getOrderApiId(current) === getOrderApiId(updated) ? updated : current,
+    },
+    [refreshUser],
+  );
+
+  let content;
+  let topBarProps = { title: "Ruta activa", subtitle: "Buscar y entregar" };
+
+  if (selectedOrder) {
+    topBarProps = { title: `Pedido ${selectedOrder.id}`, subtitle: selectedOrder.customerName };
+    content = (
+      <OrderDetailView
+        order={selectedOrder}
+        onBack={() => setSelectedOrder(null)}
+        onOrderUpdated={handleOrderUpdated}
+      />
     );
-  };
+  } else if (activeTab === "radar") {
+    topBarProps = { title: "Ruta activa", subtitle: "Buscar y entregar" };
+    content = (
+      <HubView
+        orders={orders}
+        loading={loading}
+        error={error}
+        onRefresh={() => void loadOrders({ force: true })}
+        onSelectOrder={setSelectedOrder}
+      />
+    );
+  } else if (activeTab === "bolsa") {
+    topBarProps = { title: "Bolsa de Empleo", subtitle: "Restaurantes" };
+    content = <JobBoardView />;
+  } else if (activeTab === "mis-restaurantes") {
+    topBarProps = { title: "Mis Restaurantes", subtitle: "Donde estás activo" };
+    content = <CurrentRestaurantsView />;
+  } else if (activeTab === "historial") {
+    topBarProps = { title: "Historial", subtitle: "Tus ganancias" };
+    content = <OrderHistoryView />;
+  }
 
   return (
     <div className="min-h-screen bg-cream/50 text-foreground">
       <TopBar {...topBarProps} />
       <CourierAvatarRequiredModal />
       <main className="mx-auto max-w-lg px-4 py-6 sm:px-6">
-        {!selectedOrder && <CourierMainControls />}
+        {!selectedOrder && <CourierMainControls activeDeliveryCount={activeDeliveryCount} />}
         {needsAvatar ? (
           <div className="rounded-2xl border border-dashed border-border bg-card/60 px-5 py-12 text-center">
             <p className="font-display text-lg font-semibold">Completa tu foto de perfil</p>
