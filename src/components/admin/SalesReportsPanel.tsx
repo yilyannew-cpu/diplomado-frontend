@@ -91,19 +91,19 @@ export function SalesReportsPanel({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
         <ReportMetricCard
           label={`Ganancia neta — ${periodLabel}`}
-          value={period.net_profit}
+          value={period.real_net_profit}
           hint={`${period.delivered_orders} entregas · margen ${period.margin_percent}%`}
           accent="primary"
           footer={
             <p className="text-[10px] leading-relaxed text-muted-foreground text-pretty">
-              Comisiones app (5%):{" "}
+              Solo productos (sin domicilio). Comisión app (5%):{" "}
               <span className="font-mono text-amber-brand">
                 -{formatReportAmount(period.app_commissions)}
               </span>
               {" · "}
-              Neto real:{" "}
+              Ventas productos:{" "}
               <span className="font-semibold text-foreground">
-                {formatReportAmount(period.real_net_profit)}
+                {formatReportAmount(period.gross_sales)}
               </span>
             </p>
           }
@@ -111,13 +111,13 @@ export function SalesReportsPanel({
         <ReportMetricCard
           label={`Pago domiciliarios — ${periodLabel}`}
           value={period.courier_payout}
-          hint="Tarifas de domicilio del periodo"
+          hint="Suma de tarifas de domicilio (no entra en la ganancia del restaurante)"
           accent="ink"
         />
         <ReportMetricCard
           label={`Facturación bruta — ${periodLabel}`}
           value={period.gross_sales}
-          hint="Ventas totales incl. domicilio"
+          hint="Solo ventas de productos · total − domicilio"
           accent="muted"
         />
         <div className="min-w-0 rounded-2xl border border-border bg-card p-3.5 shadow-sm sm:p-5">
@@ -192,10 +192,11 @@ export function SalesReportsPanel({
         <div className="flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
           <Wallet className="size-4 shrink-0 text-primary" />
           <p className="text-xs leading-relaxed text-pretty sm:text-sm">
+            <span className="font-medium text-foreground">Facturación bruta</span> = suma de{" "}
+            <span className="font-mono text-[11px]">total − domicilio</span> de cada pedido
+            (solo productos). El domicilio es ganancia del repartidor.{" "}
             <span className="font-medium text-foreground">Ganancia neta</span> = facturación bruta
-            menos domiciliarios. El{" "}
-            <span className="font-medium text-foreground">neto real</span> descuenta además la
-            comisión de la app (5%).
+            menos comisión de la app (5%).
           </p>
         </div>
       </section>

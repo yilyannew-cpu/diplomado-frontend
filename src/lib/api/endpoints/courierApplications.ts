@@ -10,6 +10,12 @@ export interface ApiCourierApplication {
   createdAt: string;
   updatedAt: string;
   courierName?: string;
+  courierEmail?: string;
+  courierPhone?: string | null;
+  courierAvatar?: string | null;
+  courierVehicle?: string | null;
+  courierDocumentId?: string | null;
+  courierIsAvailable?: boolean;
   restaurantName?: string;
 }
 

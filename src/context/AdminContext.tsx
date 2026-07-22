@@ -57,6 +57,8 @@ import type { HistoryPeriod } from "@/lib/orderHistory";
 import type { NewAdditionData } from "@/components/admin/AddAdditionModal";
 
 const KITCHEN_STATUSES: OrderStatus[] = ["Recibido", "En Cocina", "Listo"];
+/** Pedidos en seguimiento de despacho (ruta + entregados del día). */
+const DISPATCH_TRACKING_STATUSES: OrderStatus[] = ["En Camino", "Recogido", "Entregado"];
 
 /** Módulos que se precargan al abrir el panel (reportes se pide al elegir rango). */
 const PRELOAD_TABS: AdminTab[] = [
@@ -64,6 +66,7 @@ const PRELOAD_TABS: AdminTab[] = [
   "comandas",
   "menu",
   "promociones",
+  "despachados",
   "domicilios",
   "historial",
 ];
@@ -72,10 +75,11 @@ function isKitchenOrder(order: Order): boolean {
   return KITCHEN_STATUSES.includes(order.status);
 }
 
-function mergeKitchenOrder(current: Order[], incoming: Order): Order[] {
-  if (!isKitchenOrder(incoming)) {
-    return current.filter((o) => o.orderId !== incoming.orderId && o.id !== incoming.id);
-  }
+function isDispatchTrackingOrder(order: Order): boolean {
+  return DISPATCH_TRACKING_STATUSES.includes(order.status);
+}
+
+function upsertOrderList(current: Order[], incoming: Order): Order[] {
   const key = incoming.orderId ?? incoming.id;
   const idx = current.findIndex((o) => (o.orderId ?? o.id) === key);
   if (idx >= 0) {
@@ -86,8 +90,57 @@ function mergeKitchenOrder(current: Order[], incoming: Order): Order[] {
   return [incoming, ...current];
 }
 
+function removeOrderFromList(current: Order[], incoming: Order): Order[] {
+  return current.filter((o) => o.orderId !== incoming.orderId && o.id !== incoming.id);
+}
+
+function mergeKitchenOrder(current: Order[], incoming: Order): Order[] {
+  if (!isKitchenOrder(incoming)) {
+    return removeOrderFromList(current, incoming);
+  }
+  return upsertOrderList(current, incoming);
+}
+
 function mergeKitchenOrders(current: Order[], incoming: Order[]): Order[] {
   return incoming.reduce((acc, order) => mergeKitchenOrder(acc, order), current);
+}
+
+function mergeEnRouteOrder(current: Order[], incoming: Order): Order[] {
+  if (!isDispatchTrackingOrder(incoming)) {
+    return removeOrderFromList(current, incoming);
+  }
+  if (
+    incoming.status === "Entregado" &&
+    !isSameLocalDay(incoming.statusEnteredAt || incoming.receivedAt || Date.now())
+  ) {
+    return removeOrderFromList(current, incoming);
+  }
+  return upsertOrderList(current, incoming);
+}
+
+function mergeEnRouteOrders(current: Order[], incoming: Order[]): Order[] {
+  return incoming.reduce((acc, order) => mergeEnRouteOrder(acc, order), current);
+}
+
+function isSameLocalDay(timestampMs: number, now = Date.now()): boolean {
+  const a = new Date(timestampMs);
+  const b = new Date(now);
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+/** En ruta siempre; entregados solo del día (control operativo). */
+function filterDispatchTrackingOrders(orders: Order[]): Order[] {
+  return orders.filter((order) => {
+    if (order.status === "En Camino" || order.status === "Recogido") return true;
+    if (order.status === "Entregado") {
+      return isSameLocalDay(order.statusEnteredAt || order.receivedAt || Date.now());
+    }
+    return false;
+  });
 }
 
 function buildMonthlyReports(monthly: ApiMonthlySales, year: number): MonthlySalesReport[] {
@@ -115,6 +168,8 @@ interface AdminContextValue {
   restaurantId: string | null;
   restaurant: ApiRestaurantProfile | null;
   kitchenOrders: Order[];
+  /** Pedidos En Camino con ficha completa (ítems, cliente, etc.). */
+  enRouteOrders: Order[];
   menu: MenuItem[];
   categories: ApiCategory[];
   promotions: Promotion[];
@@ -126,6 +181,7 @@ interface AdminContextValue {
   loading: boolean;
   error: string | null;
   refreshKitchenOrders: () => Promise<void>;
+  refreshEnRouteOrders: () => Promise<void>;
   refreshMenu: () => Promise<void>;
   refreshPromotions: () => Promise<void>;
   refreshDashboard: () => Promise<void>;
@@ -176,6 +232,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   const [restaurant, setRestaurant] = useState<ApiRestaurantProfile | null>(null);
   const [kitchenOrders, setKitchenOrders] = useState<Order[]>([]);
+  const [enRouteOrders, setEnRouteOrders] = useState<Order[]>([]);
   const [menu, setMenu] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<ApiCategory[]>([]);
   const categoriesRef = useRef<ApiCategory[]>([]);
@@ -230,6 +287,16 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       { ttlMs: 8_000, force },
     );
     setKitchenOrders(mapApiOrders(raw));
+  }, [restaurantId]);
+
+  const refreshEnRouteOrders = useCallback(async (force = false) => {
+    if (!restaurantId) return;
+    const raw = await dedupeAsync(
+      `admin:enroute:${restaurantId}`,
+      () => adminOrdersApi.listEnRouteOrders(restaurantId),
+      { ttlMs: 8_000, force },
+    );
+    setEnRouteOrders(filterDispatchTrackingOrders(mapApiOrders(raw)));
   }, [restaurantId]);
 
   const refreshMenu = useCallback(async (force = false) => {
@@ -320,6 +387,9 @@ export function AdminProvider({ children }: { children: ReactNode }) {
           case "promociones":
             await Promise.all([refreshPromotions(force), refreshMenu(force)]);
             break;
+          case "despachados":
+            await Promise.all([refreshKitchenOrders(force), refreshEnRouteOrders(force)]);
+            break;
           case "domicilios":
             await refreshActiveDeliveries(force);
             break;
@@ -348,6 +418,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       restaurantId,
       refreshDashboard,
       refreshKitchenOrders,
+      refreshEnRouteOrders,
       refreshMenu,
       refreshPromotions,
       refreshActiveDeliveries,
@@ -367,6 +438,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     await Promise.all([
       refreshDashboard(),
       refreshKitchenOrders(),
+      refreshEnRouteOrders(),
       refreshMenu(),
       refreshPromotions(),
       refreshActiveDeliveries(),
@@ -376,6 +448,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     restaurantId,
     refreshDashboard,
     refreshKitchenOrders,
+    refreshEnRouteOrders,
     refreshMenu,
     refreshPromotions,
     refreshActiveDeliveries,
@@ -433,21 +506,26 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     const onNewOrder = (payload: unknown) => {
       const order = mapApiOrder(payload as Parameters<typeof mapApiOrder>[0]);
       setKitchenOrders((current) => mergeKitchenOrder(current, order));
+      setEnRouteOrders((current) => mergeEnRouteOrder(current, order));
     };
 
     let socketRefreshTimer = 0;
     const onStatusChanged = (payload: unknown) => {
       if (Array.isArray(payload)) {
-        setKitchenOrders((current) => mergeKitchenOrders(current, mapApiOrders(payload as Parameters<typeof mapApiOrders>[0])));
+        const mapped = mapApiOrders(payload as Parameters<typeof mapApiOrders>[0]);
+        setKitchenOrders((current) => mergeKitchenOrders(current, mapped));
+        setEnRouteOrders((current) => mergeEnRouteOrders(current, mapped));
       } else {
         const order = mapApiOrder(payload as Parameters<typeof mapApiOrder>[0]);
         setKitchenOrders((current) => mergeKitchenOrder(current, order));
+        setEnRouteOrders((current) => mergeEnRouteOrder(current, order));
       }
       // Debounce: muchos eventos de cocina no deben martillar /active + historial.
       window.clearTimeout(socketRefreshTimer);
       socketRefreshTimer = window.setTimeout(() => {
         void refreshActiveDeliveries(true);
         void refreshDispatchHistory("month", true);
+        void refreshEnRouteOrders(true);
       }, 900);
     };
 
@@ -461,7 +539,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [restaurantId, refreshActiveDeliveries, refreshDispatchHistory]);
+  }, [restaurantId, refreshActiveDeliveries, refreshDispatchHistory, refreshEnRouteOrders]);
 
   const fetchAvailableCouriers = useCallback(
     async (batchSize: number, zone?: string) => {
@@ -497,7 +575,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
           courierId,
         );
         setKitchenOrders((current) => mergeKitchenOrders(current, mapApiOrders(updated)));
-        toast.success("Domiciliario asignado");
+        toast.success("Domiciliario asignado. El pedido pasó a Pedidos despachados.");
       } catch (err) {
         handleApiError(err, "No se pudo asignar el domiciliario");
         throw err;
@@ -514,19 +592,22 @@ export function AdminProvider({ children }: { children: ReactNode }) {
           orders.map(getOrderApiId),
           restaurantId,
         );
-        setKitchenOrders((current) =>
-          current.filter((o) => !orders.some((x) => getOrderApiId(x) === getOrderApiId(o))),
-        );
-        await Promise.all([refreshActiveDeliveries(true), refreshDispatchHistory("month", true)]);
+        // Siguen en Listo+repartidor hasta que el domi marque En camino;
+        // permanecen visibles en Pedidos despachados para control de estado.
+        await Promise.all([
+          refreshActiveDeliveries(true),
+          refreshEnRouteOrders(true),
+          refreshDispatchHistory("month", true),
+        ]);
         toast.success(
-          "Entregado al repartidor. Él marcará En camino y luego Entregado.",
+          "Entregado al repartidor. El pedido sigue en Despachados hasta que se entregue.",
         );
       } catch (err) {
         handleApiError(err, "No se pudo despachar el lote");
         throw err;
       }
     },
-    [restaurantId, refreshActiveDeliveries, refreshDispatchHistory, handleApiError],
+    [restaurantId, refreshActiveDeliveries, refreshEnRouteOrders, refreshDispatchHistory, handleApiError],
   );
 
   const ensureCategoryIdByName = useCallback(
@@ -819,6 +900,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       restaurantId,
       restaurant,
       kitchenOrders,
+      enRouteOrders,
       menu,
       categories,
       promotions,
@@ -830,6 +912,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       loading,
       error,
       refreshKitchenOrders,
+      refreshEnRouteOrders,
       refreshMenu,
       refreshPromotions,
       refreshDashboard,
@@ -857,6 +940,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       restaurantId,
       restaurant,
       kitchenOrders,
+      enRouteOrders,
       menu,
       categories,
       promotions,
@@ -868,6 +952,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       loading,
       error,
       refreshKitchenOrders,
+      refreshEnRouteOrders,
       refreshMenu,
       refreshPromotions,
       refreshDashboard,

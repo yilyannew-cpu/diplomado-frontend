@@ -119,7 +119,12 @@ export function OrderCommandMonitor({ onAssignZone, onDispatchBatch }: OrderComm
     () =>
       COLUMNS.map((column) => ({
         ...column,
-        orders: kitchenOrders.filter((order) => order.status === column.key),
+        // Listos con repartidor van a «Pedidos despachados», no a esta columna.
+        orders: kitchenOrders.filter((order) => {
+          if (order.status !== column.key) return false;
+          if (column.key === "Listo") return !order.deliveryPersonId;
+          return true;
+        }),
       })),
     [kitchenOrders],
   );
