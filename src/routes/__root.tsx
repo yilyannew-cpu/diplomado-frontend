@@ -7,10 +7,9 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "../context/AuthContext";
 import { CatalogProvider } from "../context/CatalogContext";
 import { OrderProvider } from "../context/OrderContext";
@@ -43,9 +42,6 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
-  useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -88,13 +84,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content",
       },
       { title: "FFCore — Fast Food Core · Sistema integral de gestión y domicilios" },
-      { name: "description", content: "Prototipo no funcional multirrol para gestión de comandas, menú, usuarios y entregas." },
-      { name: "author", content: "Lovable" },
+      { name: "description", content: "Plataforma multirrol para gestión de comandas, menú, usuarios y entregas." },
+      { name: "author", content: "FFCore" },
       { property: "og:title", content: "FFCore" },
       { property: "og:description", content: "Fast Food Core — delivery y gestión de restaurantes" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:site", content: "@ffcore" },
     ],
     links: [
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },

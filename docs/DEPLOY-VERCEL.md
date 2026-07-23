@@ -104,7 +104,7 @@ En nuestro caso, Nitro genera `functions/__server.func/` que maneja **todas las 
 
 | Preset | Destino |
 |--------|---------|
-| `cloudflare` | Cloudflare Workers (default en Lovable) |
+| `cloudflare` | Cloudflare Workers (default del preset Cloudflare) |
 | `vercel` | Vercel Build Output API |
 | `node-server` | Servidor Node tradicional |
 
@@ -138,7 +138,7 @@ Modelo de ejecución de Vercel donde las funciones escalan automáticamente seg�
 │  Vite 8            → Bundler y dev server               │
 │  Tailwind CSS 4    → Estilos                            │
 │  Nitro             → Adaptador de despliegue            │
-│  Lovable config    → @lovable.dev/vite-tanstack-config  │
+│  Vite/TanStack config    → @lovable.dev/vite-tanstack-config  │
 │  Bun               → Gestor de paquetes (bun.lock)      │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -188,7 +188,7 @@ Eso funciona **solo** si tienes un `index.html` en `dist/` y routing 100% en el 
 1. **No hay `index.html` en la raíz del repo** — TanStack Start lo genera en tiempo de build.
 2. **Usa SSR** — cada ruta puede renderizarse en el servidor.
 3. **Tiene entry de servidor** — `src/server.ts` envuelve el handler de TanStack Start.
-4. **Lovable desactiva Nitro fuera de su entorno** — sin configuración explícita, el build no produce `.vercel/output/`.
+4. **Sin preset Nitro explícito el build puede no generar salida Vercel** — sin configuración explícita, el build no produce `.vercel/output/`.
 5. **El preset por defecto es Cloudflare**, no Vercel.
 
 ### Build SIN configuración Nitro (incorrecto para Vercel)
@@ -579,12 +579,12 @@ Al hacer `GET /` en la URL de Vercel.
 | Tipo de app | SSR (TanStack Start), no SPA estática |
 | Build sin Nitro Vercel | Solo `dist/client` + `dist/server` |
 | Sin `index.html` en output | Vercel no tenía qué servir en `/` |
-| Preset Lovable | Cloudflare por defecto; Nitro desactivado fuera de Lovable |
+| Preset por defecto | Cloudflare; sin nitro.preset explícito no hay output Vercel |
 
 ### Log que delataba el problema
 
 ```
-No Lovable context detected — skipping nitro deploy plugin.
+Sin contexto de deploy: nitro deploy plugin omitido.
 Pass `nitro: true` (or `nitro: { ... }`) to force-enable.
 ```
 
@@ -625,7 +625,7 @@ Pass `nitro: true` (or `nitro: { ... }`) to force-enable.
 | `No Output Directory named "dist"` | Panel apunta a `dist` | Cambiar a `.vercel/output` |
 | Build OK pero pantalla blanca | JS no carga o error en runtime | Revisar consola del navegador y logs de función |
 | `routeTree.gen.ts` no encontrado | `postinstall` falló | Verificar `bun run routes:gen` en install |
-| Plugins duplicados | Agregar plugins manualmente en vite | Usar solo `defineConfig` de Lovable |
+| Plugins duplicados | Agregar plugins manualmente en vite | Usar solo `defineConfig` de el entorno de desarrollo |
 | Bun no disponible en Vercel | Install falla | Cambiar a `npm install` en `vercel.json` |
 | SSR crash en producción | Handler web de Nitro | Usar `entryFormat: "node"` |
 
@@ -662,7 +662,7 @@ npx vite preview
 | Servidor en producción | No | Sí (integrado) | Sí (via Nitro) |
 | Adapter necesario | No (o rewrites) | No | **Sí (Nitro preset vercel)** |
 | Routing en producción | Cliente o rewrites | Framework | SSR + función serverless |
-| Config Lovable default | N/A | N/A | Cloudflare, no Vercel |
+| Config Vite default | N/A | N/A | Cloudflare, no Vercel |
 
 ---
 
@@ -737,7 +737,7 @@ npx vite preview
 | Pregunta | Respuesta |
 |----------|-----------|
 | **¿Qué es Vercel?** | Plataforma PaaS para hostear apps web con CI/CD, CDN y serverless. |
-| **¿Qué es este proyecto?** | React 19 + TanStack Start (SSR) + Vite + Nitro, generado con Lovable. |
+| **¿Qué es este proyecto?** | React 19 + TanStack Start (SSR) + Vite + Nitro, con TanStack Start + Vite + Nitro. |
 | **¿Cómo se despliega?** | Push a Git → Vercel ejecuta `bun install` + `bun run build` → publica `.vercel/output`. |
 | **¿Qué lo hace funcionar?** | `nitro.preset: "vercel"` + `vercel.json` con output `.vercel/output`. |
 | **¿Cuál era el bug 404?** | Build sin formato Vercel; solo `dist/` sin función serverless. |
