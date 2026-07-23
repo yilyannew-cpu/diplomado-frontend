@@ -4,8 +4,9 @@ import { useState } from "react";
 import { User, Bike, Phone, Mail, Shield, FileText, ChevronLeft } from "lucide-react";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { useAuth } from "@/context/AuthContext";
+import { useCatalog } from "@/context/CatalogContext";
 import { resolveLogoUrl } from "@/lib/mediaUrl";
-import type { VehicleType } from "@/mocks/usersMock";
+import type { VehicleType } from "@/lib/api/types";
 import {
   Drawer,
   DrawerContent,
@@ -119,13 +120,20 @@ function MiCuentaView() {
 /* ─── Vista: Mi Vehículo ─── */
 function MiVehiculoView() {
   const { user } = useAuth();
+  const { vehicleTypes } = useCatalog();
   if (!user) return null;
 
-  const [vehicleType, setVehicleType] = useState<VehicleType>(user.vehicle_type ?? "Motocicleta");
+  const initialType =
+    user.vehicle_type ??
+    vehicleTypes.find((v) => v.code === "Moto")?.code ??
+    vehicleTypes[0]?.code ??
+    "";
+  const [vehicleType, setVehicleType] = useState<VehicleType>(initialType);
   const [plate, setPlate] = useState(user.vehicle_plate ?? "");
   const [description, setDescription] = useState(user.vehicle_description ?? "");
 
-  const showPlate = vehicleType !== "Bicicleta";
+  const selected = vehicleTypes.find((v) => v.code === vehicleType);
+  const showPlate = selected ? selected.requires_plate : vehicleType !== "Bici";
 
   return (
     <div className="space-y-4">
@@ -135,31 +143,28 @@ function MiVehiculoView() {
           <Bike className="size-3.5" />
           Tipo de Vehículo
         </label>
-        <div className="grid grid-cols-3 gap-2">
-          {(["Bicicleta", "Motocicleta", "Automóvil"] as VehicleType[]).map((type) => (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {vehicleTypes.map((type) => (
             <button
-              key={type}
+              key={type.id}
+              type="button"
               onClick={() => {
-                setVehicleType(type);
-                if (type === "Bicicleta") setPlate("");
+                setVehicleType(type.code);
+                if (!type.requires_plate) setPlate("");
               }}
               className={`rounded-xl border px-3 py-3 text-xs font-semibold transition-all ${
-                vehicleType === type
+                vehicleType === type.code
                   ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20"
                   : "border-border bg-card text-muted-foreground hover:bg-secondary"
               }`}
             >
-              {type === "Bicicleta" && "🚲"}
-              {type === "Motocicleta" && "🛵"}
-              {type === "Automóvil" && "🚗"}
-              <br />
-              {type}
+              {type.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Placa — solo visible si NO es bicicleta */}
+      {/* Placa — solo si el tipo lo requiere */}
       {showPlate && (
         <div className="animate-in fade-in slide-in-from-top-2 duration-300">
           <EditableField
@@ -173,7 +178,7 @@ function MiVehiculoView() {
 
       {!showPlate && (
         <div className="rounded-xl border border-dashed border-border bg-secondary/30 px-4 py-3 text-xs text-muted-foreground text-center animate-in fade-in duration-300">
-          Las bicicletas no requieren placa registrada.
+          Este tipo de vehículo no requiere placa registrada.
         </div>
       )}
 

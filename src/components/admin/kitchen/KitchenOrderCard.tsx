@@ -6,7 +6,7 @@ import { formatCOP, useOrders } from "@/context/OrderContext";
 import { useKitchenOrderSla } from "@/hooks/useKitchenOrderSla";
 import { slaCardBorderClass } from "@/lib/kitchenSla";
 import { cn } from "@/lib/utils";
-import type { Order } from "@/mocks/ordersMock";
+import type { Order } from "@/types/order";
 import { KitchenSlaTimer } from "./KitchenSlaTimer";
 
 interface KitchenOrderCardProps {

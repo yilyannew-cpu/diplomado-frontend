@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { ADDITION_CATEGORY } from "@/mocks/menuMock";
+import { ADDITION_CATEGORY } from "@/types/menu";
 import {
   formatThousandsInput,
   parseThousandsInput,

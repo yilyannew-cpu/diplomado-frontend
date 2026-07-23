@@ -17,7 +17,7 @@ import {
   formatCityZoneLabel,
   getCitySelectOptions,
 } from "@/lib/data/colombiaLocations";
-import { CUCUTA_COMUNAS } from "@/lib/cucutaComunas";
+import { useCatalog } from "@/context/CatalogContext";
 import { inferComunaFromAddress } from "@/lib/geolocationAddress";
 
 export const Route = createFileRoute("/registro/restaurante")({
@@ -28,6 +28,7 @@ export const Route = createFileRoute("/registro/restaurante")({
 });
 
 function RegisterRestaurantPage() {
+  const { comunas } = useCatalog();
   const cityOptions = useMemo(() => getCitySelectOptions(), []);
 
   const [form, setForm] = useState({
@@ -299,7 +300,7 @@ function RegisterRestaurantPage() {
           name="comuna"
           value={form.comuna}
           onChange={update("comuna")}
-          optionItems={[...CUCUTA_COMUNAS]}
+          optionItems={comunas.map((c) => ({ value: c.code, label: c.label }))}
           placeholder="Selecciona una comuna"
           error={fieldErrors.comuna}
           required

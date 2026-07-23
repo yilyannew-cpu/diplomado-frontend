@@ -10,8 +10,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { useAdmin } from "@/context/AdminContext";
 import { formatCOP } from "@/context/OrderContext";
-import type { Promotion } from "@/mocks/promotionsMock";
-import { ADDITION_CATEGORY } from "@/mocks/menuMock";
+import type { Promotion } from "@/types/promotion";
+import { ADDITION_CATEGORY } from "@/types/menu";
 
 interface EditPromotionModalProps {
   promotion: Promotion | null;

@@ -1,5 +1,5 @@
 import type { ApiRestaurantListItem } from "@/lib/api/endpoints/cliente";
-import type { Restaurant } from "@/mocks/restaurantsMock";
+import type { Restaurant } from "@/types/restaurant";
 import { resolveLogoUrl } from "@/lib/mediaUrl";
 
 export function mapApiRestaurantListItem(raw: ApiRestaurantListItem): Restaurant {

@@ -1,8 +1,8 @@
-import type { MenuItem } from "@/mocks/menuMock";
-import type { Order } from "@/mocks/ordersMock";
-import type { OrderItemCustomizations } from "@/mocks/ordersMock";
-import type { Promotion } from "@/mocks/promotionsMock";
-import type { Restaurant } from "@/mocks/restaurantsMock";
+import type { MenuItem } from "@/types/menu";
+import type { Order } from "@/types/order";
+import type { OrderItemCustomizations } from "@/types/order";
+import type { Promotion } from "@/types/promotion";
+import type { Restaurant } from "@/types/restaurant";
 
 export type ClientTab = "menu" | "tracking";
 export type ClientModule = "inicio" | "promociones" | "rankin" | "mis-pedidos";

@@ -1,4 +1,4 @@
-import type { Order } from "@/mocks/ordersMock";
+import type { Order } from "@/types/order";
 
 /**
  * Tarifas de domicilio FFCore (COP) — distancia por ruta de mapa.

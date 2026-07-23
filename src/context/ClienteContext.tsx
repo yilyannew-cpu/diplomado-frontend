@@ -50,11 +50,11 @@ import { resolveLogoUrl } from "@/lib/mediaUrl";
 import { getProductPricing } from "@/lib/promotions";
 import { resolveClientComuna } from "@/lib/clientComunaStorage";
 import { sortRestaurantsByProximity } from "@/lib/restaurantProximity";
-import type { MenuItem } from "@/mocks/menuMock";
-import type { Order } from "@/mocks/ordersMock";
-import type { Promotion } from "@/mocks/promotionsMock";
-import type { Restaurant } from "@/mocks/restaurantsMock";
-import type { OrderItemCustomizations } from "@/mocks/ordersMock";
+import type { MenuItem } from "@/types/menu";
+import type { Order } from "@/types/order";
+import type { Promotion } from "@/types/promotion";
+import type { Restaurant } from "@/types/restaurant";
+import type { OrderItemCustomizations } from "@/types/order";
 
 export type Customizations = OrderItemCustomizations;
 

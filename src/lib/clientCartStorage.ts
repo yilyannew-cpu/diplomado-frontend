@@ -1,5 +1,5 @@
-import type { MenuItem } from "@/mocks/menuMock";
-import type { OrderItemCustomizations } from "@/mocks/ordersMock";
+import type { MenuItem } from "@/types/menu";
+import type { OrderItemCustomizations } from "@/types/order";
 
 const CLIENT_CART_KEY = "ffcore_client_cart";
 

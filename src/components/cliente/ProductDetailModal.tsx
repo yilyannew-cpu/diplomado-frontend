@@ -1,7 +1,7 @@
 import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { X, Check } from "lucide-react";
-import type { MenuItem } from "@/mocks/menuMock";
-import type { SelectedMenuExtra } from "@/mocks/ordersMock";
+import type { MenuItem } from "@/types/menu";
+import type { SelectedMenuExtra } from "@/types/order";
 import { type Customizations, useCliente, formatCOP } from "@/context/ClienteContext";
 import { ProductImage } from "@/components/shared/ProductImage";
 import {

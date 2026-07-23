@@ -13,8 +13,8 @@ import { fetchRestaurantProductsCached } from "@/lib/api/cliente/clientCatalogCa
 import { courierOrdersApi } from "@/lib/api/endpoints/courierOrders";
 import { ApiError } from "@/lib/api/errors";
 import { formatCOP } from "@/context/OrderContext";
-import type { MenuItem } from "@/mocks/menuMock";
-import type { Order, OrderStatus } from "@/mocks/ordersMock";
+import type { MenuItem } from "@/types/menu";
+import type { Order, OrderStatus } from "@/types/order";
 import {
   Accordion,
   AccordionContent,

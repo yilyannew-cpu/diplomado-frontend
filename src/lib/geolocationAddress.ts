@@ -1,4 +1,4 @@
-import { CUCUTA_COMUNA_VALUES, type CucutaComuna } from "@/lib/cucutaComunas";
+import { getCucutaComunaCodes, type CucutaComuna } from "@/lib/cucutaComunas";
 import { getCitySelectOptions } from "@/lib/data/colombiaLocations";
 
 export type ResolvedLocation = {
@@ -97,10 +97,11 @@ function matchComuna(...candidates: Array<string | undefined | null>): CucutaCom
     const fromAlias = AREA_TO_COMUNA[key];
     if (fromAlias) return fromAlias;
 
-    const exact = CUCUTA_COMUNA_VALUES.find((c) => normalizeKey(c) === key);
+    const knownCodes = getCucutaComunaCodes();
+    const exact = knownCodes.find((c) => normalizeKey(c) === key);
     if (exact) return exact;
 
-    for (const comuna of CUCUTA_COMUNA_VALUES) {
+    for (const comuna of knownCodes) {
       const n = normalizeKey(comuna);
       if (key.includes(n) || n.includes(key)) return comuna;
     }

@@ -48,10 +48,11 @@ import type {
 import type { AdminTab } from "@/components/admin/AdminNav";
 import type { NewProductData } from "@/components/admin/AddProductModal";
 import type { EditProductData } from "@/components/admin/EditProductModal";
-import type { Ingredient, MenuItem, ModifierGroup } from "@/mocks/menuMock";
-import { ADDITION_CATEGORY, CATEGORIES } from "@/mocks/menuMock";
-import type { Order, OrderStatus } from "@/mocks/ordersMock";
-import type { Promotion } from "@/mocks/promotionsMock";
+import type { Ingredient, MenuItem, ModifierGroup } from "@/types/menu";
+import { ADDITION_CATEGORY } from "@/types/menu";
+import type { Order, OrderStatus } from "@/types/order";
+import type { Promotion } from "@/types/promotion";
+import { catalogApi } from "@/lib/api/endpoints/catalog";
 import type { CourierPayoutRow, MonthlySalesReport, ReportDateRange } from "@/lib/salesReports";
 import type { HistoryPeriod } from "@/lib/orderHistory";
 import type { NewAdditionData } from "@/components/admin/AddAdditionModal";
@@ -67,7 +68,6 @@ const PRELOAD_TABS: AdminTab[] = [
   "menu",
   "promociones",
   "despachados",
-  "domicilios",
   "historial",
 ];
 
@@ -306,9 +306,13 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       async () => {
         let cats = await restaurantsApi.listCategories(restaurantId);
         if (cats.length === 0) {
+          const templates = await catalogApi.listMenuCategoryTemplates();
           cats = await Promise.all(
-            [...CATEGORIES].map((name, position) =>
-              restaurantsApi.createCategory(restaurantId, { name, position }),
+            templates.map((t) =>
+              restaurantsApi.createCategory(restaurantId, {
+                name: t.name,
+                position: t.position,
+              }),
             ),
           );
         }
@@ -390,9 +394,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
           case "despachados":
             await Promise.all([refreshKitchenOrders(force), refreshEnRouteOrders(force)]);
             break;
-          case "domicilios":
-            await refreshActiveDeliveries(force);
-            break;
           case "historial":
             await refreshDispatchHistory("month", force);
             break;
@@ -441,7 +442,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       refreshEnRouteOrders(),
       refreshMenu(),
       refreshPromotions(),
-      refreshActiveDeliveries(),
       refreshDispatchHistory("month"),
     ]);
   }, [
@@ -451,7 +451,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     refreshEnRouteOrders,
     refreshMenu,
     refreshPromotions,
-    refreshActiveDeliveries,
     refreshDispatchHistory,
   ]);
 

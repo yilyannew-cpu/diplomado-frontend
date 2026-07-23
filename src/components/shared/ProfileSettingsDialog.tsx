@@ -17,7 +17,7 @@ import { mapApiErrorToForm } from "@/lib/api/mapApiErrorToForm";
 import { isValidPassword, isValidPhone, passwordRules } from "@/lib/api/profileValidation";
 import { getToken } from "@/lib/api/client";
 import { persistClientComuna } from "@/lib/clientComunaStorage";
-import { CUCUTA_COMUNAS } from "@/lib/cucutaComunas";
+import { useCatalog } from "@/context/CatalogContext";
 import type { UpdateProfileBody } from "@/lib/api/types/profile";
 
 interface ProfileSettingsDialogProps {
@@ -27,6 +27,7 @@ interface ProfileSettingsDialogProps {
 
 export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDialogProps) {
   const { user, refreshUser, setSession } = useAuth();
+  const { comunas } = useCatalog();
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [comuna, setComuna] = useState("");
@@ -258,8 +259,8 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
                     <option value="" disabled>
                       Selecciona tu comuna
                     </option>
-                    {CUCUTA_COMUNAS.map((item) => (
-                      <option key={item.value} value={item.value}>
+                    {comunas.map((item) => (
+                      <option key={item.id} value={item.code}>
                         {item.label}
                       </option>
                     ))}

@@ -1,5 +1,5 @@
-import type { MenuItem } from "@/mocks/menuMock";
-import type { Promotion } from "@/mocks/promotionsMock";
+import type { MenuItem } from "@/types/menu";
+import type { Promotion } from "@/types/promotion";
 
 export type PromotionStatus = "active" | "scheduled" | "expired" | "inactive";
 

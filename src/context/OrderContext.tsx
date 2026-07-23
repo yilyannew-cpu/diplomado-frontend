@@ -9,11 +9,11 @@ import {
 } from "react";
 
 // ── Tipos (aún desde mocks hasta Fase 3 de centralización) ──────────
-import type { DispatchRecord } from "@/mocks/dispatchHistoryMock";
-import type { MenuItem } from "@/mocks/menuMock";
-import type { Order, OrderItemCustomizations, OrderStatus } from "@/mocks/ordersMock";
-import type { Promotion } from "@/mocks/promotionsMock";
-import type { Restaurant } from "@/mocks/restaurantsMock";
+import type { DispatchRecord } from "@/types/dispatch";
+import type { MenuItem } from "@/types/menu";
+import type { Order, OrderItemCustomizations, OrderStatus } from "@/types/order";
+import type { Promotion } from "@/types/promotion";
+import type { Restaurant } from "@/types/restaurant";
 
 // ── Clientes API reales ─────────────────────────────────────────────
 import { restaurantsApi, type ApiRestaurantSummary } from "@/lib/api/endpoints/restaurants";

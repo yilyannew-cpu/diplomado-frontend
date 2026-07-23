@@ -13,7 +13,7 @@ import { MAX_ORDERS_PER_COURIER } from "@/lib/deliveryLimits";
 import { resolveLogoUrl } from "@/lib/mediaUrl";
 import { getOrderZone } from "@/lib/orderZones";
 import type { ApiAvailableCourier } from "@/lib/api/types/admin";
-import type { Order } from "@/mocks/ordersMock";
+import type { Order } from "@/types/order";
 
 interface AssignCourierModalProps {
   orders: Order[];

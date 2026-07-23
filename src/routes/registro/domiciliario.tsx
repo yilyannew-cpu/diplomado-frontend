@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AuthFormAlert,
   AuthFormField,
@@ -11,9 +11,8 @@ import {
 } from "@/components/auth/AuthLayout";
 import { authApi } from "@/lib/api/endpoints/auth";
 import { mapApiErrorToForm } from "@/lib/api/mapApiErrorToForm";
+import { useCatalog } from "@/context/CatalogContext";
 import type { VehicleType } from "@/lib/api/types";
-
-const VEHICLE_TYPES: VehicleType[] = ["Moto", "Bici", "Automóvil", "Otro"];
 
 export const Route = createFileRoute("/registro/domiciliario")({
   head: () => ({
@@ -23,6 +22,7 @@ export const Route = createFileRoute("/registro/domiciliario")({
 });
 
 function RegisterCourierPage() {
+  const { vehicleTypes } = useCatalog();
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -30,7 +30,7 @@ function RegisterCourierPage() {
     password_confirmation: "",
     phone: "",
     document_id: "",
-    vehicle_type: "Moto" as VehicleType,
+    vehicle_type: "" as VehicleType,
     vehicle_plate: "",
     vehicle_description: "",
   });
@@ -38,6 +38,12 @@ function RegisterCourierPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!form.vehicle_type && vehicleTypes[0]?.code) {
+      setForm((prev) => ({ ...prev, vehicle_type: vehicleTypes[0]!.code }));
+    }
+  }, [vehicleTypes, form.vehicle_type]);
 
   const update =
     (field: keyof typeof form) => (value: string) => {
@@ -183,9 +189,9 @@ function RegisterCourierPage() {
             onChange={(e) => update("vehicle_type")(e.target.value)}
             className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
           >
-            {VEHICLE_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {type}
+            {vehicleTypes.map((type) => (
+              <option key={type.id} value={type.code}>
+                {type.label}
               </option>
             ))}
           </select>

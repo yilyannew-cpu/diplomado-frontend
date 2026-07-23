@@ -5,7 +5,7 @@ import {
   slaTimerClass,
   slaTitle,
 } from "@/lib/kitchenSla";
-import type { Order } from "@/mocks/ordersMock";
+import type { Order } from "@/types/order";
 
 interface KitchenSlaTimerProps {
   order: Order;

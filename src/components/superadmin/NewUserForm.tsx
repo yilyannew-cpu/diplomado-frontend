@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
-import { CUCUTA_COMUNAS, CUCUTA_COMUNA_VALUES } from "@/lib/cucutaComunas";
+import { useCatalog } from "@/context/CatalogContext";
 import { cn } from "@/lib/utils";
 
 type CorporateRole = "Cliente" | "Admin Restaurante" | "Domiciliario";
@@ -44,20 +44,24 @@ function formatValidationMessage(error: ApiError): string {
 }
 
 export function NewUserForm({ onUserCreated }: { onUserCreated?: () => void }) {
+  const { comunas, vehicleTypes } = useCatalog();
   const [role, setRole] = useState<CorporateRole>("Cliente");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [documentId, setDocumentId] = useState("");
-  const [vehicleType, setVehicleType] = useState("Moto");
+  const [vehicleType, setVehicleType] = useState("");
   const [vehiclePlate, setVehiclePlate] = useState("");
   const [restaurantName, setRestaurantName] = useState("");
   const [city, setCity] = useState("Cúcuta");
   const [address, setAddress] = useState("");
-  const [comuna, setComuna] = useState(CUCUTA_COMUNA_VALUES[0] ?? "");
+  const [comuna, setComuna] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const defaultComuna = comunas[0]?.code ?? "";
+  const defaultVehicle = vehicleTypes[0]?.code ?? "";
 
   const passwordHint = useMemo(
     () => "Mínimo 8 caracteres, con al menos una letra y un número",
@@ -70,11 +74,12 @@ export function NewUserForm({ onUserCreated }: { onUserCreated?: () => void }) {
     setPhone("");
     setPassword("");
     setDocumentId("");
+    setVehicleType(defaultVehicle);
     setVehiclePlate("");
     setRestaurantName("");
     setCity("Cúcuta");
     setAddress("");
-    setComuna(CUCUTA_COMUNA_VALUES[0] ?? "");
+    setComuna(defaultComuna);
     setFieldErrors({});
   };
 
@@ -96,7 +101,7 @@ export function NewUserForm({ onUserCreated }: { onUserCreated?: () => void }) {
             password,
             password_confirmation: password,
             phone: phoneNormalized,
-            comuna,
+            comuna: comuna || defaultComuna,
           },
         });
       } else if (role === "Admin Restaurante") {
@@ -125,7 +130,7 @@ export function NewUserForm({ onUserCreated }: { onUserCreated?: () => void }) {
             password_confirmation: password,
             phone: phoneNormalized,
             document_id: documentId.trim(),
-            vehicle_type: vehicleType,
+            vehicle_type: vehicleType || defaultVehicle,
             vehicle_plate: vehiclePlate.trim().toUpperCase(),
           },
         });
@@ -214,12 +219,12 @@ export function NewUserForm({ onUserCreated }: { onUserCreated?: () => void }) {
                 "w-full rounded-xl border bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20",
                 fieldErrors.comuna ? "border-destructive" : "border-border",
               )}
-              value={comuna}
+              value={comuna || defaultComuna}
               onChange={(e) => setComuna(e.target.value)}
               required
             >
-              {CUCUTA_COMUNAS.map((c) => (
-                <option key={c.value} value={c.value}>
+              {comunas.map((c) => (
+                <option key={c.id} value={c.code}>
                   {c.label}
                 </option>
               ))}
@@ -278,13 +283,14 @@ export function NewUserForm({ onUserCreated }: { onUserCreated?: () => void }) {
                   "w-full rounded-xl border bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20",
                   fieldErrors.vehicle_type ? "border-destructive" : "border-border",
                 )}
-                value={vehicleType}
+                value={vehicleType || defaultVehicle}
                 onChange={(e) => setVehicleType(e.target.value)}
               >
-                <option value="Moto">Moto</option>
-                <option value="Bici">Bici</option>
-                <option value="Automóvil">Automóvil</option>
-                <option value="Otro">Otro</option>
+                {vehicleTypes.map((vt) => (
+                  <option key={vt.id} value={vt.code}>
+                    {vt.label}
+                  </option>
+                ))}
               </select>
               {fieldErrors.vehicle_type ? (
                 <p className="mt-1 text-[11px] text-destructive">{fieldErrors.vehicle_type}</p>

@@ -1,5 +1,5 @@
-import type { MenuItem } from "@/mocks/menuMock";
-import type { OrderItem, OrderItemCustomizations, SelectedMenuExtra } from "@/mocks/ordersMock";
+import type { MenuItem } from "@/types/menu";
+import type { OrderItem, OrderItemCustomizations, SelectedMenuExtra } from "@/types/order";
 
 export const MAIN_DISH_CATEGORY = "Platos principales" as const;
 export const ADDITION_CATEGORY = "Adiciones" as const;

@@ -1,5 +1,5 @@
 import { ImagePlus } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { CATEGORIES, type Category } from "@/mocks/menuMock";
+import type { Category } from "@/types/menu";
 import {
   formatThousandsInput,
   parseThousandsInput,
@@ -31,27 +31,35 @@ interface AddProductModalProps {
   open: boolean;
   onClose: () => void;
   onSave: (data: NewProductData) => Promise<void>;
+  /** Categorías del restaurante (API). */
+  categories: string[];
 }
 
 const inputClass =
   "mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20";
 
-export function AddProductModal({ open, onClose, onSave }: AddProductModalProps) {
+export function AddProductModal({ open, onClose, onSave, categories }: AddProductModalProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
-  const [category, setCategory] = useState<Category>("Entradas");
+  const [category, setCategory] = useState<Category>("");
   const [image, setImage] = useState("");
   const [available, setAvailable] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (open && categories.length > 0 && !categories.includes(category)) {
+      setCategory(categories[0]!);
+    }
+  }, [open, categories, category]);
+
   const reset = () => {
     setName("");
     setDescription("");
     setPrice("");
-    setCategory("Entradas");
+    setCategory(categories[0] ?? "");
     setImage("");
     setAvailable(true);
     setError(null);
@@ -94,6 +102,10 @@ export function AddProductModal({ open, onClose, onSave }: AddProductModalProps)
     }
     if (parsedPrice == null || parsedPrice <= 0) {
       setError("Ingresa un precio válido mayor a cero.");
+      return;
+    }
+    if (!category || categories.length === 0) {
+      setError("Selecciona una categoría válida.");
       return;
     }
 
@@ -214,7 +226,7 @@ export function AddProductModal({ open, onClose, onSave }: AddProductModalProps)
                 onChange={(e) => setCategory(e.target.value as Category)}
                 className={inputClass}
               >
-                {CATEGORIES.map((c) => (
+                {categories.map((c) => (
                   <option key={c} value={c}>
                     {c}
                   </option>

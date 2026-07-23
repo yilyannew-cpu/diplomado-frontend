@@ -4,14 +4,14 @@ import { CreatePromotionModal } from "@/components/admin/promotions/CreatePromot
 import { EditPromotionModal } from "@/components/admin/promotions/EditPromotionModal";
 import { useAdmin } from "@/context/AdminContext";
 import { formatCOP } from "@/context/OrderContext";
-import type { Promotion } from "@/mocks/promotionsMock";
+import type { Promotion } from "@/types/promotion";
 import {
   getProductPricing,
   getPromotionStatus,
   promotionStatusClass,
   promotionStatusLabel,
 } from "@/lib/promotions";
-import type { MenuItem } from "@/mocks/menuMock";
+import type { MenuItem } from "@/types/menu";
 
 export function PromotionsPanel() {
   const { menu, promotions } = useAdmin();

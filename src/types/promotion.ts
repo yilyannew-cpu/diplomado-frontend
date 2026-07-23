@@ -10,17 +10,3 @@ export interface Promotion {
   createdAt: number;
   restaurantId?: string;
 }
-
-export const promotionsMock: Promotion[] = [
-  {
-    id: "PROM-01",
-    name: "Semana del smash",
-    discountPercent: 15,
-    productIds: ["prod-01", "prod-02"],
-    startDate: "2025-06-01",
-    endDate: "2025-06-30",
-    active: true,
-    createdAt: Date.now(),
-    restaurantId: "rest-01",
-  },
-];

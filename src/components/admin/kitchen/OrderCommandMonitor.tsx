@@ -8,7 +8,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useKitchenTick } from "@/hooks/useKitchenTick";
 import { stationHasDelayedOrders, type MonitorStation } from "@/lib/kitchenSla";
 import { cn } from "@/lib/utils";
-import type { Order, OrderStatus } from "@/mocks/ordersMock";
+import type { Order, OrderStatus } from "@/types/order";
 
 type ColumnConfig = {
   key: OrderStatus;

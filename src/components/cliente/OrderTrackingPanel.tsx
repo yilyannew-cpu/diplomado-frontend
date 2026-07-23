@@ -16,7 +16,7 @@ import {
 import { readClientAddress, readClientAddressCoords } from "@/lib/clientAddressStorage";
 import { getOrderDeliveryFee, getOrderProductSales } from "@/lib/deliveryFees";
 import { resolveLogoUrl } from "@/lib/mediaUrl";
-import { CLIENT_STATUS_FLOW } from "@/mocks/ordersMock";
+import { CLIENT_STATUS_FLOW } from "@/types/order";
 import { cn } from "@/lib/utils";
 
 export function OrderTrackingPanel() {

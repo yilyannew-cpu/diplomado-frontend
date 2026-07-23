@@ -1,6 +1,6 @@
 import { getOrderDeliveryFee } from "@/lib/deliveryFees";
-import type { DispatchRecord } from "@/mocks/dispatchHistoryMock";
-import type { Order } from "@/mocks/ordersMock";
+import type { DispatchRecord } from "@/types/dispatch";
+import type { Order } from "@/types/order";
 
 export type HistoryPeriod = "day" | "month" | "year";
 

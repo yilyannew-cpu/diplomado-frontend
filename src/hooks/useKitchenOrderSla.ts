@@ -7,7 +7,7 @@ import {
   isOrderDelayed,
   type SlaLevel,
 } from "@/lib/kitchenSla";
-import type { Order } from "@/mocks/ordersMock";
+import type { Order } from "@/types/order";
 
 /** SLA en tiempo real para una comanda según su estación actual. */
 export function useKitchenOrderSla(order: Order) {

@@ -9,8 +9,8 @@ import {
   getPromotionStatus,
   isPromotionActive,
 } from "@/lib/promotions";
-import type { MenuItem } from "@/mocks/menuMock";
-import type { Promotion } from "@/mocks/promotionsMock";
+import type { MenuItem } from "@/types/menu";
+import type { Promotion } from "@/types/promotion";
 
 function formatDateLabel(isoDate: string): string {
   const [year, month, day] = isoDate.split("-").map(Number);

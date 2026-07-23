@@ -63,7 +63,7 @@ src/
 │   └── OrderContext  # Gestión de carritos y comandas en vivo
 ├── lib/              # Utilidades puras, lógica de negocio y llamadas a la API
 │   └── api/          # Configuración del cliente HTTP (Axios/Fetch) para el backend real
-├── mocks/            # Base de datos simulada (Usuarios, Menú, Órdenes, etc.)
+├── types/            # Tipos de dominio del frontend (menú, pedidos, restaurantes, etc.)
 └── routes/           # Sistema de rutas basado en archivos (TanStack Router)
 ```
 

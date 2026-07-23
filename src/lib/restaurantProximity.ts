@@ -1,4 +1,4 @@
-import type { Restaurant } from "@/mocks/restaurantsMock";
+import type { Restaurant } from "@/types/restaurant";
 
 function normalizeLabel(value: string): string {
   return value

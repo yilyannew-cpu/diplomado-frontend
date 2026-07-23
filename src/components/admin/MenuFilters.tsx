@@ -13,11 +13,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CATEGORIES, type Category, type MenuItem } from "@/mocks/menuMock";
+import type { MenuItem } from "@/types/menu";
 import { cn } from "@/lib/utils";
 
 export type MenuAvailabilityFilter = "all" | "available" | "unavailable";
-export type MenuCategoryFilter = "all" | Category;
+export type MenuCategoryFilter = "all" | string;
 
 export interface MenuFiltersState {
   category: MenuCategoryFilter;
@@ -40,9 +40,17 @@ interface MenuFiltersProps {
   onChange: (value: MenuFiltersState) => void;
   resultCount: number;
   totalCount: number;
+  /** Categorías del restaurante (API). */
+  categories: string[];
 }
 
-export function MenuFilters({ value, onChange, resultCount, totalCount }: MenuFiltersProps) {
+export function MenuFilters({
+  value,
+  onChange,
+  resultCount,
+  totalCount,
+  categories,
+}: MenuFiltersProps) {
   const [open, setOpen] = useState(false);
 
   const hasActiveFilters =
@@ -113,7 +121,7 @@ export function MenuFilters({ value, onChange, resultCount, totalCount }: MenuFi
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas las categorías</SelectItem>
-                  {CATEGORIES.map((category) => (
+                  {categories.map((category) => (
                     <SelectItem key={category} value={category}>
                       {category}
                     </SelectItem>

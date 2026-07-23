@@ -11,7 +11,7 @@ import {
   type HistoryPeriod,
 } from "@/lib/orderHistory";
 import { cn } from "@/lib/utils";
-import type { Order } from "@/mocks/ordersMock";
+import type { Order } from "@/types/order";
 
 function orderCompletedAt(order: Order): number {
   return order.statusEnteredAt || order.dispatchedAt || order.receivedAt || 0;

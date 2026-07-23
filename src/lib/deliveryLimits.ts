@@ -1,4 +1,4 @@
-import type { Order, OrderStatus } from "@/mocks/ordersMock";
+import type { Order, OrderStatus } from "@/types/order";
 
 /**
  * Tope operativo: hasta 3 pedidos del mismo restaurante y la misma zona

@@ -1,4 +1,4 @@
-import type { Order, OrderStatus } from "@/mocks/ordersMock";
+import type { Order, OrderStatus } from "@/types/order";
 
 /** Estados visibles en el monitor de comandas. */
 export type MonitorStation = Extract<OrderStatus, "Recibido" | "En Cocina" | "Listo">;

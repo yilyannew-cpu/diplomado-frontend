@@ -1,8 +1,8 @@
 import { formatCOP } from "@/context/OrderContext";
 import { resolveMediaUrl, PLACEHOLDER_IMAGE } from "@/lib/mediaUrl";
 import { formatCustomizationLines, getOrderItemLineKey, getOrderItemUnitPrice } from "@/lib/orderCustomizations";
-import type { MenuItem } from "@/mocks/menuMock";
-import type { OrderItem } from "@/mocks/ordersMock";
+import type { MenuItem } from "@/types/menu";
+import type { OrderItem } from "@/types/order";
 import { cn } from "@/lib/utils";
 
 interface OrderItemLinesProps {

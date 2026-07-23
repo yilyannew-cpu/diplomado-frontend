@@ -19,8 +19,8 @@ import { getOrderDeliveryFee } from "@/lib/deliveryFees";
 import { resolveLogoUrl } from "@/lib/mediaUrl";
 import { cn } from "@/lib/utils";
 import { getOrderZone, groupOrdersByZone } from "@/lib/orderZones";
-import type { MenuItem } from "@/mocks/menuMock";
-import type { Order, OrderStatus } from "@/mocks/ordersMock";
+import type { MenuItem } from "@/types/menu";
+import type { Order, OrderStatus } from "@/types/order";
 
 interface DispatchedOrdersPanelProps {
   onDispatchBatch: (orders: Order[]) => void;

@@ -17,7 +17,7 @@ import { mapApiErrorToForm } from "@/lib/api/mapApiErrorToForm";
 import { getRoleHomePath } from "@/lib/auth/roleRoutes";
 import { persistClientAddress } from "@/lib/clientAddressStorage";
 import { persistClientComuna } from "@/lib/clientComunaStorage";
-import { CUCUTA_COMUNAS } from "@/lib/cucutaComunas";
+import { useCatalog } from "@/context/CatalogContext";
 import { inferComunaFromAddress } from "@/lib/geolocationAddress";
 
 export const Route = createFileRoute("/registro/cliente")({
@@ -29,6 +29,7 @@ export const Route = createFileRoute("/registro/cliente")({
 
 function RegisterClientPage() {
   const { setSession } = useAuth();
+  const { comunas } = useCatalog();
   const navigate = useNavigate();
   const [form, setForm] = useState({
     name: "",
@@ -234,7 +235,7 @@ function RegisterClientPage() {
           name="comuna"
           value={form.comuna}
           onChange={update("comuna")}
-          optionItems={[...CUCUTA_COMUNAS]}
+          optionItems={comunas.map((c) => ({ value: c.code, label: c.label }))}
           placeholder="Selecciona tu comuna"
           error={fieldErrors.comuna}
           required

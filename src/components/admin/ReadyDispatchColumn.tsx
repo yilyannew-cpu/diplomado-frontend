@@ -7,7 +7,7 @@ import { chunkOrders, MAX_ORDERS_PER_COURIER } from "@/lib/deliveryLimits";
 import { getOrderDeliveryFee } from "@/lib/deliveryFees";
 import { resolveLogoUrl } from "@/lib/mediaUrl";
 import { groupOrdersByZone } from "@/lib/orderZones";
-import type { Order } from "@/mocks/ordersMock";
+import type { Order } from "@/types/order";
 
 interface ReadyDispatchColumnProps {
   orders: Order[];

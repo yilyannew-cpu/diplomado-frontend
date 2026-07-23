@@ -42,7 +42,7 @@ import {
   extractRestaurantComuna,
   getRestaurantProximity,
 } from "@/lib/restaurantProximity";
-import type { MenuItem } from "@/mocks/menuMock";
+import type { MenuItem } from "@/types/menu";
 import { cn } from "@/lib/utils";
 
 function normalizeSearch(value: string): string {

@@ -2,7 +2,8 @@ export type Role = "cliente" | "admin" | "superadmin" | "domiciliario";
 
 export type UserStatus = "Activo" | "Pendiente" | "Suspendido" | "Rechazado";
 
-export type VehicleType = "Moto" | "Bici" | "Automóvil" | "Otro";
+/** Código de tipo de vehículo (catálogo `/catalog/vehicle-types`). */
+export type VehicleType = string;
 
 export interface User {
   id: string;
@@ -21,6 +22,11 @@ export interface User {
   restaurant_logo?: string | null;
   created_at?: string;
   is_available?: boolean;
+  vehicle_type?: VehicleType | null;
+  vehicle_plate?: string | null;
+  vehicle_description?: string | null;
+  emergency_contact_name?: string | null;
+  emergency_contact_phone?: string | null;
 }
 
 export interface LoginResponse {

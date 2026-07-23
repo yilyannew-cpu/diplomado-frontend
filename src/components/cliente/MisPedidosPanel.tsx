@@ -5,7 +5,7 @@ import { mapApiOrders } from "@/lib/api/admin/mappers";
 import { clientOrdersApi } from "@/lib/api/endpoints/clientOrders";
 import { ApiError } from "@/lib/api/errors";
 import { getOrderDeliveryFee, getOrderProductSales } from "@/lib/deliveryFees";
-import type { Order, OrderStatus } from "@/mocks/ordersMock";
+import type { Order, OrderStatus } from "@/types/order";
 import { cn } from "@/lib/utils";
 
 const STATUS_LABEL: Record<OrderStatus, string> = {

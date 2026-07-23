@@ -5,9 +5,9 @@ import type {
   ModifierGroup,
   ModifierOption,
   Category,
-} from "@/mocks/menuMock";
-import type { Order, OrderItem, OrderStatus } from "@/mocks/ordersMock";
-import type { Promotion } from "@/mocks/promotionsMock";
+} from "@/types/menu";
+import type { Order, OrderItem, OrderStatus } from "@/types/order";
+import type { Promotion } from "@/types/promotion";
 import { dataUrlToFile, resolveMediaUrl, toApiImageUrl, PLACEHOLDER_IMAGE } from "@/lib/mediaUrl";
 import { uploadsApi } from "@/lib/api/endpoints/uploads";
 import { productsApi } from "@/lib/api/endpoints/products";

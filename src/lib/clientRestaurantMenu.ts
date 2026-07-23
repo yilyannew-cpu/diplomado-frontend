@@ -1,5 +1,5 @@
-import type { MenuItem } from "@/mocks/menuMock";
-import type { Promotion } from "@/mocks/promotionsMock";
+import type { MenuItem } from "@/types/menu";
+import type { Promotion } from "@/types/promotion";
 import { getProductPricing } from "@/lib/promotions";
 
 export const CLIENT_CATEGORY_ORDER = [

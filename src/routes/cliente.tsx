@@ -26,8 +26,8 @@ import { DiscountBadge, ProductPriceDisplay } from "@/components/shared/ProductP
 import { ProductDetailModal } from "@/components/cliente/ProductDetailModal";
 import { RestaurantDetailView } from "@/components/cliente/RestaurantDetailView";
 import { ProductImage } from "@/components/shared/ProductImage";
-import type { MenuItem } from "@/mocks/menuMock";
-import type { Restaurant } from "@/mocks/restaurantsMock";
+import type { MenuItem } from "@/types/menu";
+import type { Restaurant } from "@/types/restaurant";
 import { cn } from "@/lib/utils";
 
 function normalizeSearch(value: string): string {

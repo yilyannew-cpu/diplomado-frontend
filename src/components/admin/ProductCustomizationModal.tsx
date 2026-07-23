@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { MenuItem, Ingredient, ModifierGroup, ModifierOption } from "@/mocks/menuMock";
+import type { MenuItem, Ingredient, ModifierGroup, ModifierOption } from "@/types/menu";
 import { formatThousands, parseThousandsInput } from "@/lib/formatThousandsInput";
 
 interface ProductCustomizationModalProps {

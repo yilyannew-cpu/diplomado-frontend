@@ -5,7 +5,6 @@ import { ReportDateRangeSelector } from "@/components/admin/reports/ReportDateRa
 import type { ReportDateRange } from "@/lib/salesReports";
 import { RestaurantDashboard } from "@/components/admin/RestaurantDashboard";
 import { RestaurantSettingsPanel } from "@/components/admin/RestaurantSettingsPanel";
-import { ActiveDeliveriesPanel } from "@/components/admin/ActiveDeliveriesPanel";
 import { DispatchedOrdersPanel } from "@/components/admin/DispatchedOrdersPanel";
 import { AdminNavMobile, AdminNavSidebar, type AdminTab } from "@/components/admin/AdminNav";
 import { AddAdditionModal } from "@/components/admin/AddAdditionModal";
@@ -30,9 +29,9 @@ import { useCourierApplications } from "@/context/CourierApplicationsContext";
 import { formatCOP } from "@/context/OrderContext";
 import { resolveLogoUrl } from "@/lib/mediaUrl";
 import { getOrderZone } from "@/lib/orderZones";
-import type { MenuItem } from "@/mocks/menuMock";
-import { ADDITION_CATEGORY } from "@/mocks/menuMock";
-import type { Order } from "@/mocks/ordersMock";
+import type { MenuItem } from "@/types/menu";
+import { ADDITION_CATEGORY } from "@/types/menu";
+import type { Order } from "@/types/order";
 import { isPromotionActive } from "@/lib/promotions";
 import type { ApiAvailableCourier } from "@/lib/api/types/admin";
 
@@ -59,9 +58,9 @@ function AdminView() {
     enRouteOrders,
     menu,
     promotions,
-    activeDeliveries,
     dispatchSummary,
     loading,
+    categories,
     assignCourierBatch,
     dispatchBatch,
     toggleAvailability,
@@ -95,7 +94,6 @@ function AdminView() {
     [menu, menuFilters],
   );
 
-  const activeDeliveryCount = activeDeliveries.length;
   const assignedReadyCount = kitchenOrders.filter(
     (o) => o.status === "Listo" && Boolean(o.deliveryPersonId),
   ).length;
@@ -127,9 +125,7 @@ function AdminView() {
                   ? "Historial de despachos"
                   : tab === "motorizados"
                     ? "Gestión de motorizados"
-                    : tab === "configuracion"
-                      ? "Configuración"
-                      : "Domicilios activos";
+                    : "Configuración";
 
   const navHints: Partial<Record<AdminTab, string>> = {
     dashboard: "Ventas y reseñas",
@@ -138,7 +134,6 @@ function AdminView() {
     menu: `${menu.length} productos`,
     promociones: `${activePromotionsCount} activas`,
     despachados: `${despachadosCount} en control`,
-    domicilios: `${activeDeliveryCount} en ruta`,
     historial: `${historyMonthCount} despachos este mes`,
     motorizados: pendingCouriersCount > 0 ? `${pendingCouriersCount} nuevas solicitudes` : "Postulaciones",
     configuracion: "Metas de ventas",
@@ -240,6 +235,7 @@ function AdminView() {
                   onChange={setMenuFilters}
                   resultCount={filteredMenu.length}
                   totalCount={menu.length}
+                  categories={categories.map((c) => c.name)}
                 />
               </div>
             )}
@@ -373,8 +369,6 @@ function AdminView() {
             <PromotionsPanel />
           ) : tab === "despachados" ? (
             <DispatchedOrdersPanel onDispatchBatch={(orders) => void dispatchBatch(orders)} />
-          ) : tab === "domicilios" ? (
-            <ActiveDeliveriesPanel />
           ) : tab === "historial" ? (
             <HistoryPanel />
           ) : tab === "motorizados" ? (
@@ -430,6 +424,7 @@ function AdminView() {
       <AddProductModal
         open={addingProduct}
         onClose={() => setAddingProduct(false)}
+        categories={categories.map((c) => c.name)}
         onSave={async (data) => {
           await addMenuItem(data);
           setAddingProduct(false);

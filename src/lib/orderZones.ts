@@ -1,4 +1,4 @@
-import type { Order } from "@/mocks/ordersMock";
+import type { Order } from "@/types/order";
 
 /** Extrae el barrio/zona desde la dirección (penúltimo segmento antes de la ciudad). */
 export function getOrderZone(address: string): string {

@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { useAdmin } from "@/context/AdminContext";
 import { formatCOP } from "@/context/OrderContext";
 import { toDateKey } from "@/lib/promotions";
-import { ADDITION_CATEGORY } from "@/mocks/menuMock";
+import { ADDITION_CATEGORY } from "@/types/menu";
 
 interface CreatePromotionModalProps {
   open: boolean;

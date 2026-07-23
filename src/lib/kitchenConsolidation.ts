@@ -1,5 +1,5 @@
-import type { MenuItem } from "@/mocks/menuMock";
-import type { Order, OrderItem } from "@/mocks/ordersMock";
+import type { MenuItem } from "@/types/menu";
+import type { Order, OrderItem } from "@/types/order";
 import {
   MONITOR_STATIONS,
   STATION_DELAY_SUBTITLE,

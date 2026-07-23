@@ -1,6 +1,5 @@
 import {
   BarChart3,
-  Bike,
   ChefHat,
   History,
   LayoutDashboard,
@@ -19,7 +18,6 @@ export type AdminTab =
   | "menu"
   | "promociones"
   | "despachados"
-  | "domicilios"
   | "historial"
   | "motorizados"
   | "configuracion";
@@ -36,7 +34,6 @@ export const ADMIN_NAV_ITEMS: PanelNavItem<AdminTab>[] = [
   },
   { id: "menu", label: "Gestor de menú", shortLabel: "Menú", icon: UtensilsCrossed },
   { id: "promociones", label: "Promociones", shortLabel: "Promos", icon: Tag },
-  { id: "domicilios", label: "Domicilios activos", shortLabel: "Domicilios", icon: Bike },
   { id: "motorizados", label: "Gestión de motorizados", shortLabel: "Motorizados", icon: Truck },
   { id: "historial", label: "Historial de despachos", shortLabel: "Historial", icon: History },
   { id: "configuracion", label: "Configuración", shortLabel: "Config", icon: Settings },

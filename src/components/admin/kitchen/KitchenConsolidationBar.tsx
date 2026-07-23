@@ -5,7 +5,7 @@ import { useOrders } from "@/context/OrderContext";
 import { useKitchenMonitorSla } from "@/hooks/useKitchenOrderSla";
 import { buildDelayedStationGroups } from "@/lib/kitchenConsolidation";
 import { cn } from "@/lib/utils";
-import type { Order } from "@/mocks/ordersMock";
+import type { Order } from "@/types/order";
 
 interface KitchenConsolidationBarProps {
   monitorOrders: Order[];

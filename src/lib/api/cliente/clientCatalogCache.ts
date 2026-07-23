@@ -2,9 +2,9 @@ import { mapApiRestaurantList } from "@/lib/api/cliente/mappers";
 import { clienteApi } from "@/lib/api/endpoints/cliente";
 import { productsApi } from "@/lib/api/endpoints/products";
 import { mapApiProducts, mapApiPromotions } from "@/lib/api/admin/mappers";
-import type { MenuItem } from "@/mocks/menuMock";
-import type { Promotion } from "@/mocks/promotionsMock";
-import type { Restaurant } from "@/mocks/restaurantsMock";
+import type { MenuItem } from "@/types/menu";
+import type { Promotion } from "@/types/promotion";
+import type { Restaurant } from "@/types/restaurant";
 
 /** Tiempo que el catálogo se considera fresco sin volver a pegarle al API. */
 export const CLIENT_CATALOG_TTL_MS = 5 * 60 * 1000;

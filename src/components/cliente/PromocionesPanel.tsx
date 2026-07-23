@@ -9,7 +9,7 @@ import { DiscountBadge, ProductPriceDisplay } from "@/components/shared/ProductP
 import { ProductImage } from "@/components/shared/ProductImage";
 import { useCliente } from "@/context/ClienteContext";
 import { groupActivePromotions, type ActivePromotionGroup } from "@/lib/promotions";
-import type { MenuItem } from "@/mocks/menuMock";
+import type { MenuItem } from "@/types/menu";
 import type { ProductPricing } from "@/lib/promotions";
 import { cn } from "@/lib/utils";
 

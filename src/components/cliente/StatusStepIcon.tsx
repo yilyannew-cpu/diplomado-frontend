@@ -6,7 +6,7 @@ import {
   ThumbsUp,
   type LucideIcon,
 } from "lucide-react";
-import type { OrderStatus } from "@/mocks/ordersMock";
+import type { OrderStatus } from "@/types/order";
 import { cn } from "@/lib/utils";
 
 const STATUS_ICON_CONFIG: Record<
